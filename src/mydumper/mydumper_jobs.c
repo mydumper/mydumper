@@ -470,6 +470,8 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
 
 static
 void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tmp_table_filename, char *view_filename) {
+  // view_filename can be NULL which indicates that --views-as-tables has been used.
+
   int outfile;
   char *query = NULL;
   MYSQL_ROW row;
@@ -527,7 +529,8 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
     g_string_append(statement, ",\n");
     escaped_name=escape_string(conn, row[0]);
     m_escape_char_with_char(identifier_quote_character, (fields_escaped_by?*fields_escaped_by:(identifier_quote_character==BACKTICK?BACKTICK:'\\')), escaped_name, strlen(escaped_name));
-    g_string_append_printf(statement, "%c%s%c %s", identifier_quote_character, escaped_name, identifier_quote_character, row[1]);
+    // type int is used by default, as only the real view type is required when --views-as-tables is used
+    g_string_append_printf(statement, "%c%s%c %s", identifier_quote_character, escaped_name, identifier_quote_character, view_filename?"int":row[1]);
     g_free(escaped_name);
   }
   g_string_append(statement, "\n) ENGINE=");
