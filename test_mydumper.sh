@@ -274,7 +274,7 @@ test_case_dir (){
 
   if (( ${mydumper_execute} > 0 ))
   then
-    while (( $iter <= $retries ))
+    while (( $iter <= $retries )) && (( $error == 0 ))
     do
       
       # Prepare
@@ -303,7 +303,7 @@ test_case_dir (){
       fi
       iter=$(( $iter + 1 ))
     done
-    if (( $error > 0 )) && (( $iter > $retries ))
+    if (( $error > 0 )) # && (( $iter > $retries ))
     then
       if [[ ! -n "$skip_backup"  ]]; then
         mysqldump --all-databases > $mysqldumplog
@@ -337,7 +337,7 @@ test_case_dir (){
   if (( ${myloader_execute} > 0 ))
   then
     iter=1
-    while (( $iter <= $retries ))
+    while (( $iter <= $retries )) && (( $error == 0 ))
     do
       # Import
       echo "Importing database: ${myloader_parameters}"
@@ -369,7 +369,7 @@ test_case_dir (){
 
       iter=$(( $iter + 1 ))
     done
-    if (( $error > 0 )) && (( $iter > $retries ))
+    if (( $error > 0 )) # && (( $iter > $retries ))
     then
       mkdir -p $mydumper_stor_dir
       if [[ ! -n "$skip_backup"  ]]; then
