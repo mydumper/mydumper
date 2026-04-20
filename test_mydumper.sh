@@ -96,7 +96,7 @@ export G_DEBUG=fatal-criticals
 > $myloader_log
 
 optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,skip-backup,prepare,directories:,retry:"
-optstring_short="ce:LDd"
+optstring_short="c:,e:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
     exit $?
@@ -401,6 +401,7 @@ do_case()
     fi
     return
   fi
+  echo "do case $@"
   if [[ -n "$case_num"  ]]
   then
     number=$( echo "$2" | cut -d'_' -f2 )
@@ -443,12 +444,12 @@ full_test_global(){
     local_case_max=$(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | cut -d'_' -f2 | sort -n | tail -1)
     local_case_min=$(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | cut -d'_' -f2 | sort -r -n | tail -1)
 
-    if (( $case_max < $local_case_max ))
+    if [ -n "$case_max" ] && (( $case_max < $local_case_max ))
     then
       local_case_max=$case_max
     fi
 
-    if (( $case_min > $local_case_min ))
+    if [ -n "$case_min" ] && (( $case_min > $local_case_min ))
     then
       local_case_min=$case_min
     fi
