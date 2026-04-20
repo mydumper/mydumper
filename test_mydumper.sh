@@ -349,7 +349,6 @@ test_case_dir (){
         "${time2[@]}" $myloader ${myloader_parameters} < /tmp/stream.sql
       else
         "${time2[@]}" $myloader ${myloader_parameters} 
-        error=$?
       fi
       error=$?
       cat $tmp_myloader_log >> $myloader_log
