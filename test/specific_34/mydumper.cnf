@@ -5,3 +5,4 @@
 [mydumper]
 database=specific_34
 outputdir=/tmp/data
+rows=2:2:1
