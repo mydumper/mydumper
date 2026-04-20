@@ -617,19 +617,14 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
     }
     if (!c_min && !c_max){
       trace("Thread %d: I-Chunk 1: both min and max doesn't exists. No need to continue with this job", td->thread_id);
-      if (csi->position==0){
-        close_table_job_files(tj);
-
-        if (cs->integer_step.is_unsigned){
-          cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.max+1;
-        }else{
-          cs->integer_step.type.sign.min=cs->integer_step.type.sign.max+1;
-        }
-        goto end_process;
+      if (cs->integer_step.is_unsigned){
+        cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.max+1;
       }else{
-        g_mutex_unlock(csi->mutex);
-        goto update_min;
+        cs->integer_step.type.sign.min=cs->integer_step.type.sign.max+1;
       }
+      if (csi->position==0)
+        close_table_job_files(tj);
+      goto end_process;
     }
 
     if ( cs->integer_step.rows_in_explain == 0){
