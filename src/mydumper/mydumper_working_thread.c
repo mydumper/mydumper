@@ -1049,71 +1049,60 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
                        gboolean is_sequence, struct database * database, char *table,
                        char *collation, gchar *ecol)
 {
-    /* Green light! */
-/*
-  g_mutex_lock(database->ad_mutex);
-  if (!database->already_dumped){
-    create_job_to_dump_schema(database, conf);
-    database->already_dumped=TRUE;
-  }
-  g_mutex_unlock(database->ad_mutex);
-*/
-
   struct db_table *dbt=NULL;
   gboolean b= new_db_table(&dbt, conn, conf, database, table, collation, is_sequence, is_view);
   if (b){
   // if a view or sequence we care only about schema
-  if ((!is_view || views_as_tables ) && !is_sequence) {
-  // with --trx-tables we dump all as transactional tables
-    if (!no_schemas && !dbt->object_to_export.no_schema) {
-//      write_table_metadata_into_file(dbt);
-      g_mutex_lock(table_schemas_mutex);
-      table_schemas=g_list_prepend( table_schemas, dbt) ;
-      g_mutex_unlock(table_schemas_mutex);
-      create_job_to_dump_table_schema( dbt);
-    }
-    if (dump_triggers && !database->dump_triggers && !dbt->object_to_export.no_trigger) {
-      create_job_to_dump_triggers(conn, dbt);
-    }
-    if (!no_data && !dbt->object_to_export.no_data) {
-      if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
-        if (!dbt->checksum.skip_data && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
-          create_job_to_dump_checksum(dbt);
-        }
-        if (trx_tables ||
-          (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
-          dbt->is_transactional=TRUE;
-          g_mutex_lock(transactional_table->mutex);
-          transactional_table->list=g_list_prepend(transactional_table->list,dbt);
-          transactional_table->count++;
-          g_mutex_unlock(transactional_table->mutex);
-
-        } else {
-          dbt->is_transactional=FALSE;
-          g_mutex_lock(non_transactional_table->mutex);
-          non_transactional_table->list = g_list_prepend(non_transactional_table->list, dbt);
-          non_transactional_table->count++;
-          g_mutex_unlock(non_transactional_table->mutex);
-        }
-      }else{
-        if (is_view){
-          dbt->is_transactional=FALSE;
-          g_mutex_lock(non_transactional_table->mutex);
-          non_transactional_table->list = g_list_prepend(non_transactional_table->list, dbt);
-          non_transactional_table->count++;
-          g_mutex_unlock(non_transactional_table->mutex);
+    if (is_sequence){
+      if (!no_schemas && !dbt->object_to_export.no_schema) {
+        create_job_to_dump_sequence(dbt);
+      }
+    }else if (is_view){
+      if (!no_schemas && !dbt->object_to_export.no_schema) {
+        create_job_to_dump_view(dbt);
+      }
+      if (views_as_tables){
+        dbt->is_transactional=FALSE;
+        g_mutex_lock(non_transactional_table->mutex);
+        non_transactional_table->list = g_list_prepend(non_transactional_table->list, dbt);
+        non_transactional_table->count++;
+        g_mutex_unlock(non_transactional_table->mutex);
+      }
+    }else{
+    // with --trx-tables we dump all as transactional tables
+      if (!no_schemas && !dbt->object_to_export.no_schema) {
+        g_mutex_lock(table_schemas_mutex);
+        table_schemas=g_list_prepend( table_schemas, dbt) ;
+        g_mutex_unlock(table_schemas_mutex);
+        create_job_to_dump_table_schema( dbt);
+      }
+      if (dump_triggers && !database->dump_triggers && !dbt->object_to_export.no_trigger) {
+        create_job_to_dump_triggers(conn, dbt);
+      }
+      if (!no_data && !dbt->object_to_export.no_data) {
+        if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
+          if (!dbt->checksum.skip_data && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
+            create_job_to_dump_checksum(dbt);
+          }
+          if (trx_tables ||
+            (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
+            dbt->is_transactional=TRUE;
+            g_mutex_lock(transactional_table->mutex);
+            transactional_table->list=g_list_prepend(transactional_table->list,dbt);
+            transactional_table->count++;
+            g_mutex_unlock(transactional_table->mutex);
+          } else {
+            dbt->is_transactional=FALSE;
+            g_mutex_lock(non_transactional_table->mutex);
+            non_transactional_table->list = g_list_prepend(non_transactional_table->list, dbt);
+            non_transactional_table->count++;
+            g_mutex_unlock(non_transactional_table->mutex);
+          }
+        }else{
+          g_warning("Data from `%s`.`%s` will not be exported", database->source_database,dbt->table);
         }
       }
     }
-  } else if (is_view) {
-    if (!no_schemas && !dbt->object_to_export.no_schema) {
-      create_job_to_dump_view(dbt);
-    }
-  } else { // is_sequence
-    if (!no_schemas && !dbt->object_to_export.no_schema) {
-      create_job_to_dump_sequence(dbt);
-    }
-  }
   }
 }
 

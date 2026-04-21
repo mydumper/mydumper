@@ -176,7 +176,7 @@ void create_job_to_dump_view(struct db_table *dbt) {
 //  j->conf = conf;
   j->type = JOB_VIEW;
   vj->tmp_table_filename  = build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema");
-  vj->view_filename = build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema-view");
+  vj->view_filename = views_as_tables?NULL:build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema-view");
   g_async_queue_push(local_conf->post_data_queue, j);
   return;
 }
