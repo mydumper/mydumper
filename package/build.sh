@@ -20,7 +20,7 @@ if [[ $# -ge 5 ]]; then
     ARCH=$5
     extra="$6"
 else
-    echo "USAGE: sh build.sh <version> <revision> [rpm|deb] <directory> <architecture>"
+    echo "USAGE: sh build.sh <version> <release> [rpm|deb] <directory> <architecture>"
     echo "USED: $*"
     exit 1
 fi
