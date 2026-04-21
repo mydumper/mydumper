@@ -1,0 +1,1 @@
+source test/dynamic.sql
