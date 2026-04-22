@@ -512,7 +512,7 @@ cat <<EOF
     - run:
         command: |
           if [ -z \${CIRCLE_TAG+x} ] ; then echo 'export CIRCLE_TAG="v0.11.1"' >> "\$BASH_ENV"; fi
-          echo 'export MYDUMPER_VERSION=${CIRCLE_TAG:1} ' >> "\$BASH_ENV"
+          echo 'export MYDUMPER_VERSION=\${CIRCLE_TAG:1} ' >> "\$BASH_ENV"
           echo 'export MYDUMPER_REVISION=1 ' >> "\$BASH_ENV"
           cat /etc/profile.d/sh.local >> "\$BASH_ENV" || true
           cat \$BASH_ENV
