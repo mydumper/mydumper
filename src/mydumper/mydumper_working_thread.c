@@ -1224,7 +1224,6 @@ void dump_database_thread(MYSQL *conn, struct database *database) {
     if (dump && ignore_engines && !is_view && !is_sequence) {
       if (m_pstrstr(ignore_engines, row[ecol])){
         dump = 0;
-        break;
       }
     }
 
