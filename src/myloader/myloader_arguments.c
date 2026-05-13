@@ -186,7 +186,7 @@ static GOptionEntry execution_entries[] = {
       "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
     {"optimize-keys-batchsize", 0, 0, G_OPTION_ARG_INT, &optimize_keys_batchsize,
       "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimited)", NULL},
-    {"no-schema", 0, 0, G_OPTION_ARG_NONE, &no_schemas, 
+    {"no-schemas", 0, 0, G_OPTION_ARG_NONE, &no_schemas, 
       "Do not import table schemas and triggers ", NULL},
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
@@ -220,6 +220,8 @@ static GOptionEntry execution_entries[] = {
 static GOptionEntry filter_entries[] ={
     {"source-db", 's', 0, G_OPTION_ARG_STRING, &source_db,
      "Database to restore", NULL},
+    {"skip-create-table", 0, 0, G_OPTION_ARG_NONE, &skip_create_table,
+      "Do not execute the CREATE TABLE statement. By default, it executes the CREATE TABLE statement", NULL},
     {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers,
       "Do not import triggers. By default, it imports triggers", NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
