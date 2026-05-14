@@ -129,13 +129,22 @@ gboolean common_arguments_callback(const gchar *option_name,const gchar *value, 
       }else{
         tp=g_strsplit(value, "=", 2);
       }
-      throttle_variable=g_strdup(tp[0]);
-      throttle_value = atoi(tp[1]);
+      guint len=g_strv_length(tp);
+      if (len>2){
+        m_error("Error parsing --throttle with: %s. You should use for instance 20:Threads_running=10, where 20 indicates the microseconds waiting, then the variable and max allowed value to start throttling", value);
+      }
+      if (len > 1){
+        throttle_variable=g_strdup(tp[0]);
+        throttle_value = atoi(tp[1]);
+      }else{
+        throttle_variable=g_strdup("Threads_running");
+        throttle_value = atoi(tp[0]);
+      }
       g_strfreev(tq);
       g_strfreev(tp);
     }else{
       throttle_variable=g_strdup("Threads_running");
-      throttle_value = 0;
+      throttle_value = 4;
     }
     return TRUE;
   } else if (!strcmp(option_name, "--optimize-keys-engines")){
@@ -205,7 +214,7 @@ GOptionEntry common_entries[] = {
     {"dry-run", 0, 0, G_OPTION_ARG_NONE, &dry_run,
       "In dry-run mode, it skips the connection to the database and the execution of any query", NULL},
     {"throttle", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
-      "Expects a string like Threads_running=10. It will check the SHOW GLOBAL STATUS and if it is higher, it will increase the sleep time between SELECT. "
+      "Expects a string like 20:Threads_running=10, where 20 indicates the microseconds waiting, then the variable and max allowed value to start throttling. It will check the SHOW GLOBAL STATUS and if it is higher, it will increase the sleep time between SELECT. "
       "If option is used without parameters it will use Threads_running and the amount of threads", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 

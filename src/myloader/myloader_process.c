@@ -294,6 +294,7 @@ regex_error:
         if (optimize_keys || skip_constraints || skip_indexes ){
           GString *alter_table_statement=g_string_sized_new(512);
           GString *alter_table_constraint_statement=g_string_sized_new(512);
+          g_string_set_size(alter_table_statement,0);
           // Check if it is a /*!40  SET
           if (g_strrstr(data->str,"/*!40")){
             if (!should_ignore_set_statement(data)){
@@ -303,9 +304,11 @@ regex_error:
           }else{
             // Processing CREATE TABLE statement
             int flag = // process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt, (dbt->rows == 0 || dbt->rows >= 1000000 || skip_constraints || skip_indexes));
-                      global_process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->source_table_name?dbt->source_table_name:dbt->create_table_name, (dbt->rows == 0 || dbt->rows >= 10 || skip_constraints || skip_indexes));
+                      global_process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->source_table_name?dbt->source_table_name:dbt->create_table_name, TRUE );
             if (flag & IS_TRX_TABLE){
+              trace("IS_TRX_TABLE: %s.%s",dbt->database->target_database,dbt->source_table_name);
               if (flag & IS_ALTER_TABLE_PRESENT){
+                trace("IS_ALTER_TABLE_PRESENT: %s.%s",dbt->database->target_database,dbt->source_table_name);
 //                finish_alter_table(alter_table_statement);
                 g_message("Fast index creation will be used for table: %s.%s",dbt->database->target_database,dbt->source_table_name);
               }else{
@@ -313,10 +316,11 @@ regex_error:
                 alter_table_statement=NULL;
               }
 //              g_string_append(create_table_statement,g_strjoinv("\n)",g_strsplit(new_create_table_statement->str,",\n)",-1)));
-              if (!skip_indexes){
-                if (optimize_keys)
+              if (!skip_indexes && alter_table_statement!=NULL){
+                if (optimize_keys){
                   dbt->indexes=alter_table_statement;
-                else if (alter_table_statement!=NULL)
+                  trace("Index for table %s %s will be %s", dbt->database->target_database,dbt->source_table_name, dbt->indexes->str);
+                }else
                   g_string_append(create_table_statement,alter_table_statement->str);
               }
               if (!skip_constraints && (flag & INCLUDE_CONSTRAINT)){

@@ -147,28 +147,34 @@ void parse_key_file_group(GKeyFile *kf, GOptionContext *context, const gchar * g
     g_error("Loading configuration on section %s: %s",group,error->message);
   }else{
     // Transform the key-value pair to parameters option that the parsing will understand
+    GString *new_list=g_string_sized_new(50);
     for (i=0; i < len; i++){
+
       if (g_strcmp0("host",keys[i]) && g_strcmp0("user",keys[i]) && g_strcmp0("password",keys[i])){
         list = g_slist_append(list, g_strdup_printf("--%s",keys[i]));
-        gchar *value=g_key_file_get_value(kf,group,keys[i],&error);
-        if ( value != NULL ) list=g_slist_append(list, value);
+        g_string_append_printf(new_list, "--%s",keys[i]);
+        gchar *value=g_strdup(g_key_file_get_value(kf,group,keys[i],&error));
+        if ( value != NULL ) list=g_slist_append(list, g_strdup(value));
       }
     }
-    gint slen = g_slist_length(list) + 1;
+    gint slen = g_slist_length(list) + 2;
     gchar ** gclist = g_new0(gchar *, slen);
     GSList *ilist=list;
     gint j=0;
-    for (j=1; j < slen ; j++){
-      gclist[j]=ilist->data;
+    gclist[j]=g_strdup(group);
+    for (j=1; j < slen -1 ; j++){
+      gclist[j]=g_strdup(ilist->data);
       ilist=ilist->next;
     }
-    g_slist_free(list);
+    gclist[j]=NULL;
+    g_option_context_set_ignore_unknown_options(context, TRUE);
     // Second parse over the options
-    if (!g_option_context_parse(context, &slen, &gclist, &error)) {
+    if (!g_option_context_parse_strv(context, &gclist, &error)) {
       m_critical("option parsing failed: %s, try --help\n", error->message);
     }else{
       trace("Config file loaded");
     }
+//    g_slist_free(list);
     g_strfreev(gclist);
   }
   g_strfreev(keys);
