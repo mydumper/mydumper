@@ -258,7 +258,7 @@ void wait_schema_worker_to_finish(struct configuration *conf){
 
   // In --no-data mode, index threads are started but never receive JOB_SHUTDOWN
   // because no data workers exist to send it. Send shutdown here to prevent deadlock.
-  if (no_data && !optimize_keys_only && conf->index_queue != NULL) {
+  if (no_data && !only_indexes && conf->index_queue != NULL) {
     guint num_idx_threads = max_threads_for_index_creation > 0
                           ? max_threads_for_index_creation
                           : num_threads;

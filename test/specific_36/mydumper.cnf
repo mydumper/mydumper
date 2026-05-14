@@ -1,5 +1,5 @@
 #
-# Testing --optimize-keys=ONLY
+# Testing --only-indexes
 #
 
 [mydumper]

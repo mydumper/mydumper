@@ -1,5 +1,5 @@
 [myloader]
 directory=/tmp/data
-optimize-keys=ONLY
+only-indexes
 max-threads-for-index-creation=1
 max-threads-for-schema-creation=1

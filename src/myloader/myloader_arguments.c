@@ -41,43 +41,43 @@ guint64 max_statement_size=0;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
+  if (!g_strcmp0(option_name, "--only-indexes")) {
+    optimize_keys = TRUE;
+    optimize_keys_all_tables = TRUE;
+    optimize_keys_per_table = FALSE;
+    only_indexes = TRUE;
+    no_schemas = TRUE;
+    no_data = TRUE;
+    return TRUE;
+  }
   if (!g_strcmp0(option_name, "--optimize-keys")) {
     optimize_keys_str=g_strdup(value);
     if (value==NULL || !g_strcmp0(value,"1")){
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
-      optimize_keys_only = FALSE;
+      only_indexes = FALSE;
       return TRUE;
     }
     if (!g_ascii_strcasecmp(value, SKIP)) {
       optimize_keys = FALSE;
       optimize_keys_per_table = FALSE;
       optimize_keys_all_tables = FALSE;
-      optimize_keys_only = FALSE;
+      only_indexes = FALSE;
       return TRUE;
     }
     if (!g_ascii_strcasecmp(value, AFTER_IMPORT_PER_TABLE)) {
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
-      optimize_keys_only = FALSE;
+      only_indexes = FALSE;
       return TRUE;
     }
     if (!g_ascii_strcasecmp(value, AFTER_IMPORT_ALL_TABLES)) {
       optimize_keys_all_tables = TRUE;
       optimize_keys_per_table = FALSE;
-      optimize_keys_only = FALSE;
+      only_indexes = FALSE;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value, ONLY)) {
-      optimize_keys = TRUE;
-      optimize_keys_all_tables = TRUE;
-      optimize_keys_per_table = FALSE;
-      optimize_keys_only = TRUE;
-      no_schemas = TRUE;
-      no_data = TRUE;
-      return TRUE;
-    }
-    g_critical("--optimize-keys accepts: after_import_per_table (default value), after_import_all_tables, only, skip");
+    g_critical("--optimize-keys accepts: after_import_per_table (default value), after_import_all_tables, skip");
   } else if (!g_strcmp0(option_name, "--quote-character")) {
     if (!g_ascii_strcasecmp(value, "BACKTICK") || !g_ascii_strcasecmp(value, "BT") || !g_strcmp0(value, "`")) {
       identifier_quote_character= BACKTICK;
@@ -196,7 +196,9 @@ static GOptionEntry execution_entries[] = {
     {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "Creates the table without the indexes unless SKIP is selected. "
       "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
-      "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES, ONLY and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
+      "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
+    {"only-indexes", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Only create secondary indexes on already loaded tables (sets --no-schemas and --no-data and uses AFTER_IMPORT_ALL_TABLES)", NULL},
     {"optimize-keys-batchsize", 0, 0, G_OPTION_ARG_INT, &optimize_keys_batchsize,
       "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimited)", NULL},
     {"no-schemas", 0, 0, G_OPTION_ARG_NONE, &no_schemas,

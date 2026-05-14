@@ -20,7 +20,6 @@
 */
 #define AFTER_IMPORT_PER_TABLE "AFTER_IMPORT_PER_TABLE"
 #define AFTER_IMPORT_ALL_TABLES "AFTER_IMPORT_ALL_TABLES"
-#define ONLY "ONLY"
 #define SKIP "SKIP"
 
 GOptionContext * load_contex_entries();

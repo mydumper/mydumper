@@ -264,7 +264,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
 // INDEXES
 // CONSTRAINTS
       if (!source_db || g_strcmp0(dbt->database->source_database,source_db)==0){
-        if (((rj->data.srj->object==INDEXES && (optimize_keys_only || !no_schemas) && !dbt->object_to_import.no_index ) ||
+        if (((rj->data.srj->object==INDEXES && (only_indexes || !no_schemas) && !dbt->object_to_import.no_index ) ||
              (rj->data.srj->object==CONSTRAINTS && !no_schemas && !dbt->object_to_import.no_constraint ))
            ){
         get_total_done(td->conf, &total);

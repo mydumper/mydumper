@@ -138,7 +138,7 @@ gboolean create_index_job(struct configuration *conf, struct db_table * dbt, gui
 
 void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt){
   trace("Checking if index on %s %s is possible to enqueu", dbt->database->target_database, dbt->table_filename);
-  if (dbt->schema_state==DATA_DONE || (optimize_keys_only && dbt->schema_state==CREATED)){
+  if (dbt->schema_state==DATA_DONE || (only_indexes && dbt->schema_state==CREATED)){
     if (dbt->indexes == NULL){
       trace("Table %s %s is all done", dbt->database->target_database, dbt->table_filename);
       dbt->schema_state=ALL_DONE;
