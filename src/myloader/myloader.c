@@ -59,6 +59,7 @@ gboolean overwrite_unsafe = FALSE;
 gboolean optimize_keys = TRUE;
 gboolean optimize_keys_per_table = TRUE;
 gboolean optimize_keys_all_tables = FALSE;
+gboolean optimize_keys_only = FALSE;
 gboolean kill_at_once = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
@@ -217,6 +218,8 @@ void print_help(){
     print_bool("enable-binlog",enable_binlog);
   if (!optimize_keys){
     print_string("optimize-keys",SKIP);
+  }else if(optimize_keys_only){
+    print_string("optimize-keys",ONLY);
   }else if(optimize_keys_per_table){
     print_string("optimize-keys",AFTER_IMPORT_PER_TABLE);
   }else if(optimize_keys_all_tables){

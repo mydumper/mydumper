@@ -264,9 +264,8 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
 // INDEXES
 // CONSTRAINTS
       if (!source_db || g_strcmp0(dbt->database->source_database,source_db)==0){
-        if ( !no_schemas && (
-             (rj->data.srj->object==INDEXES && !dbt->object_to_import.no_index ) ||
-             (rj->data.srj->object==CONSTRAINTS && !dbt->object_to_import.no_constraint ))
+        if (((rj->data.srj->object==INDEXES && (optimize_keys_only || !no_schemas) && !dbt->object_to_import.no_index ) ||
+             (rj->data.srj->object==CONSTRAINTS && !no_schemas && !dbt->object_to_import.no_constraint ))
            ){
         get_total_done(td->conf, &total);
           if (machine_log_json) {
@@ -405,7 +404,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
               g_atomic_int_inc(&(detailed_errors.schema_errors));
               if (purge_mode == FAIL)
                 g_error("Thread %d: issue restoring %s",td->thread_id,rj->filename);
-              else 
+              else
                 g_critical("Thread %d: issue restoring %s",td->thread_id,rj->filename);
             }
           }else{
@@ -529,10 +528,10 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
              (rj->data.srj->object==SEQUENCE) ||
              (rj->data.srj->object==TRIGGER) ||
              (rj->data.srj->object==POST)
-             
+
            )
           ){
-          get_total_done(td->conf, &total); 
+          get_total_done(td->conf, &total);
           if (machine_log_json) {
             gchar *thread_id = g_strdup_printf("%u", td->thread_id);
             gchar *tables_done = g_strdup_printf("%u", total);

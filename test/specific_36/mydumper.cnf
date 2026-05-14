@@ -1,0 +1,7 @@
+#
+# Testing --optimize-keys=ONLY
+#
+
+[mydumper]
+database=specific_36
+outputdir=/tmp/data

@@ -76,7 +76,7 @@ gboolean schema_push( enum schema_job_type schema_worker_job, gchar * filename, 
       return FALSE;
     }else{
       trace("not enqueuing %s %s", filename, schema_job_type2str(sj->type));
-    
+
     }
   }else{
     trace("schema_job_queue <- %s (sorted)", schema_job_type2str(sj->type));
@@ -121,7 +121,7 @@ void set_db_schema_created(struct database * _database)
   struct schema_job *sj = g_async_queue_try_pop(_database->sequence_queue);
   while (sj){
     schema_job_queue_push(sj);
-    sj = g_async_queue_try_pop(_database->sequence_queue);  
+    sj = g_async_queue_try_pop(_database->sequence_queue);
   }
   sj = g_async_queue_try_pop(_database->table_queue);
   while (sj){
@@ -178,7 +178,7 @@ gboolean process_schema(struct thread_data * td){
       wake_data_threads();
       break;
     case SCHEMA_PROCESS_ENDED:
-      // set as created all database, 
+      // set as created all database,
       // which implies all tables are created
       trace("SCHEMA_PROCESS_ENDED ");
       schema_job = g_async_queue_try_pop(retry_queue);
@@ -195,7 +195,7 @@ gboolean process_schema(struct thread_data * td){
         set_db_schema_created(_database);
         g_mutex_unlock(_database->mutex);
       }
-      
+
       schema_job_queue_push(new_schema_job(SCHEMA_ENDED, NULL, NULL));
 
       //refresh_table_list(td->conf);
@@ -206,7 +206,7 @@ gboolean process_schema(struct thread_data * td){
       //refresh_table_list(td->conf);
       return FALSE;
       break;
-                          
+
   }
 
   return TRUE;
@@ -238,7 +238,7 @@ void initialize_worker_schema(struct configuration *conf){
   schema_threads = g_new(GThread *, max_threads_for_schema_creation);
   schema_td = g_new(struct thread_data, max_threads_for_schema_creation);
   g_message("Initializing initialize_worker_schema");
-  for (n = 0; n < max_threads_for_schema_creation; n++) 
+  for (n = 0; n < max_threads_for_schema_creation; n++)
     initialize_thread_data(&(schema_td[n]), conf, WAITING, n + 1 + num_threads, NULL);
 
 //  if (stream)
@@ -258,7 +258,7 @@ void wait_schema_worker_to_finish(struct configuration *conf){
 
   // In --no-data mode, index threads are started but never receive JOB_SHUTDOWN
   // because no data workers exist to send it. Send shutdown here to prevent deadlock.
-  if (no_data && conf->index_queue != NULL) {
+  if (no_data && !optimize_keys_only && conf->index_queue != NULL) {
     guint num_idx_threads = max_threads_for_index_creation > 0
                           ? max_threads_for_index_creation
                           : num_threads;
