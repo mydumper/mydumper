@@ -1,0 +1,7 @@
+#
+# Testing --no-views
+#
+
+[mydumper]
+outputdir=/tmp/data
+database=sakila

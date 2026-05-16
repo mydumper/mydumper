@@ -63,6 +63,7 @@ gboolean kill_at_once = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
 gboolean skip_create_table = FALSE;
+gboolean skip_create_database = FALSE;
 gboolean skip_triggers = FALSE;
 gboolean skip_constraints = FALSE;
 gboolean skip_indexes = FALSE;
@@ -202,6 +203,7 @@ void print_help(){
 
   print_list("regex",regex_list, NULL);
   print_string("source-db",source_db);
+  print_bool("skip-create-database",skip_create_database);
   print_bool("skip-create-table",skip_create_table);
   print_bool("skip-triggers",skip_triggers);
   print_bool("skip-post",skip_post);
