@@ -1,0 +1,3 @@
+[myloader]
+directory=/tmp/data
+skip-create-database=1

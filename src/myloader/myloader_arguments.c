@@ -237,6 +237,8 @@ static GOptionEntry filter_entries[] ={
      "Database to restore", NULL},
     {"skip-create-table", 0, 0, G_OPTION_ARG_NONE, &skip_create_table,
       "Do not execute the CREATE TABLE statement. By default, it executes the CREATE TABLE statement", NULL},
+    {"skip-create-database", 0, 0, G_OPTION_ARG_NONE, &skip_create_database,
+      "Do not execute any CREATE DATABASE statement, when -schema-create.sql file is found or even when -B is used. By default, it executes the CREATE DATABASE statement", NULL},
     {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers,
       "Do not import triggers. By default, it imports triggers", NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
