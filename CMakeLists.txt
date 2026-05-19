@@ -128,6 +128,8 @@ enable_testing()
 add_executable(test_use_defer_livelock test/unit/test_use_defer_livelock.c)
 target_include_directories(test_use_defer_livelock PRIVATE ${GLIB2_INCLUDE_DIR})
 target_link_libraries(test_use_defer_livelock ${GLIB2_LIBRARIES})
+# -DUSE_DEFER_FIX tells the test to exercise the fixed JOB_DEFER handler path.
+target_compile_definitions(test_use_defer_livelock PRIVATE USE_DEFER_FIX)
 add_test(NAME use_defer_livelock COMMAND test_use_defer_livelock)
 
 IF(RUN_CPPCHECK)
