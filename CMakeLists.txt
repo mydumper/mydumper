@@ -120,6 +120,16 @@ add_custom_target(dist
 
 OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
 
+enable_testing()
+
+# Unit test: --use-defer livelock
+# Requires only GLib (no MySQL). Link with -DUSE_DEFER_FIX to test the fixed
+# code path; without it the test proves the bug (exits non-zero).
+add_executable(test_use_defer_livelock test/unit/test_use_defer_livelock.c)
+target_include_directories(test_use_defer_livelock PRIVATE ${GLIB2_INCLUDE_DIR})
+target_link_libraries(test_use_defer_livelock ${GLIB2_LIBRARIES})
+add_test(NAME use_defer_livelock COMMAND test_use_defer_livelock)
+
 IF(RUN_CPPCHECK)
   include(CppcheckTargets)
   add_cppcheck(mydumper)
