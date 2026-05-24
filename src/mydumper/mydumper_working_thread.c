@@ -744,8 +744,15 @@ gboolean process_job(struct thread_data *td, struct job *job){
     case JOB_DUMP_NON_INNODB:
       thd_JOB_DUMP(td, job);
       break;
-    case JOB_DEFER:
+    case JOB_DEFER: {
+      /* Balances the increment in get_next_dbt_and_chunk_step_item; without this the chunk builder hangs forever. */
+      struct db_table *dbt = (struct db_table *)job->job_data;
+      g_mutex_lock(dbt->chunks_mutex);
+      dbt->current_threads_running--;
+      g_mutex_unlock(dbt->chunks_mutex);
+      g_free(job);
       break;
+    }
     case JOB_CHECKSUM:
       do_JOB_CHECKSUM(td,job);
       break;
