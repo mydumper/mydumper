@@ -480,6 +480,9 @@ cat <<EOF
           source /etc/profile.d/sh.local || true
     - run: cmake . <<parameters.CMAKED>>
     - run: make VERBOSE=1
+    - run:
+        name: Run unit tests
+        command: ctest --output-on-failure
     - run: sudo make install
     - run: ./mydumper --version
 
