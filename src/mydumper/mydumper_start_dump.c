@@ -1009,6 +1009,31 @@ cleanup:
     mysql_free_result(slave);
 }
 
+static
+void get_binlog_position(MYSQL *conn, char **masterlog, char **masterpos, char **mastergtid){
+  trace("Getting binary log position");
+  struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_warning, m_message, "Couldn't get master position", NULL);
+  if ( mr->row ) {
+    *masterlog = g_strdup(mr->row[0]);
+    *masterpos = g_strdup(mr->row[1]);
+    // Oracle/Percona GTID
+    if (mysql_num_fields(mr->res) == 5) {
+      *mastergtid = g_strdup(remove_new_line(mr->row[4]));
+    } else {
+      // Let's try with MariaDB 10.x
+      // Use gtid_binlog_pos due to issue with gtid_current_pos with galera
+      // cluster, gtid_binlog_pos works as well with normal mariadb server
+      // https://jira.mariadb.org/browse/MDEV-10279
+      m_store_result_row_free(mr);
+      mr = m_store_result_row(conn, "SELECT @@gtid_binlog_pos", NULL, NULL, "Failed to get @@gtid_binlog_pos", NULL);
+      if (mr->row){
+        *mastergtid = g_strdup(remove_new_line(mr->row[0]));
+      }
+    }
+  }
+  m_store_result_row_free(mr);
+}
+
 // Here is where the backup process start
 
 void start_dump(struct configuration *conf, GOptionContext *context) {
@@ -1349,6 +1374,9 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   trace("End Job Creation");
   // End Job Creation
 
+  // Get initial binlog position
+  get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
+
   // Starting the chunk builder
   start_chunk_builder(conf);
 
@@ -1357,6 +1385,8 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   g_async_queue_pop(conf->source_and_replica_status_queue);
   g_async_queue_unref(conf->source_and_replica_status_queue);
 
+
+  // Get initial binlog position again to determine backup consistency
   gchar *source_log = NULL;
   gchar *source_pos = NULL;
   gchar *source_gtid = NULL;
