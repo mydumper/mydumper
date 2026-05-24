@@ -530,37 +530,11 @@ void check_connection_status(struct thread_data *td){
   }
 }
 
-
-void get_binlog_position(MYSQL *conn, char **masterlog, char **masterpos, char **mastergtid){
-  trace("Getting binary log position");
-  struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_warning, m_message, "Couldn't get master position", NULL);
-  if ( mr->row ) {
-    *masterlog = g_strdup(mr->row[0]);
-    *masterpos = g_strdup(mr->row[1]);
-    // Oracle/Percona GTID
-    if (mysql_num_fields(mr->res) == 5) {
-      *mastergtid = g_strdup(remove_new_line(mr->row[4]));
-    } else {
-      // Let's try with MariaDB 10.x
-      // Use gtid_binlog_pos due to issue with gtid_current_pos with galera
-      // cluster, gtid_binlog_pos works as well with normal mariadb server
-      // https://jira.mariadb.org/browse/MDEV-10279      
-      m_store_result_row_free(mr);
-      mr = m_store_result_row(conn, "SELECT @@gtid_binlog_pos", NULL, NULL, "Failed to get @@gtid_binlog_pos", NULL);
-      if (mr->row){
-        *mastergtid = g_strdup(remove_new_line(mr->row[0]));
-      }
-    }
-  }
-  m_store_result_row_free(mr);
-}
-
-
 /* Write some stuff we know about snapshot, before it changes */
 static
-void write_source_info(MYSQL *conn, FILE *file) {
+void write_source_info(FILE *file) {
 
-  get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
+//  get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
 
   if (initial_source_log) {
     fprintf(file, "\n[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
@@ -715,7 +689,7 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
       break;
     case JOB_WRITE_SOURCE_AND_REPLICA_STATUS:
 //      if (source_data.enabled)
-      write_source_info(td->thrconn, job->job_data);
+      write_source_info(job->job_data);
       // Write replica information
       if ((get_product() != SERVER_TYPE_TIDB) && replica_data.enabled)
           write_replica_info(td->thrconn, job->job_data);
