@@ -1,0 +1,5 @@
+[myloader]
+directory=/tmp/data
+only-indexes
+max-threads-for-index-creation=1
+max-threads-for-schema-creation=1

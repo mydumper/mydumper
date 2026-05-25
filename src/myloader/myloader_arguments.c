@@ -41,30 +41,43 @@ guint64 max_statement_size=0;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
+  if (!g_strcmp0(option_name, "--only-indexes")) {
+    optimize_keys = TRUE;
+    optimize_keys_all_tables = TRUE;
+    optimize_keys_per_table = FALSE;
+    only_indexes = TRUE;
+    no_schemas = TRUE;
+    no_data = TRUE;
+    return TRUE;
+  }
   if (!g_strcmp0(option_name, "--optimize-keys")) {
     optimize_keys_str=g_strdup(value);
     if (value==NULL || !g_strcmp0(value,"1")){
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
+      only_indexes = FALSE;
       return TRUE;
     }
     if (!g_ascii_strcasecmp(value, SKIP)) {
       optimize_keys = FALSE;
       optimize_keys_per_table = FALSE;
       optimize_keys_all_tables = FALSE;
+      only_indexes = FALSE;
       return TRUE;
     }
     if (!g_ascii_strcasecmp(value, AFTER_IMPORT_PER_TABLE)) {
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
+      only_indexes = FALSE;
       return TRUE;
     }
     if (!g_ascii_strcasecmp(value, AFTER_IMPORT_ALL_TABLES)) {
       optimize_keys_all_tables = TRUE;
       optimize_keys_per_table = FALSE;
+      only_indexes = FALSE;
       return TRUE;
     }
-    g_critical("--optimize-keys accepts: after_import_per_table (default value), after_import_all_tables");
+    g_critical("--optimize-keys accepts: after_import_per_table (default value), after_import_all_tables, skip");
   } else if (!g_strcmp0(option_name, "--quote-character")) {
     if (!g_ascii_strcasecmp(value, "BACKTICK") || !g_ascii_strcasecmp(value, "BT") || !g_strcmp0(value, "`")) {
       identifier_quote_character= BACKTICK;
@@ -125,12 +138,12 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     enable_binlog=TRUE;
     return TRUE;
   }
-  
+
   return common_arguments_callback(option_name, value, data, error);
 }
 
 static GOptionEntry entries[] = {
-    {"help", '?', 0, G_OPTION_ARG_NONE, &help, 
+    {"help", '?', 0, G_OPTION_ARG_NONE, &help,
       "Show help options", NULL},
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
      "Directory of the dump to import", NULL},
@@ -142,13 +155,13 @@ static GOptionEntry entries[] = {
      "Directory where the FIFO temporary files will be created when needed for LOAD DATA statements. Default: temporary directoy will be created", NULL},
     {"database", 'B', 0, G_OPTION_ARG_STRING, &target_db,
      "An alternative database to restore into", NULL},
-    {"show-warnings", 0,0, G_OPTION_ARG_NONE, &show_warnings, 
+    {"show-warnings", 0,0, G_OPTION_ARG_NONE, &show_warnings,
       "If enabled, during INSERT IGNORE the warnings will be printed", NULL},
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},
-    {"kill-at-once", 'k', 0, G_OPTION_ARG_NONE, &kill_at_once, 
+    {"kill-at-once", 'k', 0, G_OPTION_ARG_NONE, &kill_at_once,
       "When Ctrl+c is pressed it immediately terminates the process", NULL},
-    {"mysqldump", 0, 0, G_OPTION_ARG_NONE, &mysqldump, 
+    {"mysqldump", 0, 0, G_OPTION_ARG_NONE, &mysqldump,
       "It expect a mysqldump format when stream is used", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
@@ -184,9 +197,11 @@ static GOptionEntry execution_entries[] = {
       "Creates the table without the indexes unless SKIP is selected. "
       "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
       "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
+    {"only-indexes", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Only create secondary indexes on already loaded tables (sets --no-schemas and --no-data and uses AFTER_IMPORT_ALL_TABLES)", NULL},
     {"optimize-keys-batchsize", 0, 0, G_OPTION_ARG_INT, &optimize_keys_batchsize,
       "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimited)", NULL},
-    {"no-schemas", 0, 0, G_OPTION_ARG_NONE, &no_schemas, 
+    {"no-schemas", 0, 0, G_OPTION_ARG_NONE, &no_schemas,
       "Do not import table schemas and triggers ", NULL},
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
@@ -206,10 +221,10 @@ static GOptionEntry execution_entries[] = {
       "It will receive the stream from STDIN and create the file in the disk before start processing. "
       "Accepts NO_STREAM, NO_DELETE, NO_STREAM_AND_NO_DELETE, UNPACK and TRADITIONAL "
       "which is the default value and used if no parameter is given", NULL},
-    {"metadata-refresh-interval", 0, 0, G_OPTION_ARG_INT, &refresh_table_list_interval, 
+    {"metadata-refresh-interval", 0, 0, G_OPTION_ARG_INT, &refresh_table_list_interval,
       "Every this amount of tables the internal metadata will be refreshed. "
       "If the amount of tables you have in your metadata file is high, then you should increase this value. Default: 100", NULL},
-    {"skip-table-sorting", 0, 0, G_OPTION_ARG_NONE, &skip_table_sorting, 
+    {"skip-table-sorting", 0, 0, G_OPTION_ARG_NONE, &skip_table_sorting,
       "Starting with largest table is better, but this can be ignored due performance impact when you have high amount of tables", NULL},
     {"set-gtid-purged", 0, 0, G_OPTION_ARG_NONE, &set_gtid_purge,
       "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
@@ -228,11 +243,11 @@ static GOptionEntry filter_entries[] ={
       "Do not import triggers. By default, it imports triggers", NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
      "Do not import events, stored procedures and functions. By default, it imports events, stored procedures or functions", NULL},
-    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, 
+    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints,
       "Do not import constraints. By default, it imports constraints", NULL },
     {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes,
       "Do not import secondary indexes on InnoDB tables. By default, it import the indexes", NULL},
-    {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, 
+    {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data,
       "Do not dump or import table data", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
@@ -253,7 +268,7 @@ static GOptionEntry statement_entries[] ={
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {"replace-definer", 0, 0, G_OPTION_ARG_STRING, &replace_definer,
      "Replaces the user in the DEFINER by the new string. By default, statements are not modified", NULL},
-    {"ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
+    {"ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
       "List of variables that will be ignored from the header of SET", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 

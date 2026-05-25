@@ -1,0 +1,7 @@
+#
+# Testing --only-indexes
+#
+
+[mydumper]
+database=specific_36
+outputdir=/tmp/data

@@ -59,6 +59,7 @@ gboolean overwrite_unsafe = FALSE;
 gboolean optimize_keys = TRUE;
 gboolean optimize_keys_per_table = TRUE;
 gboolean optimize_keys_all_tables = FALSE;
+gboolean only_indexes = FALSE;
 gboolean kill_at_once = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
@@ -203,6 +204,7 @@ void print_help(){
 
   print_list("regex",regex_list, NULL);
   print_string("source-db",source_db);
+  print_bool("only-indexes",only_indexes);
   print_bool("skip-create-database",skip_create_database);
   print_bool("skip-create-table",skip_create_table);
   print_bool("skip-triggers",skip_triggers);
