@@ -897,7 +897,7 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
                         NULL);
       g_free(thread_id);
     } else {
-      g_message("Thread %d: Job has been cacelled",td->thread_id);
+      g_message("Thread %d: Job has been cancelled",td->thread_id);
     }
     return;
   }
@@ -927,7 +927,7 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
                           NULL);
         g_free(thread_id);
       } else {
-        g_message("Thread %d: Job has been cacelled",td->thread_id);
+        g_message("Thread %d: Job has been cancelled",td->thread_id);
       }
       return;
     }

@@ -803,7 +803,7 @@ void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean do_buil
                                "dump_thread", "shutdown", "cancelled",
                                td->thread_id, NULL, NULL);
       } else {
-        g_message("Thread %d: Process has been cacelled",td->thread_id);
+        g_message("Thread %d: Process has been cancelled",td->thread_id);
       }
       return;
     }
