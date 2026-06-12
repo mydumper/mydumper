@@ -38,6 +38,7 @@ extern char **tables;
 extern gboolean append_if_not_exist;
 extern gboolean optimize_keys;
 extern gboolean optimize_keys_all_tables;
+extern gboolean only_indexes;
 extern gboolean optimize_keys_per_table;
 extern gboolean no_data;
 extern gboolean no_schemas;

@@ -694,7 +694,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
           const gchar *table_name_for_eval = database_table[1];
           struct database *_database=get_database(database_table[0],database_table[0]);
 //          gchar *table_filename=g_strdup(database_table[1]);
-         
+
           value= get_value(kf, groups[j], "real_table_name");
           if (value){
             trace("real_table_name= %s", value);
@@ -804,10 +804,10 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
     g_critical("Database is null on: %s",filename);
   }
   _database=get_database(database,database);
-  if (table_name != NULL){ 
+  if (table_name != NULL){
 	  if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
       trace("File %s has been filtered out by table selection", filename);
-      return FALSE; 
+      return FALSE;
     }
 		append_new_db_table(&dbt, _database, NULL, table_name, FALSE);//, 0, NULL);
   }
