@@ -25,6 +25,8 @@
 #include "myloader_database.h"
 #include "../logging.h"
 
+GAsyncQueue *index_queue=NULL;
+
 GAsyncQueue * optimize_keys_all_tables_queue=NULL;
 GThread **index_threads = NULL;
 struct thread_data *index_td = NULL;
@@ -34,6 +36,7 @@ void *worker_index_thread(struct thread_data *td);
 void initialize_worker_index(struct configuration *conf){
   guint n=0;
 //  index_mutex = g_mutex_new();
+  index_queue = g_async_queue_new();
   init_connection_mutex = g_mutex_new();
   index_threads = g_new(GThread *, max_threads_for_index_creation);
   index_td = g_new(struct thread_data, max_threads_for_index_creation);
@@ -46,7 +49,7 @@ void initialize_worker_index(struct configuration *conf){
 }
 
 gboolean process_index(struct thread_data * td){
-  struct control_job *job=g_async_queue_pop(td->conf->index_queue);
+  struct control_job *job=g_async_queue_pop(index_queue);
   if (job->type==JOB_SHUTDOWN)
   {
     trace("index_queue -> %s", jtype2str(job->type));
@@ -88,11 +91,11 @@ void *worker_index_thread(struct thread_data *td) {
   return NULL;
 }
 
-void create_index_shutdown_job(struct configuration *conf){
+void create_index_shutdown_job(){
   guint n=0;
   trace("Sending SHUTDOWN to index threads");
   for (n = 0; n < max_threads_for_index_creation; n++) {
-    g_async_queue_push(conf->index_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(index_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
   }
 }
 
@@ -113,7 +116,7 @@ void start_optimize_keys_all_tables(){
 }
 
 static
-gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
+gboolean create_index_job(struct db_table * dbt, guint tdid){
   if (machine_log_json_enabled()) {
     gchar *thread_id = g_strdup_printf("%u", tdid);
     machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
@@ -131,12 +134,12 @@ gboolean create_index_job(struct configuration *conf, struct db_table * dbt, gui
   }
   struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
   trace("index_queue <- %s: %s.%s", rjtype2str(rj->type), dbt->database->target_database, dbt->table_filename);
-  g_async_queue_push(conf->index_queue, new_control_job(JOB_RESTORE,rj,dbt->database));
+  g_async_queue_push(index_queue, new_control_job(JOB_RESTORE,rj,dbt->database));
   dbt->schema_state=INDEX_ENQUEUED;
   return TRUE;
 }
 
-void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt){
+void enqueue_index_for_dbt_if_possible(struct db_table * dbt){
   trace("Checking if index on %s %s is possible to enqueu", dbt->database->target_database, dbt->table_filename);
   if (dbt->schema_state==DATA_DONE){
     if (dbt->indexes == NULL){
@@ -146,7 +149,7 @@ void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_tab
     }else{
 //      return 
       trace("Creating index on %s %s ", dbt->database->target_database, dbt->table_filename);
-      create_index_job(conf, dbt, 0);
+      create_index_job(dbt, 0);
     }
   }else{
     trace("Indexes on %s %s are not possible yet dbt->schema_state %d %d ", dbt->database->target_database, dbt->table_filename,dbt->schema_state, DATA_DONE);
@@ -163,7 +166,7 @@ void enqueue_indexes_if_possible(struct configuration *conf){
   while (iter != NULL){
     dbt=iter->data;
     table_lock(dbt);
-    enqueue_index_for_dbt_if_possible(conf,dbt);
+    enqueue_index_for_dbt_if_possible(dbt);
     table_unlock(dbt);
     iter=iter->next;
   }

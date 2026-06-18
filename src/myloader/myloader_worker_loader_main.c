@@ -221,7 +221,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       trace("No remaining jobs on %s.%s and %d %d %d", dbt->database->target_database, dbt->source_table_name, all_jobs_are_enqueued, dbt->current_threads, dbt->remaining_jobs); 
       if (all_jobs_are_enqueued && dbt->current_threads == 0 && (g_atomic_int_get(&(dbt->remaining_jobs))==0 )){
         dbt->schema_state = DATA_DONE;
-        enqueue_index_for_dbt_if_possible(conf,dbt);
+        enqueue_index_for_dbt_if_possible(dbt);
         trace("%s.%s queuing indexes, voting for finish", dbt->database->target_database, dbt->source_table_name);
       }else
         giveup=FALSE;

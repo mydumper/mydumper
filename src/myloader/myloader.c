@@ -335,7 +335,7 @@ void print_errors(){
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
   GError *error = NULL;
   GOptionContext *context;
   gint64 process_started_at = g_get_monotonic_time();
@@ -536,7 +536,6 @@ int main(int argc, char *argv[]) {
   conf.data_queue = g_async_queue_new();
   conf.post_table_queue = g_async_queue_new();
   conf.post_queue = g_async_queue_new();
-  conf.index_queue = g_async_queue_new();
   conf.ready_table_queue = g_async_queue_new();
   conf.view_queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
