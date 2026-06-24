@@ -49,7 +49,7 @@ gchar **get_table_list_from_file(gchar *_tables_list){
 #if !GLIB_CHECK_VERSION(2, 70, 0)
 
 void
-my_strv_builder_addv(GStrvBuilder *builder, const gchar **strv) {
+g_strv_builder_addv(GStrvBuilder *builder, const gchar **strv) {
     if (!strv) return;
 
     for (gint i = 0; strv[i] != NULL; i++) {
