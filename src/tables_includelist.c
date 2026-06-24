@@ -42,10 +42,23 @@ gchar **get_table_list_from_file(gchar *_tables_list){
   return get_table_list_with_needle(_tables_list, "\n");
 }
 
+#if !GLIB_CHECK_VERSION(2, 70, 0)
+
+void
+my_strv_builder_addv(GStrvBuilder *builder, const gchar **strv) {
+    if (!strv) return;
+    
+    for (gint i = 0; strv[i] != NULL; i++) {
+        g_strv_builder_add(builder, strv[i]);
+    }
+}
+
+#endif
 
 void load_include_tables(){
 
 #if GLIB_CHECK_VERSION(2, 68, 0)
+
   GStrvBuilder *builder = g_strv_builder_new();
   // Give ourselves an array of tables to dump
   if (tables_list){
@@ -77,6 +90,7 @@ void load_include_tables(){
   g_strv_builder_unref(builder);
 
 #else
+
   // Give ourselves an array of tables to dump
   gchar ** _tables_list=NULL;
 
@@ -122,7 +136,6 @@ void load_include_tables(){
     g_strfreev(_tables_list);
   if (tables_list_from_file)
     g_strfreev(tables_list_from_file);
-
 
 #endif
 }
