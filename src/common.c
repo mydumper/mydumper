@@ -31,12 +31,16 @@
 #include "common_options.h"
 #include "logging.h"
 //#include "mydumper_global.h"
+#include "tables_skiplist.h"
+#include "tables_includelist.h"
 
 extern gboolean help;
 extern gboolean dry_run;
 extern gchar *server_version_arg;
 extern gboolean program_version;
 extern guint verbose;
+
+gchar *pwd=NULL;
 
 guint optimize_keys_batchsize=0;
 guint errors=0;
@@ -704,6 +708,8 @@ GList *m_glistsplit(const gchar * str){
 }
 
 void initialize_common_options(GOptionContext *context, const gchar *group){
+  pwd=g_get_current_dir();
+
   if (!optimize_key_engines){
     optimize_key_engines=m_glistsplit("InnoDB,ROCKSDB");
   }
@@ -738,7 +744,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 
   gchar *new_defaults_file=NULL;
   if (!g_path_is_absolute(defaults_file)){
-    new_defaults_file=g_build_filename(g_get_current_dir(),defaults_file,NULL);
+    new_defaults_file=g_build_filename(pwd,defaults_file,NULL);
     g_free(defaults_file);
     defaults_file=new_defaults_file;
   }
@@ -760,7 +766,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
     return;
 
   if (!g_path_is_absolute(defaults_extra_file)){
-    new_defaults_file=g_build_filename(g_get_current_dir(),defaults_extra_file,NULL);
+    new_defaults_file=g_build_filename(pwd,defaults_extra_file,NULL);
     g_free(defaults_extra_file);
     defaults_extra_file=new_defaults_file;
   }
@@ -786,14 +792,9 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 //  g_key_file_free(extra_key_file);
 }
 
-gchar **get_table_list(gchar *_tables_list){
-  gchar ** tl = g_strsplit(_tables_list, ",", 0);
-  guint i=0;
-  for(i=0; i < g_strv_length(tl); i++){
-    if (g_strstr_len(tl[i],strlen(tl[i]),".") == NULL )
-      m_error("Table name %s is not in DATABASE.TABLE format", tl[i]);
-  }
-  return tl;
+void load_tables(){
+  load_include_tables();
+  load_omit_tables();
 }
 
 void remove_definer_from_gchar(char * str){

@@ -19,7 +19,6 @@
 
 #include "myloader.h"
 #include <stdio.h> 
-//enum file_type get_file_type (const char * filename);
 gboolean eval_table( char *db_name, char * table_name, GMutex * mutex);
 gboolean should_queue_filename(const gchar *filename, GMutex *mutex);
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table);
@@ -30,14 +29,13 @@ void refresh_table_list(struct configuration *conf);
 void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboolean force);
 void checksum_databases(struct thread_data *td);
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
-//int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3);
 int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3, gchar **exec);
 gboolean has_compession_extension(const gchar *filename);
 gboolean has_exec_per_thread_extension(const gchar *filename);
 gboolean checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,
                                 const gchar *message, gchar* fun());
 gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key);
-void change_master(GKeyFile * kf,gchar *group, struct replication_statements *replication_statements, struct replication_settings *rep_set);
+void change_source(GKeyFile * kf,gchar *group, struct replication_statements *replication_statements, struct replication_settings *rep_set);
 gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **basename);
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix);
 void initialize_thread_data(struct thread_data*td, struct configuration *conf, enum thread_states status, guint thread_id, struct db_table *dbt);

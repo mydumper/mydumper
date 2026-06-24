@@ -827,7 +827,7 @@ void send_lock_all_tables(MYSQL *conn){
       res=m_store_result_critical(conn, query->str, "Error showing tables in: %s - Could not execute query", dt[0]);
       if (res){
         while ((row = mysql_fetch_row(res))) {
-          if (tables_skiplist_file && check_skiplist(dt[0], row[0]))
+          if (check_skiplist(dt[0], row[0]))
             continue;
           if (is_mysql_special_tables(dt[0], row[0]))
             continue;
@@ -866,7 +866,7 @@ void send_lock_all_tables(MYSQL *conn){
     if (res){
       while ((row = mysql_fetch_row(res))) {
         // no need to check if the tb exists in the tables.
-        if (tables_skiplist_file && check_skiplist(row[0], row[1]))
+        if (check_skiplist(row[0], row[1]))
           continue;
         if (is_mysql_special_tables(row[0], row[1]))
           continue;
@@ -1083,13 +1083,9 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   initialize_masquerade();
   conn = create_main_connection(context);
 
-  /* Give ourselves an array of tables to dump */
-  if (tables_list)
-    tables = get_table_list(tables_list);
-
-  /* Process list of tables to omit if specified */
-  if (tables_skiplist_file)
-    read_tables_skiplist(tables_skiplist_file, &errors);
+  // Loads the tables from -T and files (--omit-from-file/--include-from-file) into
+  // global variables: tables
+  load_tables();
 
   initialize_regex(partition_regex);
 
@@ -1788,7 +1784,7 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   if (!daemon_mode && conf->loop)
     g_main_loop_unref(conf->loop);
 
-  if (tables_list)
+  if (tables)
     g_strfreev(tables);
 
   free_regex();

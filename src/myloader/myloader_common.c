@@ -44,6 +44,7 @@ gchar ** gzip_decompress_cmd = NULL;
 guint max_number_tables_to_sort_in_table_list = 100000;
 
 extern gboolean for_channel_incompatibility;
+extern gchar *tables_skiplist_file;
 
 void initialize_common(){
   refresh_table_list_counter=refresh_table_list_interval;
@@ -129,8 +130,6 @@ gchar *get_value(GKeyFile * kf,gchar *group, const gchar *_key){
   }
   return g_strdup(val);
 }
-
-//g_list_free_full(change_master_parameter_list, g_free);
 
 void execute_replication_commands(MYSQL *conn, gchar *statement, const gchar *message){
   m_query_warning(conn, "COMMIT", "COMMIT failed");
@@ -281,23 +280,12 @@ void build_change_source_for_aws(GString *aws_change_source, struct replication_
 
 }
 
-
-
-
-void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs, struct replication_settings *rep_set){
+void change_source(GKeyFile * kf,gchar *group, struct replication_statements *rs, struct replication_settings *rep_set){
   gchar *val=NULL;
   guint i=0;
   gsize len=0;
   GError *error = NULL;
-//  GString *traditional_change_source=g_string_new("");
-//  GString *aws_change_source=g_string_new("");
   GString *other_parameters=g_string_new("");
-  /*
-  if (change_replication_source){
-    g_string_append(traditional_change_source,change_replication_source);
-    g_string_append(traditional_change_source," TO ");
-  }
-  */
 
   gchar** group_name= g_strsplit(group, ".", 2);
   gchar* channel_name=g_strv_length(group_name)>1? group_name[1]:NULL;
@@ -365,36 +353,6 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
          || ( _exec_start_replica_until == 0 )
       );
 
-/*  if (_source_ssl)
-    g_string_append_printf(traditional_change_source, "SOURCE_SSL = %d", _source_ssl);
-
-  if (_auto_position>=0){
-    g_string_append_printf(traditional_change_source, "SOURCE_AUTO_POSITION = %d", _auto_position);
-    if (_auto_position>0)
-      g_string_append(aws_change_source,"CALL mysql.rds_set_external_master_with_auto_position");
-  }else
-    g_string_append(aws_change_source,"CALL mysql.rds_set_external_master");
-  
-  g_string_append_printf(aws_change_source,"( %s, %d, %s, %s, ", source_host, source_port, source_user, source_password );
-
-  if (_auto_position>0)
-    g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", %d, );\n", source_log_file, source_log_pos, _source_ssl);
-  else
-    g_string_append_printf(aws_change_source,"%d, 0);\n", _source_ssl);
-
-  g_strfreev(keys);
-  if (!for_channel_incompatibility){
-    g_string_append(traditional_change_source," FOR CHANNEL '");
-    if (channel_name!=NULL)
-      g_string_append(traditional_change_source,channel_name);
-    g_string_append(traditional_change_source,"';\n");
-  }
-
-*/
-
-
-
-
   if (set_gtid_purge){
     if (! rs->gtid_purge)
       rs->gtid_purge=g_string_new("");
@@ -435,8 +393,6 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     }
     g_string_append(rs->start_replica_until,";\n");
 
-
-
     g_string_append(rs->start_replica_until,start_replica);
     g_string_append(rs->start_replica_until," UNTIL ");
     if (source_gtid){
@@ -465,14 +421,6 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
         _source_ssl,source_host,source_port,source_user,source_password ,source_log_file,
         source_log_pos, _auto_position,source_gtid);
     }
-
-
-/*    if (source_control_command == TRADITIONAL){
-      g_string_append(rs->change_replication_source,traditional_change_source->str);
-    }else{
-      g_string_append(rs->change_replication_source,aws_change_source->str);
-    }
-    */
   }
 
   if (_exec_start_replica){
@@ -484,8 +432,6 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
 
   if (source_control_command == TRADITIONAL)
     g_message("Change master will be executed for channel: %s", channel_name!=NULL?channel_name:"default channel");
-  
-//  g_string_free(traditional_change_source,TRUE);
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
@@ -522,7 +468,7 @@ static gboolean eval_table_filters_unlocked(char *db_name, char *table_name){
       return FALSE;
     }
   }
-  if ( tables_skiplist_file && check_skiplist(db_name, table_name )){
+  if ( check_skiplist(db_name, table_name )){
     return FALSE;
   }
   return TRUE;
@@ -587,6 +533,8 @@ gboolean should_queue_filename(const gchar *filename, GMutex *mutex){
   if (!strcmp(filename, "all-schema-create-tablespace.sql"))
     return TRUE;
 
+  // This avoids evaluating the filename at this point which increases performance
+  // as there are not filters by table name
   if (tables == NULL && tables_skiplist_file == NULL && regex_list == NULL)
     return TRUE;
 
@@ -597,60 +545,6 @@ gboolean should_queue_filename(const gchar *filename, GMutex *mutex){
   g_free(table);
   return matched;
 }
-/*
-enum file_type get_file_type (const char * filename){
-
-  if ((!strcmp(filename,          "metadata") || 
-       !strcmp(filename,          "metadata.header") ||
-       g_str_has_prefix(filename, "metadata.partial")) 
-      && 
-      !( g_str_has_suffix(filename, ".sql") || 
-         has_exec_per_thread_extension(filename)))
-    return METADATA_GLOBAL;
-
-  if (source_db && !(g_str_has_prefix(filename, source_db) && strlen(filename) > strlen(source_db) && (filename[strlen(source_db)] == '.' || filename[strlen(source_db)] == '-') ) && !g_str_has_prefix(filename, "mydumper_"))
-    return IGNORED;  
-
-  if (m_filename_has_suffix(filename, "-schema.sql")) 
-    return SCHEMA_TABLE;
-
-  if ( strcmp(filename, "all-schema-create-tablespace.sql") == 0 )
-    return SCHEMA_TABLESPACE;
-
-  if ( strcmp(filename, "resume") == 0 ){
-    if (!resume){
-      m_critical("resume file found, but no --resume option passed. Use --resume or remove it and restart process if you consider that it will be safe.");
-    }
-    return RESUME;
-  }
-
-  if ( strcmp(filename, "resume.partial") == 0 )
-    m_critical("resume.partial file found. Remove it and restart process if you consider that it will be safe.");
-
-  if (m_filename_has_suffix(filename, "-schema-view.sql") )
-    return SCHEMA_VIEW;
-
-  if (m_filename_has_suffix(filename, "-schema-sequence.sql") )
-    return SCHEMA_SEQUENCE;
-
-  if (m_filename_has_suffix(filename, "-schema-triggers.sql") )
-    return SCHEMA_TRIGGER;
-
-  if (m_filename_has_suffix(filename, "-schema-post.sql") )
-    return SCHEMA_POST;
-
-  if (m_filename_has_suffix(filename, "-schema-create.sql") )
-    return SCHEMA_CREATE;
-
-  if (m_filename_has_suffix(filename, ".sql") )
-    return DATA;
-
-  if (m_filename_has_suffix(filename, ".dat"))
-    return LOAD_DATA;
-
-  return IGNORED;
-}
-*/
 
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table){
   gchar **split_filename = g_strsplit(filename, sufix, 0);
@@ -715,69 +609,6 @@ void refresh_table_list(struct configuration *conf){
   refresh_table_list_without_table_hash_lock(conf, TRUE);
   g_mutex_unlock(conf->table_hash_mutex);
 }
-/*
-static inline gboolean
-checksum_template(const char *dbt_checksum, const char *checksum, const char *err_templ,
-                  const char *info_templ, const char *message, const char *_db, const char *_table)
-{
-  g_assert(checksum_mode != CHECKSUM_SKIP);
-  if (dbt_checksum && checksum && g_ascii_strcasecmp(dbt_checksum, checksum)) {
-    if (_table) {
-      if (checksum_mode == CHECKSUM_WARN)
-        g_warning(err_templ, message, _db, _table, checksum, dbt_checksum);
-      else
-        g_critical(err_templ, message, _db, _table, checksum, dbt_checksum);
-    } else {
-      if (checksum_mode == CHECKSUM_WARN)
-        g_warning(err_templ, message, _db, checksum, dbt_checksum);
-      else
-        g_critical(err_templ, message, _db, checksum, dbt_checksum);
-    }
-    return FALSE;
-  } else {
-    g_message(info_templ, message, _db, _table);
-  }
-  return TRUE;
-}
-
-static
-gboolean checksum_dbt_template(gchar *target_database, gchar *source_table_name, gchar *dbt_checksum,  MYSQL *conn,
-                           const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
-{
-  const char *checksum= fun(conn, target_database, source_table_name);
-  return checksum_template(dbt_checksum, checksum,
-                    "%s mismatch found for %s.%s: got %s, expecting %s",
-                    "%s confirmed for %s.%s", message, target_database, source_table_name);
-}
-
-gboolean checksum_dbt(struct db_table *dbt,  MYSQL *conn)
-{
-  gboolean checksum_ok=TRUE;
-  if (checksum_mode != CHECKSUM_SKIP){
-    if (!no_schemas){
-      if (dbt->checksum.schema!=NULL){
-        if (dbt->is_view)
-          checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.schema, conn,
-                                "View checksum", checksum_view_structure);
-        else
-          checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.schema, conn,
-                                "Structure checksum", checksum_table_structure);
-      }
-      if (dbt->checksum.index!=NULL)
-        checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.index, conn,
-                              "Schema index checksum", checksum_table_indexes);
-    }
-    if (dbt->checksum.trigger!=NULL && !skip_triggers)
-      checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.trigger, conn,
-                            "Trigger checksum", checksum_trigger_structure);
-
-    if (dbt->checksum.data!=NULL && !no_data)
-      checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.data, conn,
-                            "Data checksum", checksum_table);
-  }
-  return checksum_ok;
-}
-*/
 
 gboolean has_exec_per_thread_extension(const gchar *filename){
   return exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension);

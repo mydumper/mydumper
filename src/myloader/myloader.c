@@ -52,7 +52,6 @@
 guint commit_count = 1000;
 gchar *input_directory = NULL;
 gchar *directory = NULL;
-gchar *pwd=NULL;
 gboolean overwrite_tables = FALSE;
 gboolean overwrite_unsafe = FALSE;
 
@@ -94,6 +93,8 @@ extern guint64 max_transaction_size;
 extern guint optimize_keys_batchsize;
 extern guint64 max_statement_size;
 extern GList *optimize_key_engines;
+extern gchar *tables_skiplist_file;
+extern gchar *tables_includelist_file;
 const char DIRECTORY[] = "import";
 
 //struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
@@ -211,6 +212,7 @@ void print_help(){
   print_bool("skip-indexes",skip_indexes);
   print_bool("no-data",no_data);
   print_string("omit-from-file",tables_skiplist_file);
+  print_string("include-from-file",tables_includelist_file);
   print_string("tables-list",tables_list);
 
   print_pmm_help();
@@ -495,9 +497,7 @@ int main(int argc, char *argv[]) {
   start_pmm_thread((void *)&conf);
   conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   g_chdir(directory);
-  /* Process list of tables to omit if specified */
-  if (tables_skiplist_file)
-    read_tables_skiplist(tables_skiplist_file, &errors);
+
   initialize_process(&conf);
   initialize_table(&conf);
   initialize_database();
@@ -560,8 +560,9 @@ int main(int argc, char *argv[]) {
   struct thread_data *t=g_new(struct thread_data,1);
   initialize_thread_data(t, &conf, WAITING, 0, NULL);
 
-  if (tables_list)
-    tables = get_table_list(tables_list);
+  // Loads the tables from -T and files (--omit-from-file/--include-from-file) into
+  // global variables: tables 
+  load_tables();
 
   /* TODO: if conf is singleton it must be accessed as global variable */
   initialize_worker_schema(&conf);

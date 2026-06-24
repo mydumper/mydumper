@@ -59,7 +59,6 @@ extern gchar *compress_extension;
 extern gchar *target_db;
 extern gchar *directory;
 extern gchar *source_db;
-extern gchar *tables_skiplist_file;
 extern GHashTable *database_hash;
 extern GHashTable *tbl_hash;
 extern GString *set_session;
