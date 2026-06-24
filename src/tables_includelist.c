@@ -46,7 +46,6 @@ gchar **get_table_list_from_file(gchar *_tables_list){
 void load_include_tables(){
 
 #if GLIB_CHECK_VERSION(2, 68, 0)
-/*
   GStrvBuilder *builder = g_strv_builder_new();
   // Give ourselves an array of tables to dump
   if (tables_list){
@@ -78,7 +77,6 @@ void load_include_tables(){
   g_strv_builder_unref(builder);
 
 #else
-*/
   // Give ourselves an array of tables to dump
   gchar ** _tables_list=NULL;
 
@@ -105,8 +103,8 @@ void load_include_tables(){
   }
 
   if (tables_list || tables_includelist_file){
-    guint len1 = g_strv_length(_tables_list);
-    guint len2 = g_strv_length(tables_list_from_file);
+    guint len1 = _tables_list?g_strv_length(_tables_list):0;
+    guint len2 = tables_list_from_file?g_strv_length(tables_list_from_file):0;
     
     tables = g_new(gchar *, len1 + len2 + 1);
     
