@@ -44,11 +44,15 @@ gchar **get_table_list_from_file(gchar *_tables_list){
 
 
 void load_include_tables(){
+
+#if GLIB_CHECK_VERSION(2, 68, 0)
+
   GStrvBuilder *builder = g_strv_builder_new();
   // Give ourselves an array of tables to dump
   if (tables_list){
     gchar ** _tables_list = get_table_list_from_parameter(tables_list);
     g_strv_builder_addv(builder, (const gchar**)_tables_list);
+    g_strfreev(_tables_list);
   }
   if (tables_includelist_file){
     gchar* contents=NULL;
@@ -66,10 +70,62 @@ void load_include_tables(){
     }
     gchar ** tables_list_from_file= get_table_list_from_file(contents);
     g_strv_builder_addv(builder, (const gchar**)tables_list_from_file);
+    g_strfreev(tables_list_from_file);
   }
 
   if (tables_list || tables_includelist_file)
     tables=g_strv_builder_end(builder);
   g_strv_builder_unref(builder);
+
+#else
+
+  // Give ourselves an array of tables to dump
+  gchar ** _tables_list=NULL;
+
+  if (tables_list){
+    _tables_list = get_table_list_from_parameter(tables_list);
+  }
+
+  gchar ** tables_list_from_file=NULL;
+  if (tables_includelist_file){
+    gchar* contents=NULL;
+    gsize length=0;
+    GError *error=NULL;
+
+    gchar *_filename=tables_includelist_file;
+    if (pwd && tables_includelist_file[0] != '/'){
+      _filename=g_strdup_printf("%s/%s", pwd, tables_includelist_file);
+    }
+    g_file_get_contents(_filename, &contents, &length, &error);
+    while (length > 0 && contents[length-1]=='\n'){
+      contents[length-1]='\0';
+      length--;
+    }
+    tables_list_from_file= get_table_list_from_file(contents);
+  }
+
+  if (tables_list || tables_includelist_file){
+    guint len1 = g_strv_length(tables_list);
+    guint len2 = g_strv_length(tables_includelist_file);
+    
+    tables = g_new(gchar *, len1 + len2 + 1);
+    
+    guint i = 0, j = 0;
+    
+    for (j = 0; j < len1; j++) {
+        tables[i++] = g_strdup(tables_list[j]);
+    }
+    
+    for (j = 0; j < len2; j++) {
+        tables[i++] = g_strdup(tables_includelist_file[j]);
+    }
+  }
+  if (tables_list)
+    g_strfreev(tables_list);
+  if (tables_list_from_file)
+    g_strfreev(tables_list_from_file);
+
+
+#endif
 }
 
