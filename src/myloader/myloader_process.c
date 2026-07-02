@@ -440,7 +440,7 @@ void process_database_filename(char * filename) {
   }
 
   trace("Adding database: %s -> %s", db_kname, db_vname);
-  struct database *_database = get_database(db_kname, db_vname);
+  struct database *_database = db_kname == db_vname ? get_database(db_kname) : get_database2(db_kname, db_vname);
 
 
   if (!eval_regex(_database->source_database, NULL)){
@@ -474,7 +474,7 @@ gboolean process_schema_sequence_filename(gchar *filename) {
     g_error("Database is null on: %s", filename);
     return FALSE;
   }
-  _database=get_database(database,database);
+  _database=get_database(database);
   if (_database==NULL){
     g_warning("It was not possible to process file: %s (3) because _database isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
     return FALSE;
@@ -532,7 +532,7 @@ gboolean process_table_filename(char * filename){
       m_critical("It was not possible to process file: %s (1)",filename);
   }
 
-  struct database *_database=get_database(db_name,db_name);
+  struct database *_database=get_database(db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
     trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
     dbt=get_table(_database->database_name_in_filename, table_name);
@@ -692,7 +692,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
         database_table[1][strlen(database_table[1])-1]='\0';
         if (!source_db || g_strcmp0(database_table[0],source_db)==0){
           const gchar *table_name_for_eval = database_table[1];
-          struct database *_database=get_database(database_table[0],database_table[0]);
+          struct database *_database=get_database(database_table[0]);
 //          gchar *table_filename=g_strdup(database_table[1]);
          
           value= get_value(kf, groups[j], "real_table_name");
@@ -742,7 +742,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
       } else {
         database_table[0][strlen(database_table[0])-1]='\0';
         if (!source_db || g_strcmp0(database_table[0],source_db)==0){
-          struct database *database=get_database(database_table[0],database_table[0]);
+          struct database *database=get_database(database_table[0]);
           database->checksum.schema=  get_value(kf,groups[j],"schema_checksum");
           database->checksum.routine= get_value(kf,groups[j],"post_checksum");
           database->checksum.trigger= get_value(kf,groups[j],"triggers_checksum");
@@ -780,7 +780,7 @@ gboolean process_schema_view_filename(gchar *filename) {
   if (database == NULL){
     g_critical("Database is null on: %s",filename);
   }
-  _database=get_database(database,database);
+  _database=get_database(database);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
     trace("File %s has been filtered out by table selection", filename);
     return FALSE;
@@ -803,7 +803,7 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
   if (database == NULL){
     g_critical("Database is null on: %s",filename);
   }
-  _database=get_database(database,database);
+  _database=get_database(database);
   if (table_name != NULL){ 
 	  if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
       trace("File %s has been filtered out by table selection", filename);
@@ -846,7 +846,7 @@ gboolean process_data_filename(char * filename){
     m_critical("It was not possible to process file: %s (3)",filename);
   }
 
-  struct database *_database=get_database(db_name,db_name);
+  struct database *_database=get_database(db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
     trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
     return FALSE;

@@ -700,6 +700,7 @@ GList *m_glistsplit(const gchar * str){
     l=g_list_prepend(l, split_str[i]);
     i++;
   }
+//  g_free(split_str);
   return l;
 }
 

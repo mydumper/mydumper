@@ -30,9 +30,12 @@ struct database {
 };
 
 void initialize_database();
-struct database * get_database(gchar *k, gchar *v);
+struct database * get_database2(gchar *k, gchar *v);
+struct database * get_database(gchar *source_database);
 void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar * msg);
 gboolean execute_use(struct connection_data *cd);
 void start_database(struct thread_data *td);
 gboolean has_been_defined_a_target_database();
+void set_all_databases_as_created();
+void set_db_schema_created(struct database * _database);
 #endif
