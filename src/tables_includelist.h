@@ -12,5 +12,4 @@
     Authors:        David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-gboolean check_skiplist(char *database, char *table);
-void load_omit_tables();
+void load_include_tables();

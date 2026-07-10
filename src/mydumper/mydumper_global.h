@@ -84,7 +84,6 @@ extern gchar *fields_escaped_by;
 extern gchar *output_directory;
 extern gchar *output_directory_str;
 extern gchar *set_names_in_conn_by_default;
-extern gchar *tables_skiplist_file;
 extern gchar *tidb_snapshot;
 extern gchar *where_option;
 extern GHashTable *all_where_per_table;

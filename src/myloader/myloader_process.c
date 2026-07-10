@@ -750,9 +750,9 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
         }
       }
     }else if (g_strstr_len(group,6,"master") || g_strstr_len(group,6,"source")){
-      change_master(kf, group, replication_statements, &source_data);
+      change_source(kf, group, replication_statements, &source_data);
     }else if (g_str_has_prefix(group,"replication")){
-      change_master(kf, group, replication_statements, &replica_data);
+      change_source(kf, group, replication_statements, &replica_data);
     } else {
       trace("metadata: skipping group %s", group);
     }

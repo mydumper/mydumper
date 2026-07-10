@@ -15,9 +15,13 @@
 #include <glib.h>
 #include <string.h>
 
+extern gchar *tables_skiplist_file;
+extern guint errors;
+
 GSequence *tables_skiplist = NULL;
 GMutex *tables_skiplist_mutex = NULL;
 
+extern gchar *pwd;
 /* Comparison function for skiplist sort and lookup */
 
 int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data) {
@@ -31,8 +35,8 @@ int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data) {
 
 /* Read the list of tables to skip from the given filename, and prepares them
  * for future lookups. */
-
-void read_tables_skiplist(const gchar *filename, guint *errors) {
+static
+void read_tables_skiplist(const gchar *filename) {
 
   GIOChannel *tables_skiplist_channel = NULL;
   gchar *buf = NULL;
@@ -42,12 +46,16 @@ void read_tables_skiplist(const gchar *filename, guint *errors) {
     tables_skiplist = g_sequence_new(NULL);
     tables_skiplist_mutex = g_mutex_new();
   };
-  tables_skiplist_channel = g_io_channel_new_file(filename, "r", &error);
+  const gchar *_filename=filename;
+  if (filename[0] != '/'){
+    _filename=g_strdup_printf("%s/%s", pwd, filename);
+  }
+  tables_skiplist_channel = g_io_channel_new_file(_filename, "r", &error);
 
   /* Error opening/reading the file? bail out. */
   if (!tables_skiplist_channel) {
     g_critical("cannot read/open file %s, %s\n", filename, error->message);
-    (*errors)++;
+    errors++;
     return;
   };
 
@@ -70,6 +78,9 @@ void read_tables_skiplist(const gchar *filename, guint *errors) {
 /* Check database.table string against skip list; returns TRUE if found */
 
 gboolean check_skiplist(char *database, char *table) {
+  if (!tables_skiplist_file)
+    return FALSE;
+
   g_mutex_lock(tables_skiplist_mutex);
   gboolean b = g_sequence_lookup(tables_skiplist,
                         database,
@@ -86,3 +97,10 @@ gboolean check_skiplist(char *database, char *table) {
   g_free(k);
   return b;
 }
+
+void load_omit_tables(){
+  if (tables_skiplist_file)
+    read_tables_skiplist(tables_skiplist_file);
+}
+
+

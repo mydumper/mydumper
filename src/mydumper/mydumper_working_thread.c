@@ -254,7 +254,7 @@ void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
     if (!strcasecmp(row[0], "information_schema") ||
         !strcasecmp(row[0], "performance_schema") ||
         !strcasecmp(row[0], "data_dictionary") ||
-        (tables_skiplist_file && check_skiplist(row[0], NULL)))
+        (check_skiplist(row[0], NULL)))
       continue;
     struct database * db_tmp=get_database(td->thrconn,row[0],!no_schemas && (eval_regex(row[0], NULL)));
 /*    if (get_database(td->thrconn,row[0],&db_tmp) && !no_schemas && (eval_regex(row[0], NULL))){
@@ -348,7 +348,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       }
 
       /* Checks skip list on 'database.table' string */
-      if (tables_skiplist_file && check_skiplist(database->source_database, row[0]))
+      if (check_skiplist(database->source_database, row[0]))
         continue;
 
       /* Special tables */
@@ -1109,7 +1109,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
         return FALSE;
       while ((row= mysql_fetch_row(result))) {
         /* Checks skip list on 'database.sp' string */
-        if (tables_skiplist_file && check_skiplist(database->source_database, row[1]))
+        if (check_skiplist(database->source_database, row[1]))
           continue;
 
         /* Checks PCRE expressions on 'database.sp' string */
@@ -1132,7 +1132,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
       return FALSE;
     while ((row = mysql_fetch_row(result))) {
       /* Checks skip list on 'database.sp' string */
-      if (tables_skiplist_file && check_skiplist(database->source_database, row[1]))
+      if (check_skiplist(database->source_database, row[1]))
         continue;
       /* Checks PCRE expressions on 'database.sp' string */
       if ( !eval_regex(database->source_database, row[1]))
@@ -1236,7 +1236,7 @@ void dump_database_thread(MYSQL *conn, struct database *database) {
     }
 
     /* Checks skip list on 'database.table' string */
-    if (tables_skiplist_file && check_skiplist(database->source_database, row[0])) {
+    if (check_skiplist(database->source_database, row[0])) {
       dump_summary_note_skipped();
       continue;
     }

@@ -46,6 +46,7 @@ gboolean machine_log_json = FALSE;
 
 gchar *tables_list = NULL;
 gchar *tables_skiplist_file = NULL;
+gchar *tables_includelist_file = NULL;
 char **tables = NULL;
 
 gboolean no_stream = FALSE;
@@ -222,6 +223,8 @@ GOptionEntry common_filter_entries[] = {
     {"omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file,
       "File containing a list of database.table entries to skip, one per line "
       "(skips before applying regex option)", NULL},
+    {"include-from-file", 0, 0, G_OPTION_ARG_STRING, &tables_includelist_file,
+      "File containing a list of database.table entries to include, one per line.", NULL},
     {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
       "Comma delimited table list to dump (does not exclude regex option). "
       "Table name must include database name. For instance: test.t1,test.t2", NULL},

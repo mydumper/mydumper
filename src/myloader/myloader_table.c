@@ -37,11 +37,8 @@
 #include "myloader_directory.h"
 #include "myloader_worker_schema.h"
 
-
-//GString *change_master_statement=NULL;
 struct configuration *__conf;
 extern gboolean schema_sequence_fix;
-
 
 void initialize_table(struct configuration *c){
   __conf=c;

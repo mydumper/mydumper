@@ -69,6 +69,8 @@ extern gchar *table_engine_for_view_dependency;
 extern gchar *load_data_character_set;
 extern guint ftwrl_timeout_retries;
 extern guint ftwrl_max_wait_time;
+extern gchar *tables_includelist_file;
+extern gchar *tables_skiplist_file;
 
 void parse_disk_limits(){
   gchar ** strsplit = g_strsplit(disk_limits,":",3);
@@ -88,6 +90,7 @@ void print_help(){
   print_int("updated-since",updated_since, updated_since==0);
   print_string("partition-regex",partition_regex);
   print_string("omit-from-file",tables_skiplist_file);
+  print_string("include-from-file",tables_includelist_file);
   print_string("tables-list",tables_list);
 
   print_string("tidb-snapshot",tidb_snapshot);
