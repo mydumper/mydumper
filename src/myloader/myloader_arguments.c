@@ -39,6 +39,33 @@ extern guint64 max_transaction_size;
 extern guint optimize_keys_batchsize;
 guint64 max_statement_size=0;
 
+static void append_normalized_sql(GString *buffer, const gchar *command){
+  gchar *normalized = g_strdup(command);
+  g_strstrip(normalized);
+
+  while (normalized[0] != '\0' && normalized[strlen(normalized) - 1] == ';') {
+    normalized[strlen(normalized) - 1] = '\0';
+    g_strstrip(normalized);
+  }
+
+  if (normalized[0] == '\0') {
+    g_free(normalized);
+    return;
+  }
+
+  g_string_append(buffer, normalized);
+  g_string_append(buffer, ";\n");
+  g_free(normalized);
+}
+
+void aws_session_command_append(const gchar *command){
+  if (command == NULL)
+    return;
+  if (aws_session_commands == NULL)
+    aws_session_commands = g_string_new(NULL);
+  append_normalized_sql(aws_session_commands, command);
+}
+
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   if (!g_strcmp0(option_name, "--optimize-keys")) {
@@ -124,6 +151,9 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     m_warning("Option --enable-binlog / -e is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead");
     enable_binlog=TRUE;
     return TRUE;
+  } else if (!g_strcmp0(option_name, "--aws-session-command")) {
+    aws_session_command_append(value);
+    return TRUE;
   }
   
   return common_arguments_callback(option_name, value, data, error);
@@ -180,6 +210,9 @@ static GOptionEntry threads_entries[] = {
 static GOptionEntry execution_entries[] = {
     {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
+    {"aws-session-command", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Raw SQL executed on every myloader connection after the normal session setup. "
+      "Useful for Aurora-specific calls such as CALL mysql.rds_disable_session_binlog().", NULL},
     {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "Creates the table without the indexes unless SKIP is selected. "
       "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
@@ -307,4 +340,3 @@ GOptionContext * load_contex_entries(){
 
   return context;
 }
-

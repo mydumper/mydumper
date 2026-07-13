@@ -108,7 +108,7 @@ INSTALL(TARGETS mydumper myloader
   RUNTIME DESTINATION bin
 )
 
-INSTALL(FILES mydumper.cnf
+INSTALL(FILES mydumper.cnf myloader.cnf
   DESTINATION /etc
   COMPONENT config
 )
@@ -131,6 +131,9 @@ target_link_libraries(test_use_defer_livelock ${GLIB2_LIBRARIES})
 # -DUSE_DEFER_FIX tells the test to exercise the fixed JOB_DEFER handler path.
 target_compile_definitions(test_use_defer_livelock PRIVATE USE_DEFER_FIX)
 add_test(NAME use_defer_livelock COMMAND test_use_defer_livelock)
+
+add_test(NAME myloader_aws_session
+  COMMAND ${CMAKE_SOURCE_DIR}/test/test_myloader_aws_session.sh $<TARGET_FILE:myloader>)
 
 IF(RUN_CPPCHECK)
   include(CppcheckTargets)
@@ -166,6 +169,4 @@ MESSAGE(STATUS)
 #foreach (_variableName ${_variableNames})
 #    message(STATUS "${_variableName}=${${_variableName}}")
 #endforeach()
-
-
 

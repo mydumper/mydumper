@@ -96,6 +96,8 @@ extern struct replication_settings source_data;
 extern gboolean set_gtid_purge;
 extern gboolean show_warnings;
 extern gboolean enable_binlog;
+extern GString *aws_session_commands;
+void execute_aws_session_setup(MYSQL *conn);
 extern guint refresh_table_list_interval;
 extern GList *ignore_set_list;
 extern gboolean skip_table_sorting;
