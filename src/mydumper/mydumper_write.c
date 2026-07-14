@@ -387,6 +387,22 @@ gboolean is_hex_blob (MYSQL_FIELD field){
   return hex_blob && (field.type == MYSQL_TYPE_BLOB || ( field.charsetnr== 63 && (field.type == MYSQL_TYPE_VAR_STRING || field.type == MYSQL_TYPE_STRING )));
 }
 
+static gboolean is_mariadb_uuid_field(const MYSQL_FIELD *field){
+#ifdef MARIADB_FIELD_ATTR_LAST
+  MARIADB_CONST_STRING type_name = {0};
+
+  if (mariadb_field_attr(&type_name, field, MARIADB_FIELD_ATTR_DATA_TYPE_NAME) != 0)
+    return FALSE;
+
+  return type_name.str != NULL &&
+         type_name.length == 4 &&
+         g_ascii_strncasecmp(type_name.str, "uuid", type_name.length) == 0;
+#else
+  (void)field;
+  return FALSE;
+#endif
+}
+
 GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint num_fields){
   guint i = 0;
   GString *str=g_string_new("SET ");
@@ -695,7 +711,7 @@ void write_sql_column_into_string( MYSQL *conn, gchar *column, MYSQL_FIELD field
       unsigned long escaped_len = mysql_real_escape_string(conn, buffers.escaped->str, column, length);
       if (field.type == MYSQL_TYPE_JSON)
         g_string_append(buffers.target_column, "CONVERT(");
-      else if (field.flags & BINARY_FLAG)
+      else if ((field.flags & BINARY_FLAG) && !is_mariadb_uuid_field(&field))
         g_string_append(buffers.target_column, "_binary ");
       g_string_append_c(buffers.target_column, *fields_enclosed_by);
       g_string_append_len(buffers.target_column, buffers.escaped->str, escaped_len);
