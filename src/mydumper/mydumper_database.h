@@ -17,18 +17,19 @@
 #ifndef _src_mydumper_database_h
 #define _src_mydumper_database_h
 
-struct database {
-  gchar *source_database;
-  gchar *source_database_escaped;
-  gchar *database_name_in_filename;
+struct database
+{
+  gchar                         *source_database;
+  gchar                         *source_database_escaped;
+  gchar                         *database_name_in_filename;
   struct database_level_checksum checksum;
-  gboolean dump_triggers;
+  gboolean                       dump_triggers;
 };
 
-void initialize_database();
-struct database * get_database(MYSQL *conn, char *database_name, gboolean create_job);
-void free_databases();
-void write_database_on_disk(FILE *mdfile);
+void             initialize_database();
+struct database *get_database(MYSQL *conn, char *database_name, gboolean create_job);
+void             free_databases();
+void             write_database_on_disk(FILE *mdfile);
 // OPTIMIZATION: Unsorted version for faster finalization
 void write_database_on_disk_unsorted(FILE *mdfile);
 #endif

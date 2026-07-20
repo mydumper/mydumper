@@ -15,7 +15,6 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-
 void load_exec_entries(GOptionGroup *main_group);
 void initialize_exec_command();
 void wait_exec_command_to_finish();

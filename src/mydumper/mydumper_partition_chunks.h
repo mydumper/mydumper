@@ -24,15 +24,16 @@
 
 #include "mydumper_chunks.h"
 
-struct partition_step{
+struct partition_step
+{
   GList *list;
   gchar *current_partition;
 };
 
 #endif
 
-union chunk_step *new_real_partition_step(GList *partition);
+union chunk_step       *new_real_partition_step(GList *partition);
 struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt);
-GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt);
-void process_partition_chunk(struct table_job *tj, struct chunk_step_item *csi);
+GList                  *get_partitions_for_table(MYSQL *conn, struct db_table *dbt);
+void                    process_partition_chunk(struct table_job *tj, struct chunk_step_item *csi);
 struct chunk_step_item *new_real_partition_step_item(GList *partition, guint deep, guint number);

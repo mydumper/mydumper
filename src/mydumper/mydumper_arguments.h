@@ -22,21 +22,27 @@
 #define LOAD_DATA_ARG "LOAD_DATA"
 #define CSV_ARG "CSV"
 #define CLICKHOUSE_ARG "CLICKHOUSE"
-//#define SQL_INSERT 0
-//#define LOAD_DATA 1
-//#define CSV 2
-//#define CLICKHOUSE 3
+// #define SQL_INSERT 0
+// #define LOAD_DATA 1
+// #define CSV 2
+// #define CLICKHOUSE 3
 #define SQL "sql"
 #define DAT "dat"
 #define MEMORY "MEMORY"
 #define MAX_TIME_PER_SELECT 2
 
-enum output_format { SQL_INSERT, LOAD_DATA, CSV, CLICKHOUSE};
-
-static inline
-const char * outputformat2str(enum output_format of)
+enum output_format
 {
-  switch (of) {
+  SQL_INSERT,
+  LOAD_DATA,
+  CSV,
+  CLICKHOUSE
+};
+
+static inline const char *outputformat2str(enum output_format of)
+{
+  switch (of)
+  {
     case SQL_INSERT:
       return INSERT_ARG;
     case LOAD_DATA:
@@ -50,5 +56,4 @@ const char * outputformat2str(enum output_format of)
   return 0;
 }
 
-
-GOptionContext * load_contex_entries();
+GOptionContext *load_contex_entries();

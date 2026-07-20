@@ -21,44 +21,44 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-struct filename_queue_element{
+struct filename_queue_element
+{
   struct db_table *dbt;
-  gchar *filename;
-  GAsyncQueue *done;
+  gchar           *filename;
+  GAsyncQueue     *done;
 };
 
-
-struct fifo{
-  gchar *filename;
-  gchar *stdout_filename;
-  GAsyncQueue * queue;
-  float size;
+struct fifo
+{
+  gchar           *filename;
+  gchar           *stdout_filename;
+  GAsyncQueue     *queue;
+  float            size;
   struct db_table *dbt;
-  int fdout;
-  GPid gpid;
-  int child_pid;
-  int pipe[2];
-  GMutex *out_mutex;
-  int error_number;
+  int              fdout;
+  GPid             gpid;
+  int              child_pid;
+  int              pipe[2];
+  GMutex          *out_mutex;
+  int              error_number;
 };
 
-void set_pipe_backup();
-void initialize_file_handler();
-int m_open_pipe(char **filename, const char *type);
-void release_pid();
-void child_process_ended(int child_pid);
-void wait_close_files();
-void dump_summary_note_file_created(void);
-void dump_summary_note_file_removed(void);
-void dump_summary_add_bytes(guint64 bytes);
-void dump_summary_note_retry(void);
-void dump_summary_note_skipped(void);
-void dump_summary_set_tables(guint tables);
-void dump_summary_note_external_file_size(FILE *file);
-guint dump_summary_get_files(void);
-guint64 dump_summary_get_bytes(void);
-guint dump_summary_get_retries(void);
-guint dump_summary_get_skipped(void);
-guint dump_summary_get_tables(void);
-struct filename_queue_element * new_filename_queue_element(struct db_table *dbt,gchar *filename,GAsyncQueue *done);
+void                           set_pipe_backup();
+void                           initialize_file_handler();
+int                            m_open_pipe(char **filename, const char *type);
+void                           release_pid();
+void                           child_process_ended(int child_pid);
+void                           wait_close_files();
+void                           dump_summary_note_file_created(void);
+void                           dump_summary_note_file_removed(void);
+void                           dump_summary_add_bytes(guint64 bytes);
+void                           dump_summary_note_retry(void);
+void                           dump_summary_note_skipped(void);
+void                           dump_summary_set_tables(guint tables);
+void                           dump_summary_note_external_file_size(FILE *file);
+guint                          dump_summary_get_files(void);
+guint64                        dump_summary_get_bytes(void);
+guint                          dump_summary_get_retries(void);
+guint                          dump_summary_get_skipped(void);
+guint                          dump_summary_get_tables(void);
+struct filename_queue_element *new_filename_queue_element(struct db_table *dbt, gchar *filename, GAsyncQueue *done);

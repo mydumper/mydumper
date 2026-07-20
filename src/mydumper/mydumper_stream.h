@@ -15,9 +15,9 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 #define METADATA_PARTIAL_INTERVAL 2
-void initialize_stream();
-void wait_stream_to_finish();
-void metadata_partial_push (struct db_table *dbt);
-void stream_queue_push(struct db_table *dbt,gchar *filename);
+void  initialize_stream();
+void  wait_stream_to_finish();
+void  metadata_partial_push(struct db_table *dbt);
+void  stream_queue_push(struct db_table *dbt, gchar *filename);
 guint get_stream_queue_length();
-void send_initial_metadata();
+void  send_initial_metadata();

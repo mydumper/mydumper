@@ -22,44 +22,52 @@
 #ifndef _src_mydumper_jobs_h
 #define _src_mydumper_jobs_h
 
-struct job {
+struct job
+{
   enum job_type type;
-  void *job_data;
+  void         *job_data;
 };
 
-struct schema_metadata_job {
-  FILE *metadata_file;
+struct schema_metadata_job
+{
+  FILE   *metadata_file;
   GMutex *release_binlog_mutex;
 };
 
-struct schema_job {
+struct schema_job
+{
   struct db_table *dbt;
-  char *filename;
+  char            *filename;
 };
 
-struct sequence_job {
+struct sequence_job
+{
   struct db_table *dbt;
-  char *filename;
+  char            *filename;
 };
 
-struct table_checksum_job {
+struct table_checksum_job
+{
   struct db_table *dbt;
+  char            *filename;
+};
+
+struct create_tablespace_job
+{
   char *filename;
 };
 
-struct create_tablespace_job{
-  char *filename;
-};
-
-struct database_job {
+struct database_job
+{
   struct database *database;
-  char *filename;
+  char            *filename;
 };
 
-struct view_job {
+struct view_job
+{
   struct db_table *dbt;
-  char *tmp_table_filename;
-  char *view_filename;
+  char            *tmp_table_filename;
+  char            *view_filename;
 };
 
 #endif

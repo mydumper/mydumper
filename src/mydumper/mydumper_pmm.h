@@ -15,4 +15,4 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-void write_mydumper_pmm_entries(GString *content, struct configuration* conf);
+void write_mydumper_pmm_entries(GString *content, struct configuration *conf);

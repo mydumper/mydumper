@@ -19,11 +19,11 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-
 #ifndef _src_mydumper_create_jobs_h
 #define _src_mydumper_create_jobs_h
 
-enum job_type {
+enum job_type
+{
   JOB_SHUTDOWN,
   JOB_RESTORE,
   JOB_DUMP,
@@ -47,60 +47,67 @@ enum job_type {
   JOB_WRITE_SOURCE_AND_REPLICA_STATUS
 };
 
-struct dump_table_job{
-  gboolean is_view;
-  gboolean is_sequence;
+struct dump_table_job
+{
+  gboolean         is_view;
+  gboolean         is_sequence;
   struct database *database;
-  gchar *table;
-  gchar *collation;
-  gchar *engine;
+  gchar           *table;
+  gchar           *collation;
+  gchar           *engine;
 };
 
-struct dump_database_job {
+struct dump_database_job
+{
   struct database *database;
 };
 
-struct restore_job {
+struct restore_job
+{
   char *database;
   char *table;
   char *filename;
 };
 
-struct dump_table_list_job{
+struct dump_table_list_job
+{
   gchar **table_list;
 };
 
-struct binlog_job {
-  char *filename;
+struct binlog_job
+{
+  char   *filename;
   guint64 start_position;
   guint64 stop_position;
 };
 
-struct table_job_file{
+struct table_job_file
+{
   gchar *filename;
-  int file;
+  int    file;
 };
 
 // directory / database . table . first number . second number . extension
 // first number : used when rows is used
 // second number : when load data is used
-struct table_job {
-  struct thread_data *td;
-  struct db_table *dbt;
+struct table_job
+{
+  struct thread_data     *td;
+  struct db_table        *dbt;
   struct chunk_step_item *chunk_step_item;
 
   char *partition;
 
   guint64 part;
-  guint sub_part;
+  guint   sub_part;
 
   GString *where;
 
   // File related variables
   struct table_job_file *sql;
   struct table_job_file *rows;
-  float filesize;
-  guint st_in_file;
+  float                  filesize;
+  guint                  st_in_file;
 
   guint64 num_rows_of_last_run;
 };
@@ -109,13 +116,13 @@ struct table_job {
 
 void initialize_create_jobs(struct configuration *_conf);
 
-struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item);
-void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item, void f(), GAsyncQueue *queue);
-void create_job_defer(struct db_table *dbt, GAsyncQueue *queue);
+struct table_job *new_table_job(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item);
+void              create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item, void f(), GAsyncQueue *queue);
+void              create_job_defer(struct db_table *dbt, GAsyncQueue *queue);
 
-void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue);
-void free_table_job(struct table_job *tj);
-struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 part, char *order_by, struct chunk_step_item *chunk_step_item);
+void        create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue);
+void        free_table_job(struct table_job *tj);
+struct job *create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 part, char *order_by, struct chunk_step_item *chunk_step_item);
 
 void create_job_to_write_source_and_replica_status(FILE *mdfile);
 void create_job_to_dump_tablespaces();
@@ -123,10 +130,10 @@ void create_job_to_dump_post(struct database *database);
 void create_job_to_dump_table_schema(struct db_table *dbt);
 void create_job_to_dump_view(struct db_table *dbt);
 void create_job_to_dump_sequence(struct db_table *dbt);
-void create_job_to_dump_checksum(struct db_table * dbt);
+void create_job_to_dump_checksum(struct db_table *dbt);
 void create_job_to_dump_all_databases();
 void create_job_to_dump_database(struct database *database);
-void create_job_to_dump_schema(struct database* database);
+void create_job_to_dump_schema(struct database *database);
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt);
 void create_job_to_dump_schema_triggers(struct database *database);
 void create_job_to_dump_table(gboolean is_view, gboolean is_sequence, struct database *database, gchar *table, gchar *collation, gchar *engine);

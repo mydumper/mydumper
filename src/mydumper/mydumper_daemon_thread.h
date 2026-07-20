@@ -19,7 +19,7 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-void *exec_thread(void *data);
-void initialize_daemon_thread();
-void run_daemon();
-GOptionGroup * load_daemon_entries(GOptionContext *context);
+void         *exec_thread(void *data);
+void          initialize_daemon_thread();
+void          run_daemon();
+GOptionGroup *load_daemon_entries(GOptionContext *context);

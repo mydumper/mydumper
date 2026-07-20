@@ -13,7 +13,7 @@ ColumnLimit: 0
 PointerAlignment: Right
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: ^"common.h"
+  - Regex: ^"(\.\.\/)?common.h"
     Priority: 0
     SortPriority: 0
     CaseSensitive: false

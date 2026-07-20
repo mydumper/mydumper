@@ -23,41 +23,45 @@
 
 #include "mydumper_chunks.h"
 
-struct unsigned_int{
+struct unsigned_int
+{
   guint64 min;
   guint64 cursor;
   guint64 max;
 };
 
-struct signed_int{
+struct signed_int
+{
   gint64 min;
   gint64 cursor;
   gint64 max;
 };
 
-union type {
+union type
+{
   struct unsigned_int unsign;
   struct signed_int   sign;
 };
 
-struct integer_step {
-  gboolean is_unsigned;
+struct integer_step
+{
+  gboolean   is_unsigned;
   union type type;
-  gboolean is_step_fixed_length;
-  guint64 step;
-  guint64 min_chunk_step_size;
-  guint64 max_chunk_step_size;
-  guint64 estimated_remaining_steps;
-  gboolean check_max;
-  gboolean check_min;
-  guint64 rows_in_explain;
+  gboolean   is_step_fixed_length;
+  guint64    step;
+  guint64    min_chunk_step_size;
+  guint64    max_chunk_step_size;
+  guint64    estimated_remaining_steps;
+  gboolean   check_max;
+  gboolean   check_min;
+  guint64    rows_in_explain;
 };
-#endif 
+#endif
 
-guint64 gint64_abs(gint64 a);
-struct chunk_step_item *new_integer_step_item(gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 number, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, gboolean multicolumn, guint64 rows_in_explain);
-void free_integer_step(union chunk_step * cs);
+guint64                 gint64_abs(gint64 a);
+struct chunk_step_item *new_integer_step_item(gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 number, gboolean check_min, gboolean check_max, struct chunk_step_item *next, guint position, gboolean multicolumn, guint64 rows_in_explain);
+void                    free_integer_step(union chunk_step *cs);
 struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt);
-void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi);
-gchar * get_integer_chunk_where(union chunk_step * chunk_step);
-void update_integer_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field, gboolean is_unsigned, union type type, gboolean use_cursor);
+void                    process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi);
+gchar                  *get_integer_chunk_where(union chunk_step *chunk_step);
+void                    update_integer_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, gboolean use_cursor);
