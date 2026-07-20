@@ -19,48 +19,53 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include <gio/gio.h>
-#include "mydumper_start_dump.h"
+
 #include "mydumper_common.h"
-#include "mydumper_jobs.h"
-#include "mydumper_database.h"
-#include "mydumper_working_thread.h"
-#include "mydumper_global.h"
-#include "mydumper_arguments.h"
 #include "mydumper_create_jobs.h"
+
+#include "mydumper_arguments.h"
 #include "mydumper_chunks.h"
+#include "mydumper_database.h"
+#include "mydumper_global.h"
+#include "mydumper_jobs.h"
+#include "mydumper_start_dump.h"
+#include "mydumper_working_thread.h"
 //
 // Enqueueing in initial_queue
 //
 
-struct configuration *local_conf=NULL;
+struct configuration *local_conf = NULL;
 
-void initialize_create_jobs(struct configuration *_conf){
-  local_conf=_conf;
+void initialize_create_jobs(struct configuration *_conf)
+{
+  local_conf = _conf;
 }
 
-
-void create_job_to_dump_table(gboolean is_view, gboolean is_sequence, struct database *database, gchar *table, gchar *collation, gchar *engine){
-  struct job *j = g_new0(struct job, 1);
-  struct dump_table_job *dtj= g_new0(struct dump_table_job, 1);
-  dtj->is_view=is_view;
-  dtj->is_sequence=is_sequence;
-  dtj->database=database;
-  dtj->table=table;
-  dtj->collation=collation;
-  dtj->engine=engine;
+void create_job_to_dump_table(gboolean is_view, gboolean is_sequence, struct database *database, gchar *table, gchar *collation, gchar *engine)
+{
+  struct job            *j = g_new0(struct job, 1);
+  struct dump_table_job *dtj = g_new0(struct dump_table_job, 1);
+  dtj->is_view = is_view;
+  dtj->is_sequence = is_sequence;
+  dtj->database = database;
+  dtj->table = table;
+  dtj->collation = collation;
+  dtj->engine = engine;
   j->job_data = dtj;
   j->type = JOB_TABLE;
   g_async_queue_push(local_conf->initial_queue, j);
 }
 
-void create_job_to_write_source_and_replica_status(FILE *mdfile){
+void create_job_to_write_source_and_replica_status(FILE *mdfile)
+{
   struct job *j = g_new0(struct job, 1);
   j->job_data = (void *)mdfile;
   j->type = JOB_WRITE_SOURCE_AND_REPLICA_STATUS;
   g_async_queue_push(local_conf->initial_queue, j);
 }
 
-void create_job_to_dump_all_databases() {
+void create_job_to_dump_all_databases()
+{
   g_atomic_int_inc(&database_counter);
   struct job *j = g_new0(struct job, 1);
   j->job_data = NULL;
@@ -69,9 +74,10 @@ void create_job_to_dump_all_databases() {
   return;
 }
 
-void create_job_to_dump_table_list(gchar **table_list) {
+void create_job_to_dump_table_list(gchar **table_list)
+{
   g_atomic_int_inc(&database_counter);
-  struct job *j = g_new0(struct job, 1);
+  struct job                 *j = g_new0(struct job, 1);
   struct dump_table_list_job *dtlj = g_new0(struct dump_table_list_job, 1);
   j->job_data = (void *)dtlj;
   dtlj->table_list = table_list;
@@ -80,9 +86,10 @@ void create_job_to_dump_table_list(gchar **table_list) {
   return;
 }
 
-void create_job_to_dump_database(struct database *database) {
+void create_job_to_dump_database(struct database *database)
+{
   g_atomic_int_inc(&database_counter);
-  struct job *j = g_new0(struct job, 1);
+  struct job               *j = g_new0(struct job, 1);
   struct dump_database_job *ddj = g_new0(struct dump_database_job, 1);
   j->job_data = (void *)ddj;
   ddj->database = database;
@@ -95,8 +102,9 @@ void create_job_to_dump_database(struct database *database) {
 // Enqueueing in schema_queue
 //
 
-void create_job_to_dump_tablespaces(){
-  struct job *j = g_new0(struct job, 1);
+void create_job_to_dump_tablespaces()
+{
+  struct job                   *j = g_new0(struct job, 1);
   struct create_tablespace_job *ctj = g_new0(struct create_tablespace_job, 1);
   j->job_data = (void *)ctj;
   j->type = JOB_CREATE_TABLESPACE;
@@ -104,9 +112,9 @@ void create_job_to_dump_tablespaces(){
   g_async_queue_push(local_conf->schema_queue, j);
 }
 
-static
-void create_database_related_job(struct database *database, enum job_type type, const gchar *suffix) {
-  struct job *j = g_new0(struct job, 1);
+static void create_database_related_job(struct database *database, enum job_type type, const gchar *suffix)
+{
+  struct job          *j = g_new0(struct job, 1);
   struct database_job *dj = g_new0(struct database_job, 1);
   j->job_data = (void *)dj;
   dj->database = database;
@@ -116,8 +124,9 @@ void create_database_related_job(struct database *database, enum job_type type, 
   return;
 }
 
-void create_job_to_dump_table_schema(struct db_table *dbt) {
-  struct job *j = g_new0(struct job, 1);
+void create_job_to_dump_table_schema(struct db_table *dbt)
+{
+  struct job        *j = g_new0(struct job, 1);
   struct schema_job *sj = g_new0(struct schema_job, 1);
   j->job_data = (void *)sj;
   sj->dbt = dbt;
@@ -126,11 +135,13 @@ void create_job_to_dump_table_schema(struct db_table *dbt) {
   g_async_queue_push(local_conf->schema_queue, j);
 }
 
-void create_job_to_dump_schema(struct database *database) {
+void create_job_to_dump_schema(struct database *database)
+{
   create_database_related_job(database, JOB_CREATE_DATABASE, "schema-create");
 }
 
-void create_job_to_dump_post(struct database *database) {
+void create_job_to_dump_post(struct database *database)
+{
   create_database_related_job(database, JOB_SCHEMA_POST, "schema-post");
 }
 
@@ -138,15 +149,18 @@ void create_job_to_dump_post(struct database *database) {
 // Enqueueing in post_data_queue
 //
 
-void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt) {
+void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt)
+{
   gchar *query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c LIKE '%s'", identifier_quote_character, dbt->database->source_database, identifier_quote_character, dbt->escaped_table);
 
   MYSQL_RES *result = m_store_result(conn, query, m_critical, "Error Checking triggers for %s.%s. St: %s", dbt->database->source_database, dbt->table, query);
   g_free(query);
 
-  if (result) {
-    if (mysql_num_rows(result)) {
-      struct job *t = g_new0(struct job, 1);
+  if (result)
+  {
+    if (mysql_num_rows(result))
+    {
+      struct job        *t = g_new0(struct job, 1);
       struct schema_job *st = g_new0(struct schema_job, 1);
       t->job_data = (void *)st;
       t->type = JOB_TRIGGERS;
@@ -158,8 +172,9 @@ void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt) {
   }
 }
 
-void create_job_to_dump_schema_triggers(struct database *database) {
-  struct job *t = g_new0(struct job, 1);
+void create_job_to_dump_schema_triggers(struct database *database)
+{
+  struct job          *t = g_new0(struct job, 1);
   struct database_job *st = g_new0(struct database_job, 1);
   t->job_data = (void *)st;
   t->type = JOB_SCHEMA_TRIGGERS;
@@ -168,21 +183,23 @@ void create_job_to_dump_schema_triggers(struct database *database) {
   g_async_queue_push(local_conf->post_data_queue, t);
 }
 
-void create_job_to_dump_view(struct db_table *dbt) {
-  struct job *j = g_new0(struct job, 1);
+void create_job_to_dump_view(struct db_table *dbt)
+{
+  struct job      *j = g_new0(struct job, 1);
   struct view_job *vj = g_new0(struct view_job, 1);
   j->job_data = (void *)vj;
   vj->dbt = dbt;
-//  j->conf = conf;
+  //  j->conf = conf;
   j->type = JOB_VIEW;
-  vj->tmp_table_filename  = build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema");
-  vj->view_filename = views_as_tables?NULL:build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema-view");
+  vj->tmp_table_filename = build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema");
+  vj->view_filename = views_as_tables ? NULL : build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema-view");
   g_async_queue_push(local_conf->post_data_queue, j);
   return;
 }
 
-void create_job_to_dump_sequence(struct db_table *dbt) {
-  struct job *j = g_new0(struct job, 1);
+void create_job_to_dump_sequence(struct db_table *dbt)
+{
+  struct job          *j = g_new0(struct job, 1);
   struct sequence_job *sj = g_new0(struct sequence_job, 1);
   j->job_data = (void *)sj;
   sj->dbt = dbt;
@@ -192,13 +209,14 @@ void create_job_to_dump_sequence(struct db_table *dbt) {
   return;
 }
 
-void create_job_to_dump_checksum(struct db_table * dbt) {
-  struct job *j = g_new0(struct job, 1);
+void create_job_to_dump_checksum(struct db_table *dbt)
+{
+  struct job                *j = g_new0(struct job, 1);
   struct table_checksum_job *tcj = g_new0(struct table_checksum_job, 1);
-  tcj->dbt=dbt;
+  tcj->dbt = dbt;
   j->job_data = (void *)tcj;
   j->type = JOB_CHECKSUM;
-  tcj->filename = build_meta_filename(dbt->database->database_name_in_filename, dbt->table_filename,"checksum");
+  tcj->filename = build_meta_filename(dbt->database->database_name_in_filename, dbt->table_filename, "checksum");
   g_async_queue_push(local_conf->post_data_queue, j);
   return;
 }
@@ -207,83 +225,90 @@ void create_job_to_dump_checksum(struct db_table * dbt) {
 // Enqueueing in data tables queue
 //
 
-struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item){
+struct table_job *new_table_job(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item)
+{
   struct table_job *tj = g_new0(struct table_job, 1);
-// begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
+  // begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
   // from the ref table?? TODO
-//  tj->database=dbt->database->source_database;
-//  tj->table=g_strdup(dbt->table);
-// end
-//  g_message("new_table_job on %s.%s with nchuk: %"G_GUINT64_FORMAT, dbt->database->source_database, dbt->table,part);
-  tj->partition=g_strdup(partition);
+  //  tj->database=dbt->database->source_database;
+  //  tj->table=g_strdup(dbt->table);
+  // end
+  //  g_message("new_table_job on %s.%s with nchuk: %"G_GUINT64_FORMAT, dbt->database->source_database, dbt->table,part);
+  tj->partition = g_strdup(partition);
   tj->chunk_step_item = chunk_step_item;
-  tj->where=NULL;
-  tj->part=part;
+  tj->where = NULL;
+  tj->part = part;
   tj->sub_part = 0;
-  tj->rows=g_new0(struct table_job_file, 1);
+  tj->rows = g_new0(struct table_job_file, 1);
   tj->rows->file = -1;
   tj->rows->filename = NULL;
-  if (output_format==SQL_INSERT)
-		tj->sql=NULL;
-	else{
-		tj->sql=g_new0(struct table_job_file, 1);
+  if (output_format == SQL_INSERT)
+    tj->sql = NULL;
+  else
+  {
+    tj->sql = g_new0(struct table_job_file, 1);
     tj->sql->file = -1;
     tj->sql->filename = NULL;
   }
-  tj->dbt=dbt;
-  tj->st_in_file=0;
-  tj->filesize=0;
-  tj->where=g_string_new("");
-  tj->num_rows_of_last_run=0;
+  tj->dbt = dbt;
+  tj->st_in_file = 0;
+  tj->filesize = 0;
+  tj->where = g_string_new("");
+  tj->num_rows_of_last_run = 0;
   update_estimated_remaining_chunks_on_dbt(tj->dbt);
   return tj;
 }
 
-void free_table_job(struct table_job *tj){
-  if (tj->sql && tj->sql->file >= 0){
+void free_table_job(struct table_job *tj)
+{
+  if (tj->sql && tj->sql->file >= 0)
+  {
     if (tj->sql->file >= 0)
       m_close(tj->td->thread_id, tj->sql->file, tj->sql->filename, tj->filesize, tj->dbt);
-    tj->sql->file=-1;
-    tj->sql=NULL;
+    tj->sql->file = -1;
+    tj->sql = NULL;
   }
-  if (tj->rows){
+  if (tj->rows)
+  {
     if (tj->rows->file >= 0)
       m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, tj->filesize, tj->dbt);
-    tj->rows->file=-1;
-    tj->rows=NULL;
+    tj->rows->file = -1;
+    tj->rows = NULL;
   }
 
-  if (tj->where!=NULL)
-    g_string_free(tj->where,TRUE);
+  if (tj->where != NULL)
+    g_string_free(tj->where, TRUE);
 
-//  if (tj->chunk_step_item){
-//    if (tj->chunk_step_item->chunk_functions.free)
-//      tj->chunk_step_item->chunk_functions.free(tj->chunk_step_item);
-//    g_free(tj->chunk_step_item);
-//    tj->chunk_step_item=NULL;
-//  }
+  //  if (tj->chunk_step_item){
+  //    if (tj->chunk_step_item->chunk_functions.free)
+  //      tj->chunk_step_item->chunk_functions.free(tj->chunk_step_item);
+  //    g_free(tj->chunk_step_item);
+  //    tj->chunk_step_item=NULL;
+  //  }
   g_free(tj);
 }
 
-void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *csi, void f(GAsyncQueue *,struct job *), GAsyncQueue *queue){
-  struct job *j = g_new0(struct job,1);
+void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *csi, void f(GAsyncQueue *, struct job *), GAsyncQueue *queue)
+{
+  struct job       *j = g_new0(struct job, 1);
   struct table_job *tj = new_table_job(dbt, partition, part, csi);
-  j->job_data=(void*) tj;
-  j->type= dbt->is_transactional ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-  f(queue,j);
+  j->job_data = (void *)tj;
+  j->type = dbt->is_transactional ? JOB_DUMP : JOB_DUMP_NON_INNODB;
+  f(queue, j);
 }
 
-void create_job_defer(struct db_table *dbt, GAsyncQueue *queue){
-  struct job *j = g_new0(struct job,1);
+void create_job_defer(struct db_table *dbt, GAsyncQueue *queue)
+{
+  struct job *j = g_new0(struct job, 1);
   j->type = JOB_DEFER;
-  j->job_data=(void*) dbt;
-  g_async_queue_push(queue,j);
+  j->job_data = (void *)dbt;
+  g_async_queue_push(queue, j);
 }
 
-void create_job_to_determine_chunk_type(struct db_table *dbt, void f(GAsyncQueue *,struct job *), GAsyncQueue *queue){
-  struct job *j = g_new0(struct job,1);
+void create_job_to_determine_chunk_type(struct db_table *dbt, void f(GAsyncQueue *, struct job *), GAsyncQueue *queue)
+{
+  struct job *j = g_new0(struct job, 1);
   j->type = JOB_DETERMINE_CHUNK_TYPE;
-  j->job_data=(void*) dbt;
-  f(queue,j);
+  j->job_data = (void *)dbt;
+  f(queue, j);
 }
-
