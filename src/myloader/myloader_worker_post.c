@@ -17,29 +17,30 @@
 
 #include <glib/gstdio.h>
 
+#include "../logging.h"
 #include "myloader_common.h"
 #include "myloader_global.h"
 #include "myloader_restore_job.h"
-#include "../logging.h"
 
-GThread **post_threads = NULL;
+GThread           **post_threads = NULL;
 struct thread_data *post_td = NULL;
-void *worker_post_thread(struct thread_data *td);
-GMutex *sync_mutex;
-GMutex *sync_mutex1;
-GMutex *sync_mutex2;
-guint sync_threads_remaining;
-guint sync_threads_remaining1;
-guint sync_threads_remaining2;
+void               *worker_post_thread(struct thread_data *td);
+GMutex             *sync_mutex;
+GMutex             *sync_mutex1;
+GMutex             *sync_mutex2;
+guint               sync_threads_remaining;
+guint               sync_threads_remaining1;
+guint               sync_threads_remaining2;
 
-void initialize_post_loding_threads(struct configuration *conf){
-  guint n=0;
-//  post_mutex = g_mutex_new();
+void initialize_post_loding_threads(struct configuration *conf)
+{
+  guint n = 0;
+  //  post_mutex = g_mutex_new();
   post_threads = g_new(GThread *, max_threads_for_post_creation);
   post_td = g_new(struct thread_data, max_threads_for_post_creation);
-  sync_threads_remaining=max_threads_for_post_creation;
-  sync_threads_remaining1=max_threads_for_post_creation;
-  sync_threads_remaining2=max_threads_for_post_creation;
+  sync_threads_remaining = max_threads_for_post_creation;
+  sync_threads_remaining1 = max_threads_for_post_creation;
+  sync_threads_remaining2 = max_threads_for_post_creation;
   sync_mutex = g_mutex_new();
   sync_mutex1 = g_mutex_new();
   sync_mutex2 = g_mutex_new();
@@ -47,83 +48,99 @@ void initialize_post_loding_threads(struct configuration *conf){
   g_mutex_lock(sync_mutex1);
   g_mutex_lock(sync_mutex2);
 
-  for (n = 0; n < max_threads_for_post_creation; n++) {
+  for (n = 0; n < max_threads_for_post_creation; n++)
+  {
     initialize_thread_data(&(post_td[n]), conf, WAITING, n + 1 + num_threads + max_threads_for_schema_creation + max_threads_for_index_creation, NULL);
     post_threads[n] =
-        m_thread_new("myloader_post",(GThreadFunc)worker_post_thread, &post_td[n], "Post thread could not be created");
+        m_thread_new("myloader_post", (GThreadFunc)worker_post_thread, &post_td[n], "Post thread could not be created");
   }
 }
 
-
-void sync_threads(guint *counter, GMutex *mutex){
-  if (g_atomic_int_dec_and_test(counter)){
+void sync_threads(guint *counter, GMutex *mutex)
+{
+  if (g_atomic_int_dec_and_test(counter))
+  {
     g_mutex_unlock(mutex);
-  }else{
+  }
+  else
+  {
     g_mutex_lock(mutex);
     g_mutex_unlock(mutex);
   }
 }
 
-void *worker_post_thread(struct thread_data *td) {
+void *worker_post_thread(struct thread_data *td)
+{
   struct configuration *conf = td->conf;
 
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
-  gboolean cont=TRUE;
+  gboolean            cont = TRUE;
   struct control_job *job = NULL;
 
   set_thread_name("T%02u", td->thread_id);
-  if (machine_log_json_enabled()) {
+  if (machine_log_json_enabled())
+  {
     gchar *thread_id = g_strdup_printf("%u", td->thread_id);
     machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-                      "MESSAGE", "starting post import task over table",
-                      "EVENT", "post_worker",
-                      "PHASE", "post_import",
-                      "STATUS", "started",
-                      "THREAD_ID", thread_id,
-                      NULL);
+        "MESSAGE", "starting post import task over table",
+        "EVENT", "post_worker",
+        "PHASE", "post_import",
+        "STATUS", "started",
+        "THREAD_ID", thread_id,
+        NULL);
     g_free(thread_id);
-  } else {
+  }
+  else
+  {
     g_message("Thread %u: Starting post import task over table", td->thread_id);
   }
-  cont=TRUE;
-  while (cont){
+  cont = TRUE;
+  while (cont)
+  {
     job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);
-    cont=process_job(td, job, NULL);
+    cont = process_job(td, job, NULL);
   }
 
-  cont=TRUE;
-  while (cont){
+  cont = TRUE;
+  while (cont)
+  {
     job = (struct control_job *)g_async_queue_pop(conf->post_queue);
-    cont=process_job(td, job, NULL);
+    cont = process_job(td, job, NULL);
   }
-  sync_threads(&sync_threads_remaining2,sync_mutex2);
-  cont=TRUE;
-  while (cont){
+  sync_threads(&sync_threads_remaining2, sync_mutex2);
+  cont = TRUE;
+  while (cont)
+  {
     job = (struct control_job *)g_async_queue_pop(conf->view_queue);
-    cont=process_job(td, job, NULL);
+    cont = process_job(td, job, NULL);
   }
 
   trace("Thread %u: ending", td->thread_id);
   return NULL;
 }
 
-void create_post_shutdown_job(struct configuration *conf){
-  guint n=0;
-  for (n = 0; n < max_threads_for_post_creation; n++) {
-    g_async_queue_push(conf->post_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(conf->post_table_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(conf->view_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
+void create_post_shutdown_job(struct configuration *conf)
+{
+  guint n = 0;
+  for (n = 0; n < max_threads_for_post_creation; n++)
+  {
+    g_async_queue_push(conf->post_queue, new_control_job(JOB_SHUTDOWN, NULL, NULL));
+    g_async_queue_push(conf->post_table_queue, new_control_job(JOB_SHUTDOWN, NULL, NULL));
+    g_async_queue_push(conf->view_queue, new_control_job(JOB_SHUTDOWN, NULL, NULL));
   }
 }
 
-void wait_post_worker_to_finish(){
-  guint n=0;
-  for (n = 0; n < max_threads_for_post_creation; n++) {
+void wait_post_worker_to_finish()
+{
+  guint n = 0;
+  for (n = 0; n < max_threads_for_post_creation; n++)
+  {
     g_thread_join(post_threads[n]);
   }
 }
 
-void free_post_worker_threads(){
+void free_post_worker_threads()
+{
   g_free(post_td);
   g_free(post_threads);
 }

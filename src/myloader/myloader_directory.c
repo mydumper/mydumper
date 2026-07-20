@@ -15,105 +15,126 @@
     Authors:        David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <stdio.h>
-#include <glib/gstdio.h>
-#include <string.h>
 #include <glib.h>
+#include <glib/gstdio.h>
+#include <stdio.h>
+#include <string.h>
 
-#include "myloader.h"
-#include "myloader_control_job.h"
-#include "myloader_process_filename.h"
-#include "myloader_process.h"
-#include "myloader_common.h"
-#include "myloader_global.h"
 #include "../logging.h"
+#include "myloader.h"
+#include "myloader_common.h"
+#include "myloader_control_job.h"
+#include "myloader_global.h"
+#include "myloader_process.h"
+#include "myloader_process_filename.h"
 
-GAsyncQueue *metadata_sync_queue=NULL;
+GAsyncQueue *metadata_sync_queue = NULL;
 
-void initialize_directory(){
-  metadata_sync_queue=g_async_queue_new();
+void initialize_directory()
+{
+  metadata_sync_queue = g_async_queue_new();
 }
 
-void wait_directory_to_process_metadata(){
+void wait_directory_to_process_metadata()
+{
   g_async_queue_pop(metadata_sync_queue);
   g_async_queue_unref(metadata_sync_queue);
 }
 
-void release_directory_metadata_lock(){
-  g_async_queue_push(metadata_sync_queue,GINT_TO_POINTER(1));
-  if (machine_log_json_enabled()) {
+void release_directory_metadata_lock()
+{
+  g_async_queue_push(metadata_sync_queue, GINT_TO_POINTER(1));
+  if (machine_log_json_enabled())
+  {
     machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-                      "MESSAGE", "metadata pushed",
-                      "EVENT", "metadata_ready",
-                      "PHASE", "startup",
-                      "STATUS", "finished",
-                      NULL);
-  } else {
+        "MESSAGE", "metadata pushed",
+        "EVENT", "metadata_ready",
+        "PHASE", "startup",
+        "STATUS", "finished",
+        NULL);
+  }
+  else
+  {
     g_message("metadata pushed");
   }
 }
 
-void *process_directory(struct configuration *conf){
-  (void) conf;
-  GError *error = NULL;
+void *process_directory(struct configuration *conf)
+{
+  (void)conf;
+  GError      *error = NULL;
   const gchar *filename = NULL;
   /*
     set_db_schema_created() depends on sequences variable. It will not be
     updated until metadata is read. If DB schema is processed before metadata
     we will get wrong condition (sequences == sequences_processed == 0).
   */
-  if (g_file_test("metadata", G_FILE_TEST_IS_REGULAR)){
+  if (g_file_test("metadata", G_FILE_TEST_IS_REGULAR))
+  {
     // metadata needs to be processed at the begining, that is why we are pushing into the queue
     // before reading the whole directory and excluding it after.
     process_filename_push(g_strdup("metadata"));
-  }else {
-    if (machine_log_json_enabled()) {
+  }
+  else
+  {
+    if (machine_log_json_enabled())
+    {
       machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_ERROR,
-                        "MESSAGE", "metadata file was not found",
-                        "EVENT", "metadata_ready",
-                        "PHASE", "startup",
-                        "STATUS", "failed",
-                        "FILENAME", "metadata",
-                        "FATAL", "true",
-                        "RETRYABLE", "false",
-                        NULL);
+          "MESSAGE", "metadata file was not found",
+          "EVENT", "metadata_ready",
+          "PHASE", "startup",
+          "STATUS", "failed",
+          "FILENAME", "metadata",
+          "FATAL", "true",
+          "RETRYABLE", "false",
+          NULL);
     }
     g_error("metadata file was not found");
   }
-  if (resume){
-    if (machine_log_json_enabled()) {
+  if (resume)
+  {
+    if (machine_log_json_enabled())
+    {
       machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-                        "MESSAGE", "Using resume file",
-                        "EVENT", "resume_file",
-                        "PHASE", "startup",
-                        "STATUS", "started",
-                        "FILENAME", "resume",
-                        NULL);
-    } else {
+          "MESSAGE", "Using resume file",
+          "EVENT", "resume_file",
+          "PHASE", "startup",
+          "STATUS", "started",
+          "FILENAME", "resume",
+          NULL);
+    }
+    else
+    {
       g_message("Using resume file");
     }
-    FILE *file = g_fopen("resume", "r");
-    GString *data=g_string_sized_new(256);
+    FILE    *file = g_fopen("resume", "r");
+    GString *data = g_string_sized_new(256);
     gboolean eof = FALSE;
-    guint line=0;
+    guint    line = 0;
     read_data(file, data, &eof, &line);
-    gchar **split=NULL;
-    guint i=0;
-    while (!eof){
+    gchar **split = NULL;
+    guint   i = 0;
+    while (!eof)
+    {
       read_data(file, data, &eof, &line);
-      split=g_strsplit(data->str,"\n",0);
-      for (i=0; i<g_strv_length(split);i++){
-        if (strlen(split[i])>2){
-          filename=split[i];
+      split = g_strsplit(data->str, "\n", 0);
+      for (i = 0; i < g_strv_length(split); i++)
+      {
+        if (strlen(split[i]) > 2)
+        {
+          filename = split[i];
           process_filename_push(filename);
         }
       }
       g_string_set_size(data, 0);
-    } 
+    }
     fclose(file);
-  }else{
+  }
+  else
+  {
     GDir *dir = g_dir_open(directory, 0, &error);
-    while ((filename = g_dir_read_name(dir))){
+    while ((filename = g_dir_read_name(dir)))
+    {
       if (should_queue_filename(filename, conf->table_list_mutex))
         process_filename_push(filename);
     }
