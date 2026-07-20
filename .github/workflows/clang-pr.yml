@@ -1,0 +1,20 @@
+name: Format
+description: On pull requests, execute format checks
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v7
+      - name: jidicula/clang-format-action@v4.18.0
+        with:
+          clang-format-version: '22'
+          check-path: 'src'

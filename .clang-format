@@ -1,0 +1,8 @@
+---
+BasedOnStyle: Google
+AllowShortCaseExpressionOnASingleLine: false
+AllowShortEnumsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Allman
+PointerAlignment: Right
