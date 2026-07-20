@@ -20,42 +20,42 @@
 
 #include "myloader.h"
 
-
-enum data_control_type{
-  SHUTDOWN =1 ,
+enum data_control_type
+{
+  SHUTDOWN = 1,
   REQUEST_DATA_JOB,
   WAKE_DATA_THREAD,
   FILE_TYPE_SCHEMA_ENDED,
   FILE_TYPE_ENDED
 };
 
-
-static inline
-const char *data_control_type2str(enum data_control_type ft){
-  switch (ft) {
-  case SHUTDOWN:
-    return "SHUTDOWN";
-  case REQUEST_DATA_JOB:
-    return "REQUEST_DATA_JOB";
-  case WAKE_DATA_THREAD:
-    return "WAKE_DATA_THREAD";
-  case FILE_TYPE_SCHEMA_ENDED:
-    return "FILE_TYPE_SCHEMA_ENDED";
-  case FILE_TYPE_ENDED:
-    return "FILE_TYPE_ENDED";
+static inline const char *data_control_type2str(enum data_control_type ft)
+{
+  switch (ft)
+  {
+    case SHUTDOWN:
+      return "SHUTDOWN";
+    case REQUEST_DATA_JOB:
+      return "REQUEST_DATA_JOB";
+    case WAKE_DATA_THREAD:
+      return "WAKE_DATA_THREAD";
+    case FILE_TYPE_SCHEMA_ENDED:
+      return "FILE_TYPE_SCHEMA_ENDED";
+    case FILE_TYPE_ENDED:
+      return "FILE_TYPE_ENDED";
   }
   g_assert(0);
   return NULL;
 }
 
-void wait_worker_loader_main();
-void initialize_worker_loader_main (struct configuration *conf);
-void maybe_shutdown_control_job();
+void               wait_worker_loader_main();
+void               initialize_worker_loader_main(struct configuration *conf);
+void               maybe_shutdown_control_job();
 enum data_job_type request_restore_data_job();
-void data_control_queue_push(enum data_control_type current_ft);
+void               data_control_queue_push(enum data_control_type current_ft);
 
-struct restore_job * request_next_data_job();
-void wake_data_threads();
-void enqueue_table_if_ready(struct configuration *conf, struct db_table *dbt);
+struct restore_job *request_next_data_job();
+void                wake_data_threads();
+void                enqueue_table_if_ready(struct configuration *conf, struct db_table *dbt);
 
 #endif

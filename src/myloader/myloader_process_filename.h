@@ -16,12 +16,13 @@
 */
 #include "myloader.h"
 
-struct process_filename_filename{
-  gchar * filename;
-  guint iterations;
+struct process_filename_filename
+{
+  gchar *filename;
+  guint  iterations;
 };
 
-void process_filename_queue_incomplete(struct process_filename_filename * iflnm);
+void process_filename_queue_incomplete(struct process_filename_filename *iflnm);
 void process_filename_queue_end();
 void process_filename_push(const gchar *filename);
-void initialize_process_filename (struct configuration *c);
+void initialize_process_filename(struct configuration *c);

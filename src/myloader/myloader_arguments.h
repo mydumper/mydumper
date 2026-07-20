@@ -22,13 +22,13 @@
 #define AFTER_IMPORT_ALL_TABLES "AFTER_IMPORT_ALL_TABLES"
 #define SKIP "SKIP"
 
-GOptionContext * load_contex_entries();
-gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
+GOptionContext *load_contex_entries();
+gboolean        arguments_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error);
 
-static inline
-const char * purgemode2str(enum purge_mode pm)
+static inline const char *purgemode2str(enum purge_mode pm)
 {
-  switch (pm) {
+  switch (pm)
+  {
     case FAIL:
       return "FAIL";
     case NONE:

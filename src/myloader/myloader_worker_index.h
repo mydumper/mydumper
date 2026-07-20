@@ -21,4 +21,4 @@ void wait_index_worker_to_finish();
 void create_index_shutdown_job();
 void start_optimize_keys_all_tables();
 void enqueue_indexes_if_possible(struct configuration *conf);
-void enqueue_index_for_dbt_if_possible(struct db_table * dbt);
+void enqueue_index_for_dbt_if_possible(struct db_table *dbt);

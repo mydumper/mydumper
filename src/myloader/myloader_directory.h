@@ -14,7 +14,7 @@
 
     Authors:        David Ducos, Percona (david dot ducos at percona dot com)
 */
-void initialize_directory();
+void  initialize_directory();
 void *process_directory(struct configuration *conf);
-void wait_directory_to_process_metadata();
-void release_directory_metadata_lock();
+void  wait_directory_to_process_metadata();
+void  release_directory_metadata_lock();

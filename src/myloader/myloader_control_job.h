@@ -20,31 +20,38 @@
 
 #include "myloader.h"
 
-enum control_job_type { JOB_RESTORE, JOB_SHUTDOWN };
+enum control_job_type
+{
+  JOB_RESTORE,
+  JOB_SHUTDOWN
+};
 static inline const char *jtype2str(enum control_job_type jtype)
 {
-  switch (jtype) {
-  case JOB_RESTORE:
-    return "JOB_RESTORE";
-  case JOB_SHUTDOWN:
-    return "JOB_SHUTDOWN";
+  switch (jtype)
+  {
+    case JOB_RESTORE:
+      return "JOB_RESTORE";
+    case JOB_SHUTDOWN:
+      return "JOB_SHUTDOWN";
   }
   g_assert(0);
   return NULL;
 }
 
-union control_job_data {
+union control_job_data
+{
   struct restore_job *restore_job;
-  GAsyncQueue *queue;
+  GAsyncQueue        *queue;
 };
 
-struct control_job {
-  enum control_job_type type;
+struct control_job
+{
+  enum control_job_type  type;
   union control_job_data data;
-//  struct database* use_database;
+  //  struct database* use_database;
 };
 
-struct control_job * new_control_job (enum control_job_type type, void *job_data, struct database *use_database);
-void initialize_control_job (struct configuration *conf);
-void wait_control_job();
+struct control_job *new_control_job(enum control_job_type type, void *job_data, struct database *use_database);
+void                initialize_control_job(struct configuration *conf);
+void                wait_control_job();
 #endif
