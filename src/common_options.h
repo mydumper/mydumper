@@ -42,27 +42,27 @@ static inline const char *sourcecontrolcommand2str(
   return 0;
 }
 
-extern char identifier_quote_character;
+extern char        identifier_quote_character;
 extern const char *identifier_quote_character_str;
-extern guint max_threads_per_table;
-extern gchar *set_names_in_conn_by_default;
-extern gchar *set_names_statement;
-extern gboolean no_stream;
-extern gboolean stream;
-extern gboolean no_delete;
-extern gchar *defaults_file;
-extern char *defaults_extra_file;
-extern GKeyFile *key_file;
-extern guint num_threads;
-extern MYSQL *main_connection;
-extern GString *set_global_back;
-extern gboolean no_sync;
-extern gchar *throttle_variable;
-extern guint throttle_value;
-extern guint throttle_time;
-extern gchar *pmm_resolution;
-extern gchar *pmm_path;
-extern gboolean machine_log_json;
+extern guint       max_threads_per_table;
+extern gchar      *set_names_in_conn_by_default;
+extern gchar      *set_names_statement;
+extern gboolean    no_stream;
+extern gboolean    stream;
+extern gboolean    no_delete;
+extern gchar      *defaults_file;
+extern char       *defaults_extra_file;
+extern GKeyFile   *key_file;
+extern guint       num_threads;
+extern MYSQL      *main_connection;
+extern GString    *set_global_back;
+extern gboolean    no_sync;
+extern gchar      *throttle_variable;
+extern guint       throttle_value;
+extern guint       throttle_time;
+extern gchar      *pmm_resolution;
+extern gchar      *pmm_path;
+extern gboolean    machine_log_json;
 
 extern GOptionEntry common_filter_entries[];
 extern GOptionEntry common_connection_entries[];
@@ -82,6 +82,5 @@ struct replication_settings
 };
 #endif
 
-gboolean common_arguments_callback(const gchar *option_name, const gchar *value,
-                                   gpointer data, GError **error);
-GList *build_list_from_replica_options(struct replication_settings *rep_set);
+gboolean common_arguments_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error);
+GList   *build_list_from_replica_options(struct replication_settings *rep_set);

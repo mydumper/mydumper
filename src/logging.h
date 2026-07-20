@@ -23,17 +23,15 @@
 
 // variables
 extern gchar *logfile;
-extern FILE *logoutfile;
+extern FILE  *logoutfile;
 
 // functions
-void no_log(const gchar *log_domain, GLogLevelFlags log_level,
-            const gchar *message, gpointer user_data);
+void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 
-void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
-                    const gchar *message, gpointer user_data);
+void write_log_file(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 
-void configure_log_output(guint verbosity);
-void machine_log_event(const gchar *log_domain, GLogLevelFlags log_level, ...);
+void  configure_log_output(guint verbosity);
+void  machine_log_event(const gchar *log_domain, GLogLevelFlags log_level, ...);
 guint machine_log_warning_count_get(void);
 
 #endif

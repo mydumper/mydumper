@@ -18,19 +18,21 @@
 
 */
 
-#include <unistd.h>
-#include <stdio.h>
-#include <string.h>
-#include <glib.h>
-#include <stdlib.h>
-#include <stdarg.h>
 #include <errno.h>
+#include <glib.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
-//#include <zlib.h>
-#include <signal.h>
+#include <unistd.h>
+// #include <zlib.h>
 #include <glib/gstdio.h>
-#include "logging.h"
+#include <signal.h>
+
 #include "common.h"
+
+#include "logging.h"
 
 /* two handlers currently defined: no_log, write_log_file */
 #define total_handlers 2
@@ -39,69 +41,78 @@
 
 static guint log_handlers[total_handlers] = {};
 
-void free_log_handlers() {
+void free_log_handlers()
+{
   int x = 0;
-  for (x = 0; x < total_handlers; x++) {
-    if (log_handlers[x] != 0) {
+  for (x = 0; x < total_handlers; x++)
+  {
+    if (log_handlers[x] != 0)
+    {
       g_log_remove_handler(NULL, log_handlers[x]);
       log_handlers[x] = 0;
     }
   }
 }
 
-void set_debug() {
-#if GLIB_CHECK_VERSION(2,72,0)
+void set_debug()
+{
+#if GLIB_CHECK_VERSION(2, 72, 0)
   g_log_set_debug_enabled(TRUE);
 #endif
 }
 
-void set_verbose(guint verbosity) {
-  if (logfile) {
+void set_verbose(guint verbosity)
+{
+  if (logfile)
+  {
     logoutfile = g_fopen(logfile, "w");
-    if (!logoutfile) {
+    if (!logoutfile)
+    {
       m_critical("Could not open log file '%s' for writing: %d", logfile,
-                 errno);
+          errno);
     }
   }
 
   free_log_handlers();
   configure_log_output(verbosity);
 
-  if (machine_log_json) {
+  if (machine_log_json)
+  {
     return;
   }
 
-  switch (verbosity) {
-  case 0:
-    log_handlers[use_no_log] = g_log_set_handler(
-        NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK),
-        no_log, NULL);
-    break;
-  case 1:
-    log_handlers[use_no_log] = g_log_set_handler(
-        NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_MESSAGE),
-        no_log, NULL);
-    if (logfile)
-      log_handlers[use_write_log_file] = g_log_set_handler(
-          NULL, (GLogLevelFlags)(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL),
-          write_log_file, NULL);
-    break;
-  case 2:
-    log_handlers[use_no_log] = g_log_set_handler(
-        NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE),
-        no_log, NULL);
-    if (logfile)
-      log_handlers[use_write_log_file] = g_log_set_handler(
-          NULL,
-          (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
-                           G_LOG_LEVEL_CRITICAL),
-          write_log_file, NULL);
-    break;
-  default:
-    if (logfile)
-      log_handlers[use_write_log_file] = g_log_set_handler(
+  switch (verbosity)
+  {
+    case 0:
+      log_handlers[use_no_log] = g_log_set_handler(
           NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK),
-          write_log_file, NULL);
-    break;
+          no_log, NULL);
+      break;
+    case 1:
+      log_handlers[use_no_log] = g_log_set_handler(
+          NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_MESSAGE),
+          no_log, NULL);
+      if (logfile)
+        log_handlers[use_write_log_file] = g_log_set_handler(
+            NULL, (GLogLevelFlags)(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL),
+            write_log_file, NULL);
+      break;
+    case 2:
+      log_handlers[use_no_log] = g_log_set_handler(
+          NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE),
+          no_log, NULL);
+      if (logfile)
+        log_handlers[use_write_log_file] = g_log_set_handler(
+            NULL,
+            (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
+                             G_LOG_LEVEL_CRITICAL),
+            write_log_file, NULL);
+      break;
+    default:
+      if (logfile)
+        log_handlers[use_write_log_file] = g_log_set_handler(
+            NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK),
+            write_log_file, NULL);
+      break;
   }
 }

@@ -13,4 +13,4 @@
 */
 
 gboolean check_skiplist(char *database, char *table);
-void load_omit_tables();
+void     load_omit_tables();

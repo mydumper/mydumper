@@ -32,12 +32,12 @@ enum server_type
   SERVER_TYPE_GOOGLE,
   SERVER_TYPE_DOLT
 };
-void server_detect(MYSQL *conn);
-gboolean server_support_tablespaces();
-int get_product();
-int get_major();
-int get_secondary();
-int get_revision();
-gboolean is_mysql_like();
+void         server_detect(MYSQL *conn);
+gboolean     server_support_tablespaces();
+int          get_product();
+int          get_major();
+int          get_secondary();
+int          get_revision();
+gboolean     is_mysql_like();
 const gchar *get_product_name(void);
 #endif
