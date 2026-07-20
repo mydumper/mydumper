@@ -17,12 +17,12 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 gboolean check_filename_regex(char *word);
-gboolean eval_regex(char * a,char * b);
-GOptionGroup * load_regex_entries(GOptionContext *context);
-gboolean eval_partition_regex(char * word);
-void initialize_regex(gchar * partition_regex);
+gboolean eval_regex(char *a, char *b);
+GOptionGroup *load_regex_entries(GOptionContext *context);
+gboolean eval_partition_regex(char *word);
+void initialize_regex(gchar *partition_regex);
 void init_regex(pcre2_code **r, const char *str);
-gboolean eval_pcre_regex(pcre2_code * p, char * word);
+gboolean eval_pcre_regex(pcre2_code *p, char *word);
 void free_regex();
 gboolean is_regex_being_used();
 

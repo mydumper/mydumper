@@ -12,22 +12,27 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
+    Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot
+   org)
 */
 
 #ifndef _src_common_options_h
 #define _src_common_options_h
 
-
 #define BACKTICK '`'
 #define DOUBLE_QUOTE '"'
 
-enum source_control_command { TRADITIONAL, AWS};
-
-static inline
-const char * sourcecontrolcommand2str(enum source_control_command pm)
+enum source_control_command
 {
-  switch (pm) {
+  TRADITIONAL,
+  AWS
+};
+
+static inline const char *sourcecontrolcommand2str(
+    enum source_control_command pm)
+{
+  switch (pm)
+  {
     case TRADITIONAL:
       return "TRADITIONAL";
     case AWS:
@@ -47,7 +52,7 @@ extern gboolean stream;
 extern gboolean no_delete;
 extern gchar *defaults_file;
 extern char *defaults_extra_file;
-extern GKeyFile * key_file;
+extern GKeyFile *key_file;
 extern guint num_threads;
 extern MYSQL *main_connection;
 extern GString *set_global_back;
@@ -62,10 +67,11 @@ extern gboolean machine_log_json;
 extern GOptionEntry common_filter_entries[];
 extern GOptionEntry common_connection_entries[];
 extern GOptionEntry common_entries[];
-extern GOptionEntry pmm_entries[]; 
+extern GOptionEntry pmm_entries[];
 extern GOptionEntry common_checksum_entries[];
 
-struct replication_settings{
+struct replication_settings
+{
   gboolean enabled;
   gboolean exec_start_replica;
   gboolean exec_reset_replica;
@@ -76,6 +82,6 @@ struct replication_settings{
 };
 #endif
 
-gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
+gboolean common_arguments_callback(const gchar *option_name, const gchar *value,
+                                   gpointer data, GError **error);
 GList *build_list_from_replica_options(struct replication_settings *rep_set);
-

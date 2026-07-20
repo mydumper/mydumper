@@ -17,6 +17,7 @@
 
 #include <mysql.h>
 #include <stdio.h>
+
 #include "common_options.h"
 #define MYLOADER_MODE "myloader_mode"
 #define IS_TRX_TABLE 2
@@ -62,7 +63,7 @@
 #define WHERE "where"
 #define ROWS "rows"
 #define NUM_THREADS "num_threads"
-#define COLUMNS_ON_SELECT         "columns_on_select"
+#define COLUMNS_ON_SELECT "columns_on_select"
 #define COLUMNS_ON_SELECT_REPLACE "columns_on_select_replace"
 #define COLUMNS_ON_INSERT "columns_on_insert"
 #define PARTITION_REGEX "partition_regex"
@@ -94,7 +95,8 @@ extern guint throttle_max_usleep_limit;
 void initialize_zstd_cmd();
 void initialize_gzip_cmd();
 
-struct object_scope{
+struct object_scope
+{
   gboolean no_data;
   gboolean no_schema;
   gboolean no_view;
@@ -103,7 +105,8 @@ struct object_scope{
   gboolean no_constraint;
 };
 
-struct M_ROW{
+struct M_ROW
+{
   MYSQL_RES *res;
   MYSQL_ROW row;
 };
@@ -112,9 +115,11 @@ struct M_ROW{
 #define STREAM_BUFFER_SIZE_NO_STREAM 100
 #define DEFAULTS_FILE "/etc/mydumper.cnf"
 struct function_pointer;
-typedef gboolean (*fun_ptr)(GString *,gchar*,gulong*, struct function_pointer*);
+typedef gboolean (*fun_ptr)(GString *, gchar *, gulong *,
+                            struct function_pointer *);
 
-struct function_pointer{
+struct function_pointer
+{
   // use when writing
   fun_ptr function;
   gboolean is_pre;
@@ -133,40 +138,50 @@ struct function_pointer{
   gboolean unique;
 };
 
-gchar * remove_new_line(gchar *to);
-int write_file(FILE * file, char * buff, int len);
+gchar *remove_new_line(gchar *to);
+int write_file(FILE *file, char *buff, int len);
 guint strcount(gchar *text);
-gboolean m_remove0(gchar * directory, const gchar * filename);
-gboolean m_remove(gchar * directory, const gchar * filename);
-GKeyFile * load_config_file(gchar * config_file);
-void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * group);
+gboolean m_remove0(gchar *directory, const gchar *filename);
+gboolean m_remove(gchar *directory, const gchar *filename);
+GKeyFile *load_config_file(gchar *config_file);
+void load_config_group(GKeyFile *kf, GOptionContext *context,
+                       const gchar *group);
 void execute_gstring(MYSQL *conn, GString *ss);
 gchar *replace_escaped_strings(gchar *c);
 void escape_tab_with(gchar *to);
-void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables);
-void load_per_table_info_from_key_file(GKeyFile *kf, GHashTable * conf_per_table, struct function_pointer * init_function_pointer());
-void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
-void refresh_set_global_from_hash(GString *ss, GString *sr, GHashTable * set_global_hash);
+void load_hash_from_key_file(GKeyFile *kf, GHashTable *set_session_hash,
+                             const gchar *group_variables);
+void load_per_table_info_from_key_file(
+    GKeyFile *kf, GHashTable *conf_per_table,
+    struct function_pointer *init_function_pointer());
+void refresh_set_session_from_hash(GString *ss, GHashTable *set_session_hash);
+void refresh_set_global_from_hash(GString *ss, GString *sr,
+                                  GHashTable *set_global_hash);
 gboolean is_table_in_list(gchar *database, gchar *table, gchar **tl);
 gboolean is_mysql_special_tables(gchar *database, gchar *table);
-GHashTable * initialize_hash_of_session_variables();
+GHashTable *initialize_hash_of_session_variables();
 void load_common_entries(GOptionGroup *main_group);
-void free_hash(GHashTable * set_session_hash);
+void free_hash(GHashTable *set_session_hash);
 void initialize_common_options(GOptionContext *context, const gchar *group);
 void load_tables();
-void free_hash_table(GHashTable * hash);
-void remove_definer(GString * data);
-void remove_definer_from_gchar(char * str);
-void replace_definer_from_string(GString * data, char * _replace);
-void replace_definer_from_gchar (GString * output_data, char * str, char * _replace);
-void update_definer(GString *statement, gchar *replace_definer_str, gboolean skip_definer);
+void free_hash_table(GHashTable *hash);
+void remove_definer(GString *data);
+void remove_definer_from_gchar(char *str);
+void replace_definer_from_string(GString *data, char *_replace);
+void replace_definer_from_gchar(GString *output_data, char *str,
+                                char *_replace);
+void update_definer(GString *statement, gchar *replace_definer_str,
+                    gboolean skip_definer);
 void print_version(const gchar *program);
-gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
+gboolean stream_arguments_callback(const gchar *option_name, const gchar *value,
+                                   gpointer data, GError **error);
 void initialize_set_names();
 void free_set_names();
 gchar *filter_sequence_schemas(const gchar *create_table);
-void set_session_hash_insert(GHashTable * set_session_hash, const gchar *key, gchar *value);
-void parse_key_file_group(GKeyFile *kf, GOptionContext *context, const gchar * group);
+void set_session_hash_insert(GHashTable *set_session_hash, const gchar *key,
+                             gchar *value);
+void parse_key_file_group(GKeyFile *kf, GOptionContext *context,
+                          const gchar *group);
 #endif
 
 /* using fewer than 2 threads can cause mydumper to hang */
@@ -178,74 +193,95 @@ void m_critical(const char *fmt, ...);
 void m_warning(const char *fmt, ...);
 void m_message(const char *fmt, ...);
 void runtime_message(const char *fmt, ...);
-void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str);
-GRecMutex * g_rec_mutex_new();
+void load_hash_of_all_variables_perproduct_from_key_file(
+    GKeyFile *kf, GHashTable *set_session_hash, const gchar *str);
+GRecMutex *g_rec_mutex_new();
 gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);
 gboolean should_ignore_error_code(guint error_code);
 gchar *m_date_time_new_now_local();
 const char *get_thread_name(void);
 gboolean machine_log_json_enabled(void);
 
-void print_int(const char*_key, int val, gboolean comment);
-void print_string(const char*_key, const char *val);
-void print_bool(const char*_key, gboolean val);
-void print_list(const char*_key, GList *list, gchar* f (void *));
+void print_int(const char *_key, int val, gboolean comment);
+void print_string(const char *_key, const char *val);
+void print_bool(const char *_key, gboolean val);
+void print_list(const char *_key, GList *list, gchar *f(void *));
 void print_common();
 
 gchar *get_zstd_cmd();
 gchar *get_gzip_cmd();
-char * double_quoute_protect(char *r);
-char * backtick_protect(char *r);
-char * newline_protect(char *r);
-char * newline_unprotect(char *r);
+char *double_quoute_protect(char *r);
+char *backtick_protect(char *r);
+char *newline_protect(char *r);
+char *newline_unprotect(char *r);
 void set_thread_name(const char *format, ...);
 extern void trace(const char *format, ...);
-#define message(...) \
-  if (debug) \
+#define message(...)    \
+  if (debug)            \
     trace(__VA_ARGS__); \
-  else \
+  else                  \
     runtime_message(__VA_ARGS__);
 
-#define array_elements(A) ((guint) (sizeof(A)/sizeof(A[0])))
-#define key_strcmp ((int (*)(const void *, const void *)) &strcmp)
+#define array_elements(A) ((guint)(sizeof(A) / sizeof(A[0])))
+#define key_strcmp ((int (*)(const void *, const void *)) & strcmp)
 
 #if !GLIB_CHECK_VERSION(2, 68, 0)
-extern guint
-g_string_replace (GString     *string,
-                  const gchar *find,
-                  const gchar *replace,
-                  guint        limit);
+extern guint g_string_replace(GString *string, const gchar *find,
+                              const gchar *replace, guint limit);
 #endif
 
 #if !GLIB_CHECK_VERSION(2, 36, 0)
-extern guint g_get_num_processors (void);
+extern guint g_get_num_processors(void);
 #endif
 char *show_warnings_if_possible(MYSQL *conn);
-int global_process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes);
-void parse_object_scope(struct object_scope *object_to_export,gchar *val);
+int global_process_create_table_statement(
+    gchar *statement, GString *create_table_statement,
+    GString *alter_table_statement, GString *alter_table_constraint_statement,
+    gchar *real_table, gboolean split_indexes);
+void parse_object_scope(struct object_scope *object_to_export, gchar *val);
 gchar *build_dbt_key(gchar *a, gchar *b);
 gchar *build_config_file_dbt_key(const gchar *a, const gchar *b);
 void discard_mysql_output(MYSQL *conn);
-gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
-gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, ...) , const char *fmt, ...);
-gboolean m_query_warning(  MYSQL *conn, const gchar *query, const char *fmt, ...);
-gboolean m_query_critical( MYSQL *conn, const gchar *query, const char *fmt, ...);
-MYSQL_RES *m_store_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
-MYSQL_RES *m_store_result_free_query(MYSQL *conn, gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
-MYSQL_RES *m_store_result_gstring(MYSQL *conn, GString *query, void log_fun(const char *, ...) , const char *fmt, ...);
-MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query, const char *fmt, ...);
-MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
-struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, ...);
-struct M_ROW* m_store_result_single_row(MYSQL *conn, const gchar *query, const char *fmt, ...);
-void m_store_result_row_free(struct M_ROW* mr);
+gboolean m_query(MYSQL *conn, const gchar *query,
+                 void log_fun(const char *, ...), const char *fmt, ...);
+gboolean m_query_verbose(MYSQL *conn, const char *q,
+                         void log_fun(const char *, ...), const char *fmt, ...);
+gboolean m_query_warning(MYSQL *conn, const gchar *query, const char *fmt, ...);
+gboolean m_query_critical(MYSQL *conn, const gchar *query, const char *fmt,
+                          ...);
+MYSQL_RES *m_store_result(MYSQL *conn, const gchar *query,
+                          void log_fun(const char *, ...), const char *fmt,
+                          ...);
+MYSQL_RES *m_store_result_free_query(MYSQL *conn, gchar *query,
+                                     void log_fun(const char *, ...),
+                                     const char *fmt, ...);
+MYSQL_RES *m_store_result_gstring(MYSQL *conn, GString *query,
+                                  void log_fun(const char *, ...),
+                                  const char *fmt, ...);
+MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query,
+                                   const char *fmt, ...);
+MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query,
+                        void log_fun(const char *, ...), const char *fmt, ...);
+struct M_ROW *m_store_result_row(MYSQL *conn, const gchar *query,
+                                 void log_fun_1(const char *, ...),
+                                 void log_fun_2(const char *, ...),
+                                 const char *fmt, ...);
+struct M_ROW *m_store_result_single_row(MYSQL *conn, const gchar *query,
+                                        const char *fmt, ...);
+void m_store_result_row_free(struct M_ROW *mr);
 gboolean create_dir(gchar *directory);
 gchar *build_tmp_dir_name();
-GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text);
-void *monitor_throttling_thread (void *queue);
+GThread *m_thread_new(const gchar *title, GThreadFunc func, gpointer data,
+                      const gchar *error_text);
+void *monitor_throttling_thread(void *queue);
 gchar *set_names_statement_template(gchar *_set_names);
 void execute_set_names(MYSQL *conn, gchar *_set_names);
-gchar * common_build_schema_table_filename(gchar *_directory, char *database, char *table, const char *suffix);
-void load_options_for_product_from_key_file(GKeyFile *kf, GOptionContext *context, const gchar *app, int major, int secondary, int revision);
-void * m_coalesce_hash(GHashTable * ht, gchar * db_table_key, gchar* any_db_key, gchar *any_table_key );
-GList *m_glistsplit(const gchar * str);
-
+gchar *common_build_schema_table_filename(gchar *_directory, char *database,
+                                          char *table, const char *suffix);
+void load_options_for_product_from_key_file(GKeyFile *kf,
+                                            GOptionContext *context,
+                                            const gchar *app, int major,
+                                            int secondary, int revision);
+void *m_coalesce_hash(GHashTable *ht, gchar *db_table_key, gchar *any_db_key,
+                      gchar *any_table_key);
+GList *m_glistsplit(const gchar *str);
