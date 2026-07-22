@@ -28,6 +28,7 @@
 #include "../set_verbose.h"
 #include "../tables_skiplist.h"
 #include "myloader_table.h"
+
 #ifndef _src_myloader_h
 #define _src_myloader_h
 #include <mysql.h>
@@ -141,6 +142,7 @@ enum schema_status
   INDEX_ENQUEUED,
   ALL_DONE
 };
+
 static inline const char *status2str(enum schema_status status)
 {
   switch (status)

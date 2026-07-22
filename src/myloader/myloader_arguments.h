@@ -18,6 +18,9 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#include "myloader.h"
+
 #define AFTER_IMPORT_PER_TABLE "AFTER_IMPORT_PER_TABLE"
 #define AFTER_IMPORT_ALL_TABLES "AFTER_IMPORT_ALL_TABLES"
 #define SKIP "SKIP"
