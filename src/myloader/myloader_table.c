@@ -25,9 +25,10 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+#include "myloader_common.h"
+
 #include "myloader.h"
 #include "myloader_arguments.h"
-#include "myloader_common.h"
 #include "myloader_control_job.h"
 #include "myloader_database.h"
 #include "myloader_directory.h"

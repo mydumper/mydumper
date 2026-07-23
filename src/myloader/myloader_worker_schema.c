@@ -18,67 +18,76 @@
 #include <glib/gstdio.h>
 
 #include "myloader_common.h"
-#include "myloader_restore_job.h"
+
 #include "myloader_control_job.h"
-#include "myloader_worker_loader_main.h"
-#include "myloader_global.h"
 #include "myloader_database.h"
+#include "myloader_global.h"
+#include "myloader_restore_job.h"
+#include "myloader_worker_loader_main.h"
 #include "myloader_worker_schema.h"
 
 /* refresh_db_queue2 is for schemas creation */
-static
-GAsyncQueue *refresh_db_queue2 = NULL;
-extern GHashTable *database_hash;
-GAsyncQueue *schema_job_queue = NULL;
+static GAsyncQueue *refresh_db_queue2 = NULL;
+extern GHashTable  *database_hash;
+GAsyncQueue        *schema_job_queue = NULL;
 struct thread_data *schema_td = NULL;
-GAsyncQueue *retry_queue = NULL;
+GAsyncQueue        *retry_queue = NULL;
 
-gint schema_job_cmp(gconstpointer _a, gconstpointer _b, gpointer user_data){
-   struct schema_job *a= ((struct schema_job *) _a);
-   struct schema_job *b= ((struct schema_job *) _b);
-   (void)user_data;
-   return (a->type > b->type) - (a->type < b->type);
+gint schema_job_cmp(gconstpointer _a, gconstpointer _b, gpointer user_data)
+{
+  struct schema_job *a = ((struct schema_job *)_a);
+  struct schema_job *b = ((struct schema_job *)_b);
+  (void)user_data;
+  return (a->type > b->type) - (a->type < b->type);
 }
 
-struct schema_job * new_schema_job(enum schema_job_type type, struct restore_job *rj, struct database *use_database){
-  struct schema_job * sj = g_new0(struct schema_job, 1);
+struct schema_job *new_schema_job(enum schema_job_type type, struct restore_job *rj, struct database *use_database)
+{
+  struct schema_job *sj = g_new0(struct schema_job, 1);
   sj->type = type;
   sj->restore_job = rj;
-  (void) use_database;
-//  sj->use_database = use_database;
+  (void)use_database;
+  //  sj->use_database = use_database;
   return sj;
 }
 
-static
-void schema_job_queue_push(struct schema_job *sj){
+static void schema_job_queue_push(struct schema_job *sj)
+{
   trace("schema_job_queue <- %s", schema_job_type2str(sj->type));
   g_async_queue_push(schema_job_queue, sj);
 }
 
-gboolean schema_push( enum schema_job_type schema_worker_job, gchar * filename, enum restore_job_type rj_type, struct db_table * dbt, struct database * _database, GString * statement, enum restore_job_statement_type object, struct database *use_database ){
+gboolean schema_push(enum schema_job_type schema_worker_job, gchar *filename, enum restore_job_type rj_type, struct db_table *dbt, struct database *_database, GString *statement, enum restore_job_statement_type object, struct database *use_database)
+{
   struct restore_job *rj = new_schema_restore_job(filename, rj_type, dbt, _database, statement, object);
-  struct schema_job *sj = new_schema_job(schema_worker_job, rj, use_database);
+  struct schema_job  *sj = new_schema_job(schema_worker_job, rj, use_database);
   g_mutex_lock(_database->mutex);
   trace("schema push %s", filename);
-  if (_database->schema_state != CREATED && schema_worker_job != SCHEMA_CREATE_JOB){
-    if (schema_worker_job == SCHEMA_SEQUENCE_JOB ) {
+  if (_database->schema_state != CREATED && schema_worker_job != SCHEMA_CREATE_JOB)
+  {
+    if (schema_worker_job == SCHEMA_SEQUENCE_JOB)
+    {
       trace("%s.sequence_queue <- %s", _database->target_database, schema_job_type2str(sj->type));
       trace("_database: %p; sequence_queue: %p", _database, _database->sequence_queue);
       g_async_queue_push(_database->sequence_queue, sj);
       g_mutex_unlock(_database->mutex);
       return FALSE;
-    }else
-    if (schema_worker_job == SCHEMA_TABLE_JOB ) {
+    }
+    else if (schema_worker_job == SCHEMA_TABLE_JOB)
+    {
       trace("%s.table_queue <- %s", _database->target_database, schema_job_type2str(sj->type));
       trace("_database: %p; table_queue: %p", _database, _database->table_queue);
       g_async_queue_push(_database->table_queue, sj);
       g_mutex_unlock(_database->mutex);
       return FALSE;
-    }else{
-      trace("not enqueuing %s %s", filename, schema_job_type2str(sj->type));
-    
     }
-  }else{
+    else
+    {
+      trace("not enqueuing %s %s", filename, schema_job_type2str(sj->type));
+    }
+  }
+  else
+  {
     trace("schema_job_queue <- %s (sorted)", schema_job_type2str(sj->type));
     g_async_queue_push_sorted(schema_job_queue, sj, &schema_job_cmp, NULL);
   }
@@ -86,80 +95,85 @@ gboolean schema_push( enum schema_job_type schema_worker_job, gchar * filename, 
   return TRUE;
 }
 
-void schema_ended(){
+void schema_ended()
+{
   schema_job_queue_push(new_schema_job(SCHEMA_PROCESS_ENDED, NULL, NULL));
 }
 
 // _database is locked
-static
-void set_db_schema_created(struct database * _database)
+static void set_db_schema_created(struct database *_database)
 {
-//  struct control_job * cj;
-//  enum file_type ft;
-//  GAsyncQueue *queue;
-  _database->schema_state= CREATED;
+  //  struct control_job * cj;
+  //  enum file_type ft;
+  //  GAsyncQueue *queue;
+  _database->schema_state = CREATED;
 
   /* Until all sequences processed we requeue only sequences */
-/*
-  if (sequences_processed < sequences) {
-    trace("FT change to SCHEMA_SEQUENCE due %d < %d", sequences_processed, sequences );
-//    ft= SCHEMA_SEQUENCE;
-    queue= _database->sequence_queue;
-  } else {
-//    ft= SCHEMA_TABLE;
-    queue= _database->table_queue;
-  }
-  cj= g_async_queue_try_pop(queue);
-  while (cj != NULL){
-    g_async_queue_push( conf->table_queue, cj);
-//    schema_job_queue_push(ft, " (requeuing from db queue)");
-    cj = g_async_queue_try_pop(queue);
-  }
-  */
-
+  /*
+    if (sequences_processed < sequences) {
+      trace("FT change to SCHEMA_SEQUENCE due %d < %d", sequences_processed, sequences );
+  //    ft= SCHEMA_SEQUENCE;
+      queue= _database->sequence_queue;
+    } else {
+  //    ft= SCHEMA_TABLE;
+      queue= _database->table_queue;
+    }
+    cj= g_async_queue_try_pop(queue);
+    while (cj != NULL){
+      g_async_queue_push( conf->table_queue, cj);
+  //    schema_job_queue_push(ft, " (requeuing from db queue)");
+      cj = g_async_queue_try_pop(queue);
+    }
+    */
 
   struct schema_job *sj = g_async_queue_try_pop(_database->sequence_queue);
-  while (sj){
+  while (sj)
+  {
     schema_job_queue_push(sj);
-    sj = g_async_queue_try_pop(_database->sequence_queue);  
+    sj = g_async_queue_try_pop(_database->sequence_queue);
   }
   sj = g_async_queue_try_pop(_database->table_queue);
-  while (sj){
+  while (sj)
+  {
     schema_job_queue_push(sj);
     sj = g_async_queue_try_pop(_database->table_queue);
   }
 }
 
-static
-void set_table_schema_state_to_created (struct configuration *conf){
+static void set_table_schema_state_to_created(struct configuration *conf)
+{
   g_mutex_lock(conf->table_list_mutex);
-  GList * iter=conf->table_list;
-  struct db_table * dbt = NULL;
-  while (iter != NULL){
-    dbt=iter->data;
+  GList           *iter = conf->table_list;
+  struct db_table *dbt = NULL;
+  while (iter != NULL)
+  {
+    dbt = iter->data;
     table_lock(dbt);
-    if (dbt->schema_state == NOT_FOUND ) {
+    if (dbt->schema_state == NOT_FOUND)
+    {
       dbt->schema_state = CREATED;
       g_cond_broadcast(dbt->schema_cond);
     }
     table_unlock(dbt);
     enqueue_table_if_ready(conf, dbt);
-    iter=iter->next;
+    iter = iter->next;
   }
   g_mutex_unlock(conf->table_list_mutex);
 }
 
-gboolean second_round=FALSE;
+gboolean second_round = FALSE;
 /* @return TRUE: continue worker_schema_thread() loop */
-gboolean process_schema(struct thread_data * td){
-  struct database * _database = NULL;
+gboolean process_schema(struct thread_data *td)
+{
+  struct database *_database = NULL;
 
-  struct schema_job * schema_job = g_async_queue_pop(schema_job_queue);
+  struct schema_job *schema_job = g_async_queue_pop(schema_job_queue);
   trace("schema_job_queue -> %s", schema_job_type2str(schema_job->type));
 
-  switch (schema_job->type){
+  switch (schema_job->type)
+  {
     case SCHEMA_CREATE_JOB:
-      _database=schema_job->restore_job->data.srj->database;
+      _database = schema_job->restore_job->data.srj->database;
       trace("database_queue -> %s", _database->source_database);
       g_mutex_lock(_database->mutex);
       process_restore_job(td, schema_job->restore_job);
@@ -170,7 +184,8 @@ gboolean process_schema(struct thread_data * td){
       break;
     case SCHEMA_SEQUENCE_JOB:
     case SCHEMA_TABLE_JOB:
-      if (process_restore_job(td, schema_job->restore_job)){
+      if (process_restore_job(td, schema_job->restore_job))
+      {
         trace("retry_queue <- %s", schema_job_type2str(schema_job->type));
         g_atomic_int_inc(&(detailed_errors.retries));
         g_async_queue_push(retry_queue, schema_job);
@@ -178,50 +193,53 @@ gboolean process_schema(struct thread_data * td){
       wake_data_threads();
       break;
     case SCHEMA_PROCESS_ENDED:
-      // set as created all database, 
+      // set as created all database,
       // which implies all tables are created
       trace("SCHEMA_PROCESS_ENDED ");
       schema_job = g_async_queue_try_pop(retry_queue);
-      while (schema_job){
+      while (schema_job)
+      {
         schema_job_queue_push(schema_job);
         schema_job = g_async_queue_try_pop(retry_queue);
       }
 
       GHashTableIter iter;
-      gpointer _key;
-      g_hash_table_iter_init (&iter, database_hash);
-      while (g_hash_table_iter_next (&iter, &_key, (gpointer) &_database)){
+      gpointer       _key;
+      g_hash_table_iter_init(&iter, database_hash);
+      while (g_hash_table_iter_next(&iter, &_key, (gpointer)&_database))
+      {
         g_mutex_lock(_database->mutex);
         set_db_schema_created(_database);
         g_mutex_unlock(_database->mutex);
       }
-      
+
       schema_job_queue_push(new_schema_job(SCHEMA_ENDED, NULL, NULL));
 
-      //refresh_table_list(td->conf);
+      // refresh_table_list(td->conf);
       break;
 
     case SCHEMA_ENDED:
       g_async_queue_push(schema_job_queue, schema_job);
-      //refresh_table_list(td->conf);
+      // refresh_table_list(td->conf);
       return FALSE;
       break;
-                          
   }
 
   return TRUE;
 }
 
-void *worker_schema_thread(struct thread_data *td) {
+void *worker_schema_thread(struct thread_data *td)
+{
   struct configuration *conf = td->conf;
 
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
   set_thread_name("S%02u", td->thread_id);
   message("S-Thread %u: Starting import", td->thread_id);
-  gboolean cont=TRUE;
-  while (cont){
-    cont=process_schema(td);
+  gboolean cont = TRUE;
+  while (cont)
+  {
+    cont = process_schema(td);
   }
   refresh_table_list(td->conf);
   message("S-Thread %u: Import completed", td->thread_id);
@@ -230,34 +248,37 @@ void *worker_schema_thread(struct thread_data *td) {
 
 GThread **schema_threads = NULL;
 
-void initialize_worker_schema(struct configuration *conf){
-  guint n=0;
+void initialize_worker_schema(struct configuration *conf)
+{
+  guint n = 0;
   refresh_db_queue2 = g_async_queue_new();
   schema_job_queue = g_async_queue_new();
   retry_queue = g_async_queue_new();
   schema_threads = g_new(GThread *, max_threads_for_schema_creation);
   schema_td = g_new(struct thread_data, max_threads_for_schema_creation);
   g_message("Initializing initialize_worker_schema");
-  for (n = 0; n < max_threads_for_schema_creation; n++) 
+  for (n = 0; n < max_threads_for_schema_creation; n++)
     initialize_thread_data(&(schema_td[n]), conf, WAITING, n + 1 + num_threads, NULL);
 
-//  if (stream)
-//    schema_job_queue_push(CJT_RESUME, "");
+  //  if (stream)
+  //    schema_job_queue_push(CJT_RESUME, "");
 }
 
-void start_worker_schema(){
-  guint n=0;
+void start_worker_schema()
+{
+  guint n = 0;
   for (n = 0; n < max_threads_for_schema_creation; n++)
     schema_threads[n] =
-        m_thread_new("myloader_schema",(GThreadFunc)worker_schema_thread, &schema_td[n], "Schema thread could not be created");
+        m_thread_new("myloader_schema", (GThreadFunc)worker_schema_thread, &schema_td[n], "Schema thread could not be created");
 }
 
-
-void wait_schema_worker_to_finish(struct configuration *conf){
-  guint n=0;
+void wait_schema_worker_to_finish(struct configuration *conf)
+{
+  guint n = 0;
 
   trace("Waiting schema worker to finish");
-  for (n = 0; n < max_threads_for_schema_creation; n++) {
+  for (n = 0; n < max_threads_for_schema_creation; n++)
+  {
     g_thread_join(schema_threads[n]);
   }
   // As all schema worker has finished, we need to let the process continue and set all tables as created
@@ -266,7 +287,8 @@ void wait_schema_worker_to_finish(struct configuration *conf){
   trace("Schema worker finished");
 }
 
-void free_schema_worker_threads(){
+void free_schema_worker_threads()
+{
   g_free(schema_td);
   g_free(schema_threads);
 }

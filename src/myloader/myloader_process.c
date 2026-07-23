@@ -26,7 +26,6 @@
 #include <sys/wait.h>
 
 #include "myloader_common.h"
-#include "myloader_process.h"
 
 #include "myloader.h"
 #include "myloader_arguments.h"
@@ -34,6 +33,7 @@
 #include "myloader_database.h"
 #include "myloader_directory.h"
 #include "myloader_global.h"
+#include "myloader_process.h"
 #include "myloader_restore_job.h"
 #include "myloader_stream.h"
 #include "myloader_worker_loader_main.h"

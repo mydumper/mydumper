@@ -29,10 +29,9 @@
 #include <locale.h>
 
 #include "myloader.h"
-
-#include "../logging.h"
-#include "myloader_arguments.h"
 #include "myloader_common.h"
+
+#include "myloader_arguments.h"
 #include "myloader_control_job.h"
 #include "myloader_database.h"
 #include "myloader_directory.h"
@@ -49,6 +48,7 @@
 #include "myloader_worker_loader_main.h"
 #include "myloader_worker_post.h"
 #include "myloader_worker_schema.h"
+#include "../logging.h"
 
 gchar *input_directory = NULL;
 gchar *directory = NULL;

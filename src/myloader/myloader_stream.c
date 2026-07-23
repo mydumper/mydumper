@@ -18,8 +18,9 @@
 #include <glib/gstdio.h>
 #include <mysql.h>
 
-#include "myloader.h"
 #include "myloader_common.h"
+
+#include "myloader.h"
 #include "myloader_control_job.h"
 #include "myloader_global.h"
 #include "myloader_process_filename.h"

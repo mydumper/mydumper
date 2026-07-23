@@ -18,9 +18,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "myloader_worker_loader_main.h"
-
 #include "myloader_common.h"
+
 #include "myloader_control_job.h"
 #include "myloader_database.h"
 #include "myloader_global.h"
@@ -29,6 +28,7 @@
 #include "myloader_restore_job.h"
 #include "myloader_worker_index.h"
 #include "myloader_worker_loader.h"
+#include "myloader_worker_loader_main.h"
 #include "myloader_worker_schema.h"
 
 gboolean control_job_ended = FALSE;
