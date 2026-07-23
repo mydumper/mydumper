@@ -13,19 +13,19 @@ ColumnLimit: 0
 PointerAlignment: Right
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: ^"(\.\.\/|mydumper_)?common.h"
-    Priority: 0
-    SortPriority: 0
-    CaseSensitive: false
   - Regex: ^<.*\.h>
     Priority: -1
     SortPriority: 0
     CaseSensitive: false
-  - Regex: ^<.*
-    Priority: 2
+  - Regex: ^"(\.\.\/|mydumper_|myloader_)?common.h"
+    Priority: 0
     SortPriority: 0
     CaseSensitive: false
+  - Regex: ^"(\.\.\/)?logging.h"
+    Priority: 1
+    SortPriority: 2
+    CaseSensitive: false
   - Regex: .*
-    Priority: 3
-    SortPriority: 0
+    Priority: 1
+    SortPriority: 1
     CaseSensitive: false

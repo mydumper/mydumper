@@ -18,84 +18,92 @@
 #include <glib.h>
 
 #include "myloader_common.h"
-#include "myloader_global.h"
+
 #include "myloader_database.h"
-#include "myloader_restore_job.h"
+#include "myloader_global.h"
 #include "myloader_restore.h"
+#include "myloader_restore_job.h"
 #include "../logging.h"
 
-GHashTable *database_hash=NULL;
-static GMutex *database_hash_mutex = NULL;
-gchar *target_db=NULL;
-struct database *database_db=NULL;
+GHashTable      *database_hash = NULL;
+static GMutex   *database_hash_mutex = NULL;
+gchar           *target_db = NULL;
+struct database *database_db = NULL;
 
-gboolean has_been_defined_a_target_database(){
-  return database_db!=NULL;
+gboolean has_been_defined_a_target_database()
+{
+  return database_db != NULL;
 }
 
-void initialize_database(){
-  database_hash_mutex=g_mutex_new();
-  database_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
+void initialize_database()
+{
+  database_hash_mutex = g_mutex_new();
+  database_hash = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
   if (target_db)
-    database_db=get_database(g_strdup(target_db), g_strdup(target_db));
+    database_db = get_database(g_strdup(target_db), g_strdup(target_db));
 }
 
-static
-struct database * new_database(gchar *database, gchar *filename){
-  struct database * _database = g_new(struct database, 1);
-  _database->source_database=database;
+static struct database *new_database(gchar *database, gchar *filename)
+{
+  struct database *_database = g_new(struct database, 1);
+  _database->source_database = database;
   _database->target_database = target_db ? g_strdup(target_db) : newline_unprotect(_database->source_database);
   _database->database_name_in_filename = filename;
-  _database->mutex=g_mutex_new();
-  _database->sequence_queue= g_async_queue_new();
-  _database->table_queue=g_async_queue_new();
-  _database->schema_state=target_db?CREATED:NOT_FOUND;
-  _database->checksum.schema=NULL;
-  _database->checksum.routine=NULL;
-  _database->checksum.trigger=NULL;
-  _database->checksum.event=NULL;
-  gchar * any_table_config_file_dbt_key = build_config_file_dbt_key(_database->source_database,"");
-  GHashTable *cpt = g_hash_table_lookup(conf_per_table,SKIP_DATABASE_CHECKSUMS);
-  gboolean c=FALSE;
+  _database->mutex = g_mutex_new();
+  _database->sequence_queue = g_async_queue_new();
+  _database->table_queue = g_async_queue_new();
+  _database->schema_state = target_db ? CREATED : NOT_FOUND;
+  _database->checksum.schema = NULL;
+  _database->checksum.routine = NULL;
+  _database->checksum.trigger = NULL;
+  _database->checksum.event = NULL;
+  gchar      *any_table_config_file_dbt_key = build_config_file_dbt_key(_database->source_database, "");
+  GHashTable *cpt = g_hash_table_lookup(conf_per_table, SKIP_DATABASE_CHECKSUMS);
+  gboolean    c = FALSE;
   if (cpt)
-    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+    c = GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
   else
-    c=FALSE;
-  _database->checksum.skip_schema = c?c:skip_database_checksums;
-  cpt = g_hash_table_lookup(conf_per_table,SKIP_ROUTINE_CHECKSUMS);
+    c = FALSE;
+  _database->checksum.skip_schema = c ? c : skip_database_checksums;
+  cpt = g_hash_table_lookup(conf_per_table, SKIP_ROUTINE_CHECKSUMS);
   if (cpt)
-    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+    c = GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
   else
-    c=FALSE;
-  _database->checksum.skip_routine=c?c:skip_routine_checksums;
-  cpt = g_hash_table_lookup(conf_per_table,SKIP_TRIGGER_CHECKSUMS);
+    c = FALSE;
+  _database->checksum.skip_routine = c ? c : skip_routine_checksums;
+  cpt = g_hash_table_lookup(conf_per_table, SKIP_TRIGGER_CHECKSUMS);
   if (cpt)
-    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+    c = GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
   else
-    c=FALSE;
-  _database->checksum.skip_trigger=c?c:skip_trigger_checksums;
-  cpt = g_hash_table_lookup(conf_per_table,SKIP_EVENT_CHECKSUMS);
+    c = FALSE;
+  _database->checksum.skip_trigger = c ? c : skip_trigger_checksums;
+  cpt = g_hash_table_lookup(conf_per_table, SKIP_EVENT_CHECKSUMS);
   if (cpt)
-    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+    c = GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
   else
-    c=FALSE;
-  _database->checksum.skip_event=c?c:skip_event_checksums;
+    c = FALSE;
+  _database->checksum.skip_event = c ? c : skip_event_checksums;
   g_free(any_table_config_file_dbt_key);
   return _database;
 }
 
-struct database * get_database(gchar *filename, gchar *name){
+struct database *get_database(gchar *filename, gchar *name)
+{
   g_mutex_lock(database_hash_mutex);
-  struct database * _database=g_hash_table_lookup(database_hash, filename);
-  if (_database==NULL){
-    _database=new_database(g_strdup(name), filename);
+  struct database *_database = g_hash_table_lookup(database_hash, filename);
+  if (_database == NULL)
+  {
+    _database = new_database(g_strdup(name), filename);
     g_hash_table_insert(database_hash, filename, _database);
-    if (g_strcmp0(filename,name))
+    if (g_strcmp0(filename, name))
       g_hash_table_insert(database_hash, g_strdup(name), _database);
-    _database=g_hash_table_lookup(database_hash, name);
-  }else{
-    if (filename != name){
-      _database->source_database=g_strdup(name);
+    _database = g_hash_table_lookup(database_hash, name);
+  }
+  else
+  {
+    if (filename != name)
+    {
+      _database->source_database = g_strdup(name);
       _database->target_database = g_strdup(target_db ? target_db : _database->source_database);
     }
   }
@@ -103,65 +111,78 @@ struct database * get_database(gchar *filename, gchar *name){
   return _database;
 }
 
-gboolean execute_use(struct connection_data *cd){
-  if (cd->current_database){
+gboolean execute_use(struct connection_data *cd)
+{
+  if (cd->current_database)
+  {
     gchar *query = g_strdup_printf("USE `%s`", cd->current_database->target_database);
-    if (m_query_warning(cd->thrconn, query, "Thread %d: Error switching to database `%s`", cd->thread_id, cd->current_database->target_database)) {
+    if (m_query_warning(cd->thrconn, query, "Thread %d: Error switching to database `%s`", cd->thread_id, cd->current_database->target_database))
+    {
       g_free(query);
       return TRUE;
     }
     g_free(query);
-  }else{
-    if (machine_log_json_enabled()) {
+  }
+  else
+  {
+    if (machine_log_json_enabled())
+    {
       gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
       gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
       machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-                        "MESSAGE", "Not able to switch database",
-                        "EVENT", "database_switch",
-                        "PHASE", "restore_schema",
-                        "STATUS", "failed",
-                        "THREAD_ID", thread_id,
-                        "CONNECTION_ID", connection_id,
-                        "RETRYABLE", "false",
-                        "FATAL", "false",
-                        NULL);
+          "MESSAGE", "Not able to switch database",
+          "EVENT", "database_switch",
+          "PHASE", "restore_schema",
+          "STATUS", "failed",
+          "THREAD_ID", thread_id,
+          "CONNECTION_ID", connection_id,
+          "RETRYABLE", "false",
+          "FATAL", "false",
+          NULL);
       g_free(thread_id);
       g_free(connection_id);
     }
-    g_warning("Thread %ld with connection %ld: Not able to switch database",cd->thread_id, cd->connection_id);
+    g_warning("Thread %ld with connection %ld: Not able to switch database", cd->thread_id, cd->connection_id);
   }
   return FALSE;
 }
 
-void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar * msg){
-  if ( database != NULL && (target_db == NULL || cd->current_database==NULL)){
-    if (cd->current_database==NULL || g_strcmp0(database->target_database, cd->current_database->target_database) != 0){
-      cd->current_database=database;
-      if (execute_use(cd)){
+void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar *msg)
+{
+  if (database != NULL && (target_db == NULL || cd->current_database == NULL))
+  {
+    if (cd->current_database == NULL || g_strcmp0(database->target_database, cd->current_database->target_database) != 0)
+    {
+      cd->current_database = database;
+      if (execute_use(cd))
+      {
         m_critical("Thread %ld with connection %ld: Error switching to database `%s` %s: %s", cd->thread_id, cd->connection_id, cd->current_database->target_database, msg, mysql_error(cd->thrconn));
       }
     }
   }
 }
 
-void create_database(struct thread_data *td, gchar *database) {
-
+void create_database(struct thread_data *td, gchar *database)
+{
   const gchar *filename =
-      g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension?exec_per_thread_extension:"");
+      g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension ? exec_per_thread_extension : "");
   const gchar *filepath = g_strdup_printf("%s/%s",
-                                            directory, filename);
+      directory, filename);
 
   if (drop_database)
     execute_drop_database(td, database);
 
-  if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
+  if (g_file_test(filepath, G_FILE_TEST_EXISTS))
+  {
     trace("Creating database from %s", filename);
     g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_mydumper_file(td, filename, TRUE, NULL));
-  } else {
+  }
+  else
+  {
     GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
-    g_string_append_printf(data,"`%s`", database);
+    g_string_append_printf(data, "`%s`", database);
     trace("Creating schema %s as %s not found", database, filepath);
-    if (restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
+    if (restore_data_in_gstring_extended(td, data, TRUE, NULL, m_critical, "Failed to create database: %s", database))
       g_atomic_int_inc(&(detailed_errors.schema_errors));
     g_string_free(data, TRUE);
   }
@@ -169,10 +190,12 @@ void create_database(struct thread_data *td, gchar *database) {
   return;
 }
 
-void start_database(struct thread_data *td){
-  if (database_db){
+void start_database(struct thread_data *td)
+{
+  if (database_db)
+  {
     if (!no_schemas)
       create_database(td, database_db->target_database);
-    database_db->schema_state=CREATED;
+    database_db->schema_state = CREATED;
   }
 }
