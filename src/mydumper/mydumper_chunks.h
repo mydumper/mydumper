@@ -19,16 +19,21 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#define MIN_CHUNK_STEP_SIZE 1000
+#ifndef _src_mydumper_mydumper_chunks_h
+#define _src_mydumper_mydumper_chunks_h
 
-union chunk_step;
-
-#if !defined(mydumper_mydumper_chunks)
-#define mydumper_mydumper_chunks
+#include <glib.h>
+#include <mysql.h>
 
 #include "mydumper_integer_chunks.h"
 #include "mydumper_partition_chunks.h"
 #include "mydumper_string_chunks.h"
+
+struct table_job;
+struct db_table;
+struct configuration;
+
+#define MIN_CHUNK_STEP_SIZE 1000
 
 enum chunk_type
 {
@@ -81,16 +86,12 @@ struct chunk_step_item
   enum chunk_states       status;
 };
 
-#endif
-
 void initialize_chunk();
 void start_chunk_builder(struct configuration *conf);
 
-guint64                 gint64_abs(gint64 a);
 void                    load_chunks_entries(GOptionContext *context);
 GList                  *get_chunks_for_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
 void                    set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt);
-void                    free_integer_step(union chunk_step *cs);
 union chunk_step       *get_next_chunk(struct db_table *dbt);
 void                   *chunk_builder_thread(struct configuration *conf);
 void                    finalize_chunk();
@@ -101,3 +102,5 @@ void                    build_where_clause_on_table_job(struct table_job *tj);
 guint64                 get_rows_from_explain(MYSQL *conn, struct db_table *dbt, GString *where, gchar *field);
 guint64                 get_rows_from_count(MYSQL *conn, struct db_table *dbt, GString *where);
 GString                *get_where_from_csi(struct chunk_step_item *csi);
+
+#endif

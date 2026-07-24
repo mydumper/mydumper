@@ -24,8 +24,8 @@
 #define REPLACE "REPLACE"
 #define UNLOCK_TABLES "UNLOCK TABLES"
 
-#ifndef _src_mydumper_working_thread_h
-#define _src_mydumper_working_thread_h
+#ifndef _src_mydumper_mydumper_working_thread_h
+#define _src_mydumper_mydumper_working_thread_h
 
 struct thread_data_buffers
 {

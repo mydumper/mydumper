@@ -11,6 +11,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
     Authors:        David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_mydumper_mydumper_masquerade_h
+#define _src_mydumper_mydumper_masquerade_h
+
 #include "mydumper.h"
 
 #define REGEX_MAX_LEN 2048
@@ -58,3 +62,5 @@ gboolean identity_function(GString *str, gchar *row, gulong *length, struct func
 // fun_ptr get_function_pointer_for (gchar *function_char);
 void                     finalize_masquerade();
 struct function_pointer *init_function_pointer(gchar *value);
+
+#endif

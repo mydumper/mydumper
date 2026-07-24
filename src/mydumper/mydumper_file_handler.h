@@ -18,6 +18,10 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_mydumper_mydumper_file_handler_h
+#define _src_mydumper_mydumper_file_handler_h
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -62,3 +66,5 @@ guint                          dump_summary_get_retries(void);
 guint                          dump_summary_get_skipped(void);
 guint                          dump_summary_get_tables(void);
 struct filename_queue_element *new_filename_queue_element(struct db_table *dbt, gchar *filename, GAsyncQueue *done);
+
+#endif

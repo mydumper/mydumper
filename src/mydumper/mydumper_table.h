@@ -15,8 +15,8 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _src_mydumper_table_h
-#define _src_mydumper_table_h
+#ifndef _src_mydumper_mydumper_table_h
+#define _src_mydumper_mydumper_table_h
 
 enum db_table_states
 {
@@ -77,6 +77,7 @@ struct db_table
 };
 
 #endif
+
 void     initialize_table();
 void     finalize_table();
 void     prefetch_table_metadata(MYSQL *conn);

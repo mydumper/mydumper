@@ -18,8 +18,9 @@
 struct MList;
 struct configuration;
 
-#ifndef _mydumper_start_dump_h
-#define _mydumper_start_dump_h
+#ifndef _src_mydumper_mydumper_start_dump_h
+#define _src_mydumper_mydumper_start_dump_h
+
 #define MAX_START_TRANSACTION_RETRIES 5
 #define MYDUMPER "mydumper"
 

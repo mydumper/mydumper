@@ -18,6 +18,10 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_mydumper_mydumper_common_h
+#define _src_mydumper_mydumper_common_h
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -60,3 +64,5 @@ extern guint       server_version;
 extern const char *routine_type[];
 void               initialize_header_in_gstring(GString *statement, gchar *charset);
 gboolean           m_pstrstr(char **str_list, const gchar *needle);
+
+#endif

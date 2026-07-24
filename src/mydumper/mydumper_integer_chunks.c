@@ -19,26 +19,27 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <mysql.h>
+#include <errno.h>
+#include <gio/gio.h>
 #include <glib.h>
+#include <glib/gstdio.h>
+#include <math.h>
+#include <mysql.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <glib/gstdio.h>
-#include <gio/gio.h>
-#include <math.h>
+
+#include "mydumper_common.h"
+#include "mydumper_integer_chunks.h"
 
 #include "mydumper.h"
-#include "mydumper_start_dump.h"
 #include "mydumper_chunks.h"
 #include "mydumper_database.h"
-#include "mydumper_jobs.h"
 #include "mydumper_global.h"
+#include "mydumper_jobs.h"
+#include "mydumper_start_dump.h"
 #include "mydumper_working_thread.h"
 #include "mydumper_write.h"
-#include "mydumper_integer_chunks.h"
-#include "mydumper_common.h"
 
 extern guint max_split_of_step_in_integer_chunk;
 guint64      min_integer_chunk_step_size = 0;

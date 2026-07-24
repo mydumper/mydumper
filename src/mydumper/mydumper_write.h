@@ -18,11 +18,14 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 #define LOAD_DATA_PREFIX "LOAD DATA LOCAL INFILE '"
 
-#ifndef _src_mydumper_write_h
-#define _src_mydumper_write_h
+#ifndef _src_mydumper_mydumper_write_h
+#define _src_mydumper_mydumper_write_h
+
 #include "mydumper_create_jobs.h"
+
 #endif
 
 void     load_write_entries(GOptionGroup *main_group, GOptionContext *context);

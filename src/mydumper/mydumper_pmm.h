@@ -15,4 +15,9 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#ifndef _src_mydumper_mydumper_pmm_h
+#define _src_mydumper_mydumper_pmm_h
+
 void write_mydumper_pmm_entries(GString *content, struct configuration *conf);
+
+#endif

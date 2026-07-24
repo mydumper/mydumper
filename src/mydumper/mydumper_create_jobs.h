@@ -19,8 +19,8 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _src_mydumper_create_jobs_h
-#define _src_mydumper_create_jobs_h
+#ifndef _src_mydumper_mydumper_create_jobs_h
+#define _src_mydumper_mydumper_create_jobs_h
 
 #include "mydumper_table.h"
 

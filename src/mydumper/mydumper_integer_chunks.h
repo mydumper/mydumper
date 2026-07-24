@@ -18,10 +18,15 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-#if !defined(mydumper_mydumper_interger_chunks)
-#define mydumper_mydumper_interger_chunks
+#ifndef _src_mydumper_mydumper_integer_chunks_h
+#define _src_mydumper_mydumper_integer_chunks_h
 
-#include "mydumper_chunks.h"
+#include <glib.h>
+
+struct chunk_step_item;
+struct table_job;
+struct db_table;
+union chunk_step;
 
 struct unsigned_int
 {
@@ -56,7 +61,6 @@ struct integer_step
   gboolean   check_min;
   guint64    rows_in_explain;
 };
-#endif
 
 guint64                 gint64_abs(gint64 a);
 struct chunk_step_item *new_integer_step_item(gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 number, gboolean check_min, gboolean check_max, struct chunk_step_item *next, guint position, gboolean multicolumn, guint64 rows_in_explain);
@@ -65,3 +69,5 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt);
 void                    process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi);
 gchar                  *get_integer_chunk_where(union chunk_step *chunk_step);
 void                    update_integer_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, gboolean use_cursor);
+
+#endif

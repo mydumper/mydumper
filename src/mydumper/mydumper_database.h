@@ -14,8 +14,9 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#ifndef _src_mydumper_database_h
-#define _src_mydumper_database_h
+
+#ifndef _src_mydumper_mydumper_database_h
+#define _src_mydumper_mydumper_database_h
 
 struct database
 {
@@ -32,4 +33,5 @@ void             free_databases();
 void             write_database_on_disk(FILE *mdfile);
 // OPTIMIZATION: Unsorted version for faster finalization
 void write_database_on_disk_unsorted(FILE *mdfile);
+
 #endif
