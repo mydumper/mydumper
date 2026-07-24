@@ -33,12 +33,12 @@
 
 #include "mydumper.h"
 
-#include "../logging.h"
 #include "mydumper_arguments.h"
 #include "mydumper_daemon_thread.h"
 #include "mydumper_file_handler.h"
 #include "mydumper_global.h"
 #include "mydumper_start_dump.h"
+#include "../logging.h"
 
 const char DIRECTORY[] = "export";
 

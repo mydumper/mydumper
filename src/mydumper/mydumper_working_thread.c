@@ -23,7 +23,6 @@
 #include <mysql.h>
 
 #include "mydumper_common.h"
-#include "mydumper_working_thread.h"
 
 #include "mydumper.h"
 #include "mydumper_arguments.h"
@@ -36,6 +35,7 @@
 #include "mydumper_start_dump.h"
 #include "mydumper_stream.h"
 #include "mydumper_table.h"
+#include "mydumper_working_thread.h"
 /* Program options */
 gboolean order_by_primary_key = FALSE;
 gboolean use_savepoints = FALSE;

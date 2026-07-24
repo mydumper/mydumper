@@ -24,7 +24,6 @@
 #include <math.h>
 
 #include "mydumper_common.h"
-#include "mydumper_write.h"
 
 #include "mydumper.h"
 #include "mydumper_arguments.h"
@@ -35,6 +34,7 @@
 #include "mydumper_masquerade.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_working_thread.h"
+#include "mydumper_write.h"
 
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON

@@ -24,13 +24,13 @@
 
 #include "mydumper_common.h"
 
-#include "../logging.h"
 #include "mydumper_database.h"
 #include "mydumper_global.h"
 #include "mydumper_jobs.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_working_thread.h"
 #include "mydumper_write.h"
+#include "../logging.h"
 
 /* Program options */
 gboolean      dump_triggers = FALSE;

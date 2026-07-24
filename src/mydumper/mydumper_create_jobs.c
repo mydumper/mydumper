@@ -21,10 +21,10 @@
 #include <gio/gio.h>
 
 #include "mydumper_common.h"
-#include "mydumper_create_jobs.h"
 
 #include "mydumper_arguments.h"
 #include "mydumper_chunks.h"
+#include "mydumper_create_jobs.h"
 #include "mydumper_database.h"
 #include "mydumper_global.h"
 #include "mydumper_jobs.h"

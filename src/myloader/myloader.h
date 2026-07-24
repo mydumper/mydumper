@@ -21,13 +21,13 @@
 #include "../common_options.h"
 #include "../config.h"
 #include "../connection.h"
-#include "../logging.h"
 #include "../pmm_thread.h"
 #include "../regex.h"
 #include "../server_detect.h"
 #include "../set_verbose.h"
 #include "../tables_skiplist.h"
 #include "myloader_table.h"
+#include "../logging.h"
 
 #ifndef _src_myloader_h
 #define _src_myloader_h

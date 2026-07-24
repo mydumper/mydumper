@@ -23,11 +23,11 @@
 #include <unistd.h>
 
 #include "common.h"
-#include "connection.h"
 
 #include "config.h"
-#include "logging.h"
+#include "connection.h"
 #include "server_detect.h"
+#include "logging.h"
 
 char                    *hostname = NULL;
 char                    *username = NULL;

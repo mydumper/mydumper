@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "common.h"
+
 #include "server_detect.h"
 
 int product = SERVER_TYPE_UNKNOWN;
