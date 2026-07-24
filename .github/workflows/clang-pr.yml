@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Checkout PR
         uses: actions/checkout@v7
-      - name: jidicula/clang-format-action@v4.18.0
+      - uses: jidicula/clang-format-action@v4.18.0
         with:
           clang-format-version: '22'
           check-path: 'src'
