@@ -22,6 +22,8 @@
 #ifndef _src_mydumper_create_jobs_h
 #define _src_mydumper_create_jobs_h
 
+#include "mydumper_table.h"
+
 enum job_type
 {
   JOB_SHUTDOWN,

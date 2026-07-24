@@ -22,17 +22,18 @@
 #include <gio/gio.h>
 #include <math.h>
 
-#include "mydumper.h"
-#include "mydumper_start_dump.h"
-#include "mydumper_database.h"
-#include "mydumper_jobs.h"
-#include "mydumper_global.h"
-#include "mydumper_write.h"
 #include "mydumper_common.h"
+
+#include "mydumper.h"
 #include "mydumper_chunks.h"
-#include "mydumper_integer_chunks.h"
-#include "mydumper_partition_chunks.h"
 #include "mydumper_create_jobs.h"
+#include "mydumper_database.h"
+#include "mydumper_global.h"
+#include "mydumper_integer_chunks.h"
+#include "mydumper_jobs.h"
+#include "mydumper_partition_chunks.h"
+#include "mydumper_start_dump.h"
+#include "mydumper_write.h"
 
 extern guint64  min_integer_chunk_step_size;
 extern gboolean split_string_pk;
