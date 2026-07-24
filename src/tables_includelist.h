@@ -12,4 +12,9 @@
     Authors:        David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#ifndef _src_tables_includelist_h
+#define _src_tables_includelist_h
+
 void load_include_tables();
+
+#endif 

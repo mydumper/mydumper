@@ -14,8 +14,13 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#ifndef _src_myloader_database_h
-#define _src_myloader_database_h
+#ifndef _src_myloader_myloader_database_h
+#define _src_myloader_myloader_database_h
+
+#include <glib.h>
+
+#include "../checksum.h"
+#include "myloader.h"
 
 struct database
 {
@@ -36,4 +41,5 @@ void             execute_use_if_needs_to(struct connection_data *cd, struct data
 gboolean         execute_use(struct connection_data *cd);
 void             start_database(struct thread_data *td);
 gboolean         has_been_defined_a_target_database();
+
 #endif

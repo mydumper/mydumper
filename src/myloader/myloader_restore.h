@@ -14,8 +14,18 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_myloader_myloader_restore_h
+#define _src_myloader_myloader_restore_h
+
+#include <glib.h>
+
+#include "myloader.h"
+
 #define DEFAULT_DELIMITER ";\n"
 #define DEFAULT_MAX_TRANSACTION_SIZE 1000
+
+struct db_table;
 
 enum kind_of_statement
 {
@@ -50,3 +60,5 @@ void     release_load_data_as_it_is_close(gchar *filename);
 void     close_restore_thread();
 void     wait_restore_threads_to_close();
 gboolean release_idle_connection_if_possible();
+
+#endif

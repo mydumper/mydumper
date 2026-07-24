@@ -43,6 +43,7 @@
 #include "myloader_restore.h"
 #include "myloader_restore_job.h"
 #include "myloader_stream.h"
+#include "myloader_table.h"
 #include "myloader_worker_index.h"
 #include "myloader_worker_loader.h"
 #include "myloader_worker_loader_main.h"

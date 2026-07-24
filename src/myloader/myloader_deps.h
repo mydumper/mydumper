@@ -12,16 +12,24 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
+    Authors: David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _src_myloader_myloader_worker_post_h
-#define _src_myloader_myloader_worker_post_h
+#ifndef _src_myloader_myloader_deps_h
+#define _src_myloader_myloader_deps_h
 
-#include "myloader.h"
+#include "../common.h"
 
-void initialize_post_loding_threads(struct configuration *conf);
-void create_post_shutdown_job(struct configuration *conf);
-void wait_post_worker_to_finish();
+#include "../checksum.h"
+#include "../common_options.h"
+#include "../config.h"
+#include "../connection.h"
+#include "../pmm_thread.h"
+#include "../regex.h"
+#include "../server_detect.h"
+#include "../set_verbose.h"
+#include "../tables_skiplist.h"
+#include "../logging.h"
+#include "myloader_table.h"
 
 #endif

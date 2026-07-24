@@ -12,13 +12,18 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        David Ducos, Percona (david dot ducos at percona dot com)
+    Authors: David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <mysql.h>
+#ifndef _src_common_h
+#define _src_common_h
+
 #include <stdio.h>
+#include <glib.h>
+#include <mysql.h>
 
 #include "common_options.h"
+
 #define MYLOADER_MODE "myloader_mode"
 #define IS_TRX_TABLE 2
 #define INCLUDE_CONSTRAINT 4
@@ -90,8 +95,7 @@ extern const gchar                *show_binary_log_status;
 extern const gchar                *change_replication_source;
 extern enum source_control_command source_control_command;
 extern guint                       throttle_max_usleep_limit;
-#ifndef _src_common_h
-#define _src_common_h
+
 void initialize_zstd_cmd();
 void initialize_gzip_cmd();
 
@@ -172,7 +176,6 @@ void        free_set_names();
 gchar      *filter_sequence_schemas(const gchar *create_table);
 void        set_session_hash_insert(GHashTable *set_session_hash, const gchar *key, gchar *value);
 void        parse_key_file_group(GKeyFile *kf, GOptionContext *context, const gchar *group);
-#endif
 
 /* using fewer than 2 threads can cause mydumper to hang */
 #define MIN_THREAD_COUNT 2
@@ -206,6 +209,7 @@ char       *newline_protect(char *r);
 char       *newline_unprotect(char *r);
 void        set_thread_name(const char *format, ...);
 extern void trace(const char *format, ...);
+extern gboolean debug;
 #define message(...)    \
   if (debug)            \
     trace(__VA_ARGS__); \
@@ -256,3 +260,5 @@ void          load_options_for_product_from_key_file(GKeyFile *kf,
     int                                               revision);
 void         *m_coalesce_hash(GHashTable *ht, gchar *db_table_key, gchar *any_db_key, gchar *any_table_key);
 GList        *m_glistsplit(const gchar *str);
+
+#endif

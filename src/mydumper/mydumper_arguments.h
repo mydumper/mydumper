@@ -22,6 +22,8 @@
 #ifndef _src_mydumper_mydumper_arguments_h
 #define _src_mydumper_mydumper_arguments_h
 
+#include <glib.h>
+
 #define INSERT_ARG "INSERT"
 #define LOAD_DATA_ARG "LOAD_DATA"
 #define CSV_ARG "CSV"

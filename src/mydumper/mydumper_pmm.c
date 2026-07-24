@@ -19,6 +19,7 @@
 
 #include "mydumper_global.h"
 #include "mydumper_stream.h"
+#include "mydumper_table.h"
 
 void append_pmm_entry(GString *content, const gchar *metric, const gchar *_key, guint64 value)
 {

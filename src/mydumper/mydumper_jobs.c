@@ -24,6 +24,7 @@
 
 #include "mydumper_common.h"
 
+#include "mydumper.h"
 #include "mydumper_database.h"
 #include "mydumper_global.h"
 #include "mydumper_jobs.h"

@@ -12,14 +12,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors:        Domas Mituzas, Facebook ( domas at fb dot com )
-                        Mark Leith, Oracle Corporation (mark dot leith at oracle
-   dot com) Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
-
+    Authors: Domas Mituzas, Facebook ( domas at fb dot com )
+            Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
+            Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
 
-#ifndef LOGGING_H
-#define LOGGING_H
+#ifndef _src_logging_h
+#define _src_logging_h
 
 // variables
 extern gchar *logfile;

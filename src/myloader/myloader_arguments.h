@@ -19,6 +19,9 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#ifndef _src_myloader_myloader_arguments_h
+#define _src_myloader_myloader_arguments_h
+
 #include "myloader.h"
 
 #define AFTER_IMPORT_PER_TABLE "AFTER_IMPORT_PER_TABLE"
@@ -48,3 +51,5 @@ static inline const char *purgemode2str(enum purge_mode pm)
   g_assert(0);
   return 0;
 }
+
+#endif

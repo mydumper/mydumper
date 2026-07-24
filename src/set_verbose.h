@@ -12,14 +12,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors:        Domas Mituzas, Facebook ( domas at fb dot com )
-                        Mark Leith, Oracle Corporation (mark dot leith at oracle
-   dot com) Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
-
+    Authors: Domas Mituzas, Facebook ( domas at fb dot com )
+             Mark Leith, Oracle Corporation (mark dot leith at oracle dot com) 
+             Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
 
-#ifndef SET_VERBOSE_H
-#define SET_VERBOSE_H
+#ifndef _src_set_verbose_h
+#define _src_set_verbose_h
 
 void set_verbose(guint verbosity);
 void set_debug();

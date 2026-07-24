@@ -14,7 +14,12 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_myloader_myloader_worker_schema_h
+#define _src_myloader_myloader_worker_schema_h
+
 #include "myloader.h"
+#include "myloader_restore_job.h"
 
 enum schema_job_type
 {
@@ -29,7 +34,6 @@ struct schema_job
 {
   enum schema_job_type type;
   struct restore_job  *restore_job;
-  //  struct database *use_database;
 };
 
 static inline const char *schema_job_type2str(enum schema_job_type ft)
@@ -56,3 +60,5 @@ void     start_worker_schema();
 void     wait_schema_worker_to_finish(struct configuration *conf);
 gboolean schema_push(enum schema_job_type type, gchar *filename, enum restore_job_type rj_type, struct db_table *dbt, struct database *_database, GString *statement, enum restore_job_statement_type object, struct database *use_database);
 void     schema_ended();
+
+#endif

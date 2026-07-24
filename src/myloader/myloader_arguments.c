@@ -23,6 +23,7 @@
 
 #include "myloader_arguments.h"
 
+#include "myloader_deps.h"
 #include "myloader_global.h"
 
 gchar          *optimize_keys_str = NULL;

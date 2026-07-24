@@ -14,10 +14,17 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#define CONFIG "config"
+
+#ifndef _src_myloader_myloader_process_h
+#define _src_myloader_myloader_process_h
+
 #include <stdio.h>
+#include <glib.h>
 
 #include "myloader_restore_job.h"
+
+#define CONFIG "config"
+
 struct fifo
 {
   int      pid;
@@ -42,3 +49,5 @@ void  process_metadata_global_filename(gchar *file, GOptionContext *local_contex
 FILE *myl_open(char *filename, const char *type);
 void  myl_close(const char *filename, FILE *file, gboolean rm);
 gint  cmp_restore_job(gconstpointer rj1, gconstpointer rj2);
+
+#endif

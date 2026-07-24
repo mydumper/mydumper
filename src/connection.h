@@ -12,10 +12,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        Aaron Brady, Shopify (insom)
+    Authors: Aaron Brady, Shopify (insom)
 */
-#ifndef _connection_h
-#define _connection_h
+
+#ifndef _src_connection_h
+#define _src_connection_h
+
 #include <mysql.h>
 
 #define INFORMATION_SCHEMA "INFORMATION_SCHEMA"
@@ -30,4 +32,5 @@ void          print_connection_help();
 GOptionGroup *load_connection_entries(GOptionContext *context);
 void          print_connection_details_once();
 extern char  *hostname;
+
 #endif

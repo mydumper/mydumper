@@ -1,5 +1,4 @@
 ---
-BasedOnStyle: Google
 AlignAfterOpenBracket: DontAlign
 AlignConsecutiveDeclarations:
   Enabled: true
@@ -7,10 +6,10 @@ AllowShortCaseExpressionOnASingleLine: false
 AllowShortEnumsOnASingleLine: false
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
+BasedOnStyle: Google
 BinPackParameters: OnePerLine
 BreakBeforeBraces: Allman
 ColumnLimit: 0
-PointerAlignment: Right
 IncludeBlocks: Regroup
 IncludeCategories:
   - Regex: ^<.*\.h>
@@ -29,3 +28,6 @@ IncludeCategories:
     Priority: 1
     SortPriority: 1
     CaseSensitive: false
+InsertNewlineAtEOF: true
+PointerAlignment: Right
+TabWidth: 4

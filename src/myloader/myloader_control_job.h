@@ -15,10 +15,13 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _src_myloader_control_job_h
-#define _src_myloader_control_job_h
+#ifndef _src_myloader_myloader_control_job_h
+#define _src_myloader_myloader_control_job_h
 
 #include "myloader.h"
+
+struct restore_job;
+struct database;
 
 enum control_job_type
 {

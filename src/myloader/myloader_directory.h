@@ -14,7 +14,15 @@
 
     Authors:        David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_myloader_myloader_directory_h
+#define _src_myloader_myloader_directory_h
+
+#include "myloader.h"
+
 void  initialize_directory();
 void *process_directory(struct configuration *conf);
 void  wait_directory_to_process_metadata();
 void  release_directory_metadata_lock();
+
+#endif

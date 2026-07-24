@@ -19,6 +19,9 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#ifndef _src_mydumper_mydumper_h
+#define _src_mydumper_mydumper_h
+
 #include "../common.h"
 
 #include "../checksum.h"
@@ -31,3 +34,5 @@
 #include "../set_verbose.h"
 #include "../tables_skiplist.h"
 #include "../logging.h"
+
+#endif

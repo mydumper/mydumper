@@ -17,6 +17,14 @@
 
 */
 
+#ifndef _src_myloader_myloader_global_h
+#define _src_myloader_myloader_global_h
+
+#include <glib.h>
+
+#include "myloader.h"
+#include "../common_options.h"
+
 extern gboolean debug;
 extern gboolean disable_redo_log;
 extern gboolean program_version;
@@ -111,3 +119,5 @@ extern struct replication_settings    source_data;
 extern struct restore_errors          detailed_errors;
 
 extern unsigned long long int total_data_sql_files;
+
+#endif

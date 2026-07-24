@@ -22,32 +22,17 @@
 #ifndef _src_mydumper_mydumper_create_jobs_h
 #define _src_mydumper_mydumper_create_jobs_h
 
+#include <stdio.h>
+#include <glib.h>
+#include <mysql.h>
+
 #include "mydumper_table.h"
 
-enum job_type
-{
-  JOB_SHUTDOWN,
-  JOB_RESTORE,
-  JOB_DUMP,
-  JOB_DUMP_NON_INNODB,
-  JOB_DEFER,
-  JOB_DETERMINE_CHUNK_TYPE,
-  JOB_TABLE,
-  JOB_CHECKSUM,
-  JOB_SCHEMA,
-  JOB_VIEW,
-  JOB_SEQUENCE,
-  JOB_TRIGGERS,
-  JOB_SCHEMA_TRIGGERS,
-  JOB_SCHEMA_POST,
-  JOB_BINLOG,
-  JOB_CREATE_DATABASE,
-  JOB_CREATE_TABLESPACE,
-  JOB_DUMP_DATABASE,
-  JOB_DUMP_ALL_DATABASES,
-  JOB_DUMP_TABLE_LIST,
-  JOB_WRITE_SOURCE_AND_REPLICA_STATUS
-};
+struct thread_data;
+struct chunk_step_item;
+struct configuration;
+struct database;
+struct job;
 
 struct dump_table_job
 {
@@ -114,8 +99,6 @@ struct table_job
   guint64 num_rows_of_last_run;
 };
 
-#endif
-
 void initialize_create_jobs(struct configuration *_conf);
 
 struct table_job *new_table_job(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item);
@@ -140,3 +123,5 @@ void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt);
 void create_job_to_dump_schema_triggers(struct database *database);
 void create_job_to_dump_table(gboolean is_view, gboolean is_sequence, struct database *database, gchar *table, gchar *collation, gchar *engine);
 void create_job_to_dump_table_list(gchar **table_list);
+
+#endif

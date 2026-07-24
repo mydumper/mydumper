@@ -18,6 +18,12 @@
 #ifndef _src_mydumper_mydumper_database_h
 #define _src_mydumper_mydumper_database_h
 
+#include <stdio.h>
+#include <glib.h>
+#include <mysql.h>
+
+#include "../checksum.h"
+
 struct database
 {
   gchar                         *source_database;
