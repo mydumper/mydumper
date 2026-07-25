@@ -18,23 +18,22 @@
 #include <glib/gstdio.h>
 #include <mysql.h>
 
-#include "myloader_common.h"
+#include "myloader/myloader_process_file_type.h"
 
-#include "myloader.h"
-#include "myloader_control_job.h"
-#include "myloader_database.h"
-#include "myloader_global.h"
-#include "myloader_process.h"
-#include "myloader_process_file_type.h"
-#include "myloader_restore.h"
-#include "myloader_restore_job.h"
-#include "myloader_worker_loader_main.h"
-#include "myloader_worker_schema.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_control_job.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_process.h"
+#include "myloader/myloader_restore.h"
+#include "myloader/myloader_restore_job.h"
+#include "myloader/myloader_worker_loader_main.h"
+#include "myloader/myloader_worker_schema.h"
 
-extern guint schema_counter;
-guint        schema_processed_counter = 0;
-GAsyncQueue *process_file_type_queue = NULL;
-// GThread *stream_process_filename_thread = NULL;
+extern guint          schema_counter;
+guint                 schema_processed_counter = 0;
+GAsyncQueue          *process_file_type_queue = NULL;
 struct configuration *process_file_type_conf;
 guint                 process_file_type_num_threads = 4;
 GThread             **process_file_type_workers;

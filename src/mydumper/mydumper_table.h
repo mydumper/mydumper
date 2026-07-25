@@ -25,8 +25,8 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 
-#include "../checksum.h"
-#include "../common.h"
+#include "checksum.h"
+#include "common.h"
 
 struct database;
 struct configuration;

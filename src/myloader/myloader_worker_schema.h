@@ -18,8 +18,8 @@
 #ifndef _src_myloader_myloader_worker_schema_h
 #define _src_myloader_myloader_worker_schema_h
 
-#include "myloader.h"
-#include "myloader_restore_job.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_restore_job.h"
 
 enum schema_job_type
 {

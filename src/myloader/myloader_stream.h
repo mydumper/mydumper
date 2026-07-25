@@ -18,7 +18,7 @@
 #ifndef _src_myloader_myloader_stream_h
 #define _src_myloader_myloader_stream_h
 
-#include "myloader.h"
+#include "myloader/myloader.h"
 
 void initialize_stream(struct configuration *conf);
 void wait_stream_to_finish();

@@ -18,7 +18,7 @@
 #ifndef _src_myloader_myloader_worker_post_h
 #define _src_myloader_myloader_worker_post_h
 
-#include "myloader.h"
+#include "myloader/myloader.h"
 
 void initialize_post_loding_threads(struct configuration *conf);
 void create_post_shutdown_job(struct configuration *conf);

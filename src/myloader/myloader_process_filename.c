@@ -18,27 +18,26 @@
 #include <glib/gstdio.h>
 #include <mysql.h>
 
-#include "myloader_common.h"
+#include "myloader/myloader_process_filename.h"
 
-#include "myloader.h"
-#include "myloader_control_job.h"
-#include "myloader_database.h"
-#include "myloader_global.h"
-#include "myloader_process.h"
-#include "myloader_process_file_type.h"
-#include "myloader_process_filename.h"
-#include "myloader_restore.h"
-#include "myloader_restore_job.h"
-#include "myloader_worker_loader_main.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_control_job.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_process.h"
+#include "myloader/myloader_process_file_type.h"
+#include "myloader/myloader_restore.h"
+#include "myloader/myloader_restore_job.h"
+#include "myloader/myloader_worker_loader_main.h"
 guint schema_counter = 0;
 guint sequence_counter = 0;
 
 gboolean     process_filename_queue_ended = FALSE;
 GAsyncQueue *process_filename_queue = NULL;
-// GThread *stream_process_filename_thread = NULL;
-gchar  *exec_per_thread = NULL;
-gchar  *exec_per_thread_extension = NULL;
-gchar **exec_per_thread_cmd = NULL;
+gchar       *exec_per_thread = NULL;
+gchar       *exec_per_thread_extension = NULL;
+gchar      **exec_per_thread_cmd = NULL;
 
 GHashTable           *exec_process_id = NULL;
 GMutex               *exec_process_id_mutex = NULL;

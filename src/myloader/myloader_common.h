@@ -22,8 +22,8 @@
 #include <glib.h>
 #include <mysql.h>
 
-#include "myloader_deps.h"
-#include "myloader.h"
+#include "myloader/myloader_deps.h"
+#include "myloader/myloader.h"
 
 struct db_table;
 struct database;

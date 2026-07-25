@@ -22,7 +22,7 @@
 #ifndef _src_myloader_myloader_arguments_h
 #define _src_myloader_myloader_arguments_h
 
-#include "myloader.h"
+#include "myloader/myloader.h"
 
 #define AFTER_IMPORT_PER_TABLE "AFTER_IMPORT_PER_TABLE"
 #define AFTER_IMPORT_ALL_TABLES "AFTER_IMPORT_ALL_TABLES"

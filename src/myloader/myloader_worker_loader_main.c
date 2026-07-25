@@ -14,27 +14,29 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 #include <glib.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "myloader_common.h"
+#include "myloader/myloader_worker_loader_main.h"
 
-#include "myloader_control_job.h"
-#include "myloader_database.h"
-#include "myloader_global.h"
-#include "myloader_process.h"
-#include "myloader_restore.h"
-#include "myloader_restore_job.h"
-#include "myloader_worker_index.h"
-#include "myloader_worker_loader.h"
-#include "myloader_worker_loader_main.h"
-#include "myloader_worker_schema.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_control_job.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_process.h"
+#include "myloader/myloader_restore.h"
+#include "myloader/myloader_restore_job.h"
+#include "myloader/myloader_worker_index.h"
+#include "myloader/myloader_worker_loader.h"
+#include "myloader/myloader_worker_schema.h"
 
 gboolean control_job_ended = FALSE;
 gboolean all_jobs_are_enqueued = FALSE;
+
 /* data_control_queue is for data loads */
-GAsyncQueue    *data_control_queue = NULL;  //, *data_queue=NULL;
+GAsyncQueue    *data_control_queue = NULL;
 static GThread *_worker_loader_main = NULL;
 guint           threads_waiting = 0;
 static GMutex  *threads_waiting_mutex = NULL;
@@ -44,8 +46,6 @@ void *worker_loader_main_thread(struct configuration *conf);
 void initialize_worker_loader_main(struct configuration *conf)
 {
   data_control_queue = g_async_queue_new();
-  //  data_job_queue = g_async_queue_new();
-  //  data_queue = g_async_queue_new();
   threads_waiting_mutex = g_mutex_new();
   _worker_loader_main = m_thread_new("myloader_ctr", (GThreadFunc)worker_loader_main_thread, conf, "Control job thread could not be created");
 }

@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <glib.h>
 
-#include "myloader_restore_job.h"
+#include "myloader/myloader_restore_job.h"
 
 #define CONFIG "config"
 

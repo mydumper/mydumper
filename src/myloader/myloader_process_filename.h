@@ -18,7 +18,7 @@
 #ifndef _src_myloader_myloader_process_filename_h
 #define _src_myloader_myloader_process_filename_h
 
-#include "myloader.h"
+#include "myloader/myloader.h"
 
 struct process_filename_filename
 {

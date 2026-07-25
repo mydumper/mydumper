@@ -21,11 +21,11 @@
 // We need header fcntl.h for open function to build on Alpine. More info in: https://github.com/mydumper/mydumper/issues/1721
 #include <fcntl.h>
 
-#include "mydumper.h"
-#include "mydumper_file_handler.h"
-#include "mydumper_global.h"
-#include "mydumper_stream.h"
-#include "mydumper_write.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_file_handler.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_stream.h"
+#include "mydumper/mydumper_write.h"
 
 GThread     *stream_thread = NULL;
 GThread     *metadata_partial_writer_thread = NULL;

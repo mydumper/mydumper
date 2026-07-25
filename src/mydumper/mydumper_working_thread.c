@@ -22,20 +22,21 @@
 #include <glib/gstdio.h>
 #include <mysql.h>
 
-#include "mydumper_common.h"
+#include "mydumper/mydumper_working_thread.h"
 
-#include "mydumper.h"
-#include "mydumper_arguments.h"
-#include "mydumper_chunks.h"
-#include "mydumper_create_jobs.h"
-#include "mydumper_database.h"
-#include "mydumper_file_handler.h"
-#include "mydumper_global.h"
-#include "mydumper_jobs.h"
-#include "mydumper_start_dump.h"
-#include "mydumper_stream.h"
-#include "mydumper_table.h"
-#include "mydumper_working_thread.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_arguments.h"
+#include "mydumper/mydumper_chunks.h"
+#include "mydumper/mydumper_common.h"
+#include "mydumper/mydumper_create_jobs.h"
+#include "mydumper/mydumper_database.h"
+#include "mydumper/mydumper_file_handler.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_jobs.h"
+#include "mydumper/mydumper_start_dump.h"
+#include "mydumper/mydumper_stream.h"
+#include "mydumper/mydumper_table.h"
+
 /* Program options */
 gboolean order_by_primary_key = FALSE;
 gboolean use_savepoints = FALSE;

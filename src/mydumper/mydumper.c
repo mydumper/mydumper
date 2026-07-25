@@ -31,14 +31,14 @@
 #include <locale.h>
 #include <string.h>
 
-#include "mydumper.h"
+#include "mydumper/mydumper.h"
 
-#include "mydumper_arguments.h"
-#include "mydumper_daemon_thread.h"
-#include "mydumper_file_handler.h"
-#include "mydumper_global.h"
-#include "mydumper_start_dump.h"
-#include "../logging.h"
+#include "mydumper/mydumper_arguments.h"
+#include "mydumper/mydumper_daemon_thread.h"
+#include "mydumper/mydumper_file_handler.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_start_dump.h"
+#include "logging.h"
 
 const char DIRECTORY[] = "export";
 

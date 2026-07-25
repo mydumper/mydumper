@@ -14,6 +14,7 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 #include <errno.h>
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -24,11 +25,11 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "mydumper.h"
-#include "mydumper_file_handler.h"
-#include "mydumper_global.h"
-#include "mydumper_start_dump.h"
-#include "mydumper_stream.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_file_handler.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_start_dump.h"
+#include "mydumper/mydumper_stream.h"
 
 extern GAsyncQueue *stream_queue;
 

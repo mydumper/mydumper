@@ -20,7 +20,7 @@
 
 #include <glib.h>
 
-#include "myloader.h"
+#include "myloader/myloader.h"
 
 void write_myloader_pmm_entries(const gchar *filename, GString *content, struct configuration *conf);
 

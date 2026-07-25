@@ -14,6 +14,7 @@
 
     Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
+
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -24,6 +25,7 @@
 
 #include "common_options.h"
 #include "config.h"
+
 char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
 

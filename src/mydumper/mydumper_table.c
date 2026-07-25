@@ -15,17 +15,16 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-// #include <mysql.h>
 #include <glib/gstdio.h>
 
-#include "mydumper_common.h"
+#include "mydumper/mydumper_table.h"
 
-#include "mydumper.h"
-#include "mydumper_chunks.h"
-#include "mydumper_database.h"
-#include "mydumper_global.h"
-#include "mydumper_start_dump.h"
-#include "mydumper_table.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_chunks.h"
+#include "mydumper/mydumper_common.h"
+#include "mydumper/mydumper_database.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_start_dump.h"
 
 // Extern
 extern guint64  min_integer_chunk_step_size;

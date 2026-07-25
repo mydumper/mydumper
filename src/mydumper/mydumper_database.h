@@ -22,7 +22,7 @@
 #include <glib.h>
 #include <mysql.h>
 
-#include "../checksum.h"
+#include "checksum.h"
 
 struct database
 {

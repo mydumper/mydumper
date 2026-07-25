@@ -24,7 +24,7 @@
 
 #include <glib.h>
 
-#include "mydumper_create_jobs.h"
+#include "mydumper/mydumper_create_jobs.h"
 
 #define LOAD_DATA_PREFIX "LOAD DATA LOCAL INFILE '"
 

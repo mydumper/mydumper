@@ -18,8 +18,8 @@
 #ifndef _src_myloader_myloader_restore_job_h
 #define _src_myloader_myloader_restore_job_h
 
-#include "myloader.h"
-#include "myloader_control_job.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_control_job.h"
 
 enum restore_job_type
 {

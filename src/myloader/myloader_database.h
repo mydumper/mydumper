@@ -14,13 +14,14 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 #ifndef _src_myloader_myloader_database_h
 #define _src_myloader_myloader_database_h
 
 #include <glib.h>
 
-#include "../checksum.h"
-#include "myloader.h"
+#include "checksum.h"
+#include "myloader/myloader.h"
 
 struct database
 {

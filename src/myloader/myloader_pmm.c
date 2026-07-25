@@ -24,9 +24,9 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "myloader.h"
-#include "myloader_deps.h"
-#include "myloader_global.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_deps.h"
+#include "myloader/myloader_global.h"
 
 void append_pmm_entry(GString *content, const gchar *_key, GAsyncQueue *queue)
 {

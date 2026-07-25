@@ -18,7 +18,7 @@
 #ifndef _src_myloader_myloader_process_file_type_h
 #define _src_myloader_myloader_process_file_type_h
 
-#include "myloader.h"
+#include "myloader/myloader.h"
 
 struct filetype_item
 {

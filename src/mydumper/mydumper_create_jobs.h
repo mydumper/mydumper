@@ -26,7 +26,7 @@
 #include <glib.h>
 #include <mysql.h>
 
-#include "mydumper_table.h"
+#include "mydumper/mydumper_table.h"
 
 struct thread_data;
 struct chunk_step_item;

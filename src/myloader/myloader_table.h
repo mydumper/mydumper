@@ -20,9 +20,9 @@
 
 #include <glib.h>
 
-#include "../checksum.h"
-#include "../common.h"
-#include "myloader.h"
+#include "checksum.h"
+#include "common.h"
+#include "myloader/myloader.h"
 
 struct database;
 struct configuration;

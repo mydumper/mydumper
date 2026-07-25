@@ -12,8 +12,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
+     Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,7 @@
 #include "common.h"
 
 #include "regex.h"
+
 const char *filename_regex = "^[\\w\\-_ ]+$";
 
 GList             *re_list = NULL;

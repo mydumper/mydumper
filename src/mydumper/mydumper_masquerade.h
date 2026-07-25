@@ -15,7 +15,7 @@
 #ifndef _src_mydumper_mydumper_masquerade_h
 #define _src_mydumper_mydumper_masquerade_h
 
-#include "mydumper.h"
+#include "mydumper/mydumper.h"
 
 #define REGEX_MAX_LEN 2048
 

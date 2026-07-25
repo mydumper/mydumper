@@ -18,6 +18,7 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 #include <errno.h>
 #include <gio/gio.h>
 #include <glib.h>
@@ -31,13 +32,13 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "mydumper_common.h"
+#include "mydumper/mydumper_common.h"
 
-#include "mydumper.h"
-#include "mydumper_arguments.h"
-#include "mydumper_global.h"
-#include "mydumper_start_dump.h"
-#include "mydumper_stream.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_arguments.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_start_dump.h"
+#include "mydumper/mydumper_stream.h"
 
 gboolean compact = FALSE;
 guint    table_number = 0;

@@ -23,17 +23,17 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "myloader_common.h"
+#include "myloader/myloader_restore_job.h"
 
-#include "myloader.h"
-#include "myloader_control_job.h"
-#include "myloader_database.h"
-#include "myloader_global.h"
-#include "myloader_restore.h"
-#include "myloader_restore_job.h"
-#include "myloader_worker_index.h"
-#include "myloader_worker_loader.h"
-#include "myloader_worker_loader_main.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_control_job.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_restore.h"
+#include "myloader/myloader_worker_index.h"
+#include "myloader/myloader_worker_loader.h"
+#include "myloader/myloader_worker_loader_main.h"
 
 unsigned long long int total_data_sql_files = 0;
 gboolean               shutdown_triggered = FALSE;

@@ -18,7 +18,7 @@
 #ifndef _src_myloader_myloader_worker_loader_h
 #define _src_myloader_myloader_worker_loader_h
 
-#include "myloader.h"
+#include "myloader/myloader.h"
 
 struct restore_job;
 

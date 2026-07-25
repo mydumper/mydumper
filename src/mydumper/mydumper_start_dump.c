@@ -23,24 +23,24 @@
 #include <mysql.h>
 #include <sys/statvfs.h>
 
-#include "mydumper_common.h"
+#include "mydumper/mydumper_start_dump.h"
 
-#include "mydumper.h"
-#include "mydumper_chunks.h"
-#include "mydumper_create_jobs.h"
-#include "mydumper_database.h"
-#include "mydumper_exec_command.h"
-#include "mydumper_file_handler.h"
-#include "mydumper_global.h"
-#include "mydumper_jobs.h"
-#include "mydumper_masquerade.h"
-#include "mydumper_pmm.h"
-#include "mydumper_start_dump.h"
-#include "mydumper_stream.h"
-#include "mydumper_table.h"
-#include "mydumper_working_thread.h"
-#include "mydumper_write.h"
-#include "../logging.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_chunks.h"
+#include "mydumper/mydumper_common.h"
+#include "mydumper/mydumper_create_jobs.h"
+#include "mydumper/mydumper_database.h"
+#include "mydumper/mydumper_exec_command.h"
+#include "mydumper/mydumper_file_handler.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_jobs.h"
+#include "mydumper/mydumper_masquerade.h"
+#include "mydumper/mydumper_pmm.h"
+#include "mydumper/mydumper_stream.h"
+#include "mydumper/mydumper_table.h"
+#include "mydumper/mydumper_working_thread.h"
+#include "mydumper/mydumper_write.h"
+#include "logging.h"
 
 /* Program options */
 gchar   *tidb_snapshot = NULL;

@@ -20,9 +20,9 @@
 #include <glib/gstdio.h>
 #include <mysql.h>
 
-#include "../common.h"
-#include "mydumper_arguments.h"
-#include "mydumper_start_dump.h"
+#include "common.h"
+#include "mydumper/mydumper_arguments.h"
+#include "mydumper/mydumper_start_dump.h"
 
 extern gchar       *defaults_file;
 extern char        *defaults_extra_file;

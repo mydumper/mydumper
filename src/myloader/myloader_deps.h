@@ -18,18 +18,18 @@
 #ifndef _src_myloader_myloader_deps_h
 #define _src_myloader_myloader_deps_h
 
-#include "../common.h"
+#include "common.h"
 
-#include "../checksum.h"
-#include "../common_options.h"
-#include "../config.h"
-#include "../connection.h"
-#include "../pmm_thread.h"
-#include "../regex.h"
-#include "../server_detect.h"
-#include "../set_verbose.h"
-#include "../tables_skiplist.h"
-#include "../logging.h"
-#include "myloader_table.h"
+#include "checksum.h"
+#include "common_options.h"
+#include "config.h"
+#include "connection.h"
+#include "pmm_thread.h"
+#include "regex.h"
+#include "server_detect.h"
+#include "set_verbose.h"
+#include "tables_skiplist.h"
+#include "logging.h"
+#include "myloader/myloader_table.h"
 
 #endif

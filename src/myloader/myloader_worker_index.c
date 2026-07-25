@@ -17,14 +17,13 @@
 
 #include <glib/gstdio.h>
 
-#include "myloader_common.h"
-
-#include "myloader_control_job.h"
-#include "myloader_database.h"
-#include "myloader_global.h"
-#include "myloader_restore_job.h"
-#include "myloader_worker_loader_main.h"
-#include "../logging.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_control_job.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_restore_job.h"
+#include "myloader/myloader_worker_loader_main.h"
+#include "logging.h"
 
 GAsyncQueue *index_queue = NULL;
 

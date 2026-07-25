@@ -17,11 +17,10 @@
 
 #include <glib/gstdio.h>
 
-#include "myloader_common.h"
-
-#include "myloader_global.h"
-#include "myloader_restore_job.h"
-#include "../logging.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_restore_job.h"
+#include "logging.h"
 
 GThread           **post_threads = NULL;
 struct thread_data *post_td = NULL;

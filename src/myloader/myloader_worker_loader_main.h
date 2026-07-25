@@ -18,8 +18,8 @@
 #ifndef _src_myloader_myloader_worker_loader_main_h
 #define _src_myloader_myloader_worker_loader_main_h
 
-#include "myloader.h"
-#include "myloader_worker_loader.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_worker_loader.h"
 
 struct restore_job;
 struct db_table;

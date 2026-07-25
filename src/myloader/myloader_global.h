@@ -22,8 +22,8 @@
 
 #include <glib.h>
 
-#include "myloader.h"
-#include "../common_options.h"
+#include "myloader/myloader.h"
+#include "common_options.h"
 
 extern gboolean debug;
 extern gboolean disable_redo_log;

@@ -18,7 +18,7 @@
 #ifndef _src_myloader_myloader_directory_h
 #define _src_myloader_myloader_directory_h
 
-#include "myloader.h"
+#include "myloader/myloader.h"
 
 void  initialize_directory();
 void *process_directory(struct configuration *conf);
