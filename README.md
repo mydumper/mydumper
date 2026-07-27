@@ -122,8 +122,6 @@ sync_binlog = 0
 innodb_flush_log_at_trx_commit = 0
 ```
 
-<<<<<<< Updated upstream
-=======
 For Aurora/MySQL 5.7 restores where `SET SESSION SQL_LOG_BIN = 0` is rejected, use:
 
 ```bash
@@ -170,8 +168,6 @@ myloader \
   --aws-session-command='SET SESSION some_aws_setting = 1' \
   --aws-session-command='CALL mysql.some_other_aws_proc()'
 ```
-
->>>>>>> Stashed changes
 - Per table sections:
 ```bash
 [`db`.`table`]
