@@ -77,6 +77,12 @@ user = root
 password = p455w0rd
 database = db
 rows = 10000
+string-pk-planner = auto
+string-pk-planner-timeout = 30
+string-pk-planner-max-probes = 64
+string-pk-planner-max-prefixes = 256
+string-pk-planner-max-depth = 1
+string-pk-planner-min-rows = 1000000
 
 [myloader]
 host = 127.0.0.1
@@ -116,6 +122,56 @@ sync_binlog = 0
 innodb_flush_log_at_trx_commit = 0
 ```
 
+<<<<<<< Updated upstream
+=======
+For Aurora/MySQL 5.7 restores where `SET SESSION SQL_LOG_BIN = 0` is rejected, use:
+
+```bash
+[myloader]
+source-control-command = AWS
+aws-session-command = CALL mysql.rds_disable_session_binlog()
+```
+
+`aws-session-command` is executed on every myloader connection after the normal session setup. You can repeat the option on multiple lines in the config file, or pass multiple statements separated by `;\n`.
+When `--source-control-command=AWS` is set, `--enable-binlog` is ignored and myloader uses the AWS session binlog call instead.
+See [`myloader.cnf`](/Users/daniel/gitRepos/mydumper/myloader.cnf) for a complete sample.
+
+For very large tables with string primary keys, `mydumper` now has a bounded
+metadata-assisted planner that seeds prefix-based root chunks before falling
+back to the existing recursive splitter. The defaults keep the current
+behavior as a safe fallback, but you can tune the planner with:
+
+* `--string-pk-planner=auto|metadata|recursive`
+* `--string-pk-planner-timeout=<seconds>`
+* `--string-pk-planner-max-probes=<n>`
+* `--string-pk-planner-max-prefixes=<n>`
+* `--string-pk-planner-max-depth=<n>`
+* `--string-pk-planner-min-rows=<n>`
+
+`--string-pk-planner-max-depth=1` is intentional for large tables: it uses
+fast EXPLAIN-only probes for the first prefix character and lets the normal
+chunk worker refine those roots. Increasing the depth increases the number of
+EXPLAIN probes before data export begins.
+
+Examples:
+
+```ini
+[myloader]
+source-control-command = AWS
+aws-session-command = CALL mysql.rds_disable_session_binlog()
+aws-session-command = SET SESSION some_aws_setting = 1
+aws-session-command = CALL mysql.some_other_aws_proc()
+```
+
+```bash
+myloader \
+  --source-control-command=AWS \
+  --aws-session-command='CALL mysql.rds_disable_session_binlog()' \
+  --aws-session-command='SET SESSION some_aws_setting = 1' \
+  --aws-session-command='CALL mysql.some_other_aws_proc()'
+```
+
+>>>>>>> Stashed changes
 - Per table sections:
 ```bash
 [`db`.`table`]

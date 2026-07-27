@@ -32,6 +32,7 @@
 #include "mydumper_integer_chunks.h"
 #include "mydumper_partition_chunks.h"
 #include "mydumper_create_jobs.h"
+#include "mydumper_string_planner.h"
 
 extern guint64 min_integer_chunk_step_size;
 extern gboolean split_string_pk;
@@ -50,7 +51,14 @@ GString * get_where_from_csi(struct chunk_step_item * csi){
     case STRING:
       where=csi->where;
       g_string_set_size(where,0);
-      update_string_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_cur);
+      update_string_where_on_gstring(
+          where,
+          FALSE,
+          csi->prefix,
+          csi->field,
+          csi->chunk_step->string_step.str_min,
+          csi->chunk_step->string_step.str_cur,
+          g_strcmp0(csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max) == 0);
       break;
     default:
       break;
@@ -103,8 +111,7 @@ double log_base(double base, double x) {
 
 struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, guint64 rows, GString *prefix) {
 
-  // We do not support more that 2 levels of multi column pk
-  if (position>=2)
+  if (position >= g_list_length(dbt->primary_key))
     return NULL;
 
   struct chunk_step_item * csi=NULL;
@@ -210,15 +217,6 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
       break;
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VAR_STRING:
-
-      if (position>0){
-        // We do not support a second level of string column pk
-        trace("Disabling multicolum on `%s`.`%s`",dbt->database->source_database, dbt->table);
-        dbt->multicolumn=FALSE;
-        goto cleanup;
-      }
-
-      // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
       if (split_string_pk){
         trace("String PK found on `%s`.`%s`",dbt->database->source_database, dbt->table);
         str_min = g_strdup(mr->row[2]);
@@ -320,6 +318,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   g_message("%s.%s has %s%"G_GINT64_FORMAT" rows", dbt->database->source_database, dbt->table,
             (check_row_count ? "": "~"), rows);
   dbt->rows_total= rows;
+  string_pk_planner_reset_for_table(dbt, rows);
   if (rows > dbt->min_chunk_step_size){
     GList *partitions=NULL;
     if (split_partitions || dbt->partition_regex){
@@ -328,6 +327,10 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     if (partitions){
       csi=new_real_partition_step_item(partitions,0,0);
     }else{
+      if (split_string_pk && string_pk_plan_prefix_chunks(conn, dbt, rows)) {
+        g_mutex_unlock(dbt->chunks_mutex);
+        return;
+      }
       if (dbt->split_integer_tables) {
         csi = initialize_chunk_step_item(conn, dbt, 0, rows, NULL);
       }else{
@@ -534,4 +537,3 @@ void *chunk_builder_thread(struct configuration *conf)
   table_job_enqueue(&conf->transactional);
   return NULL;
 }
-

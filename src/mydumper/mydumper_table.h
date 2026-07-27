@@ -74,6 +74,11 @@ struct db_table {
   enum db_table_states status;
   guint max_threads_per_table;
   guint current_threads_running;
+  guint64 string_planner_started_us;
+  gint64 string_planner_deadline_us;
+  guint string_planner_probe_count;
+  gboolean string_planner_budget_exhausted;
+  guint64 string_planner_estimated_rows;
 };
 
 #endif
@@ -84,4 +89,3 @@ void free_db_table(struct db_table * dbt);
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
                       gboolean is_sequence, gboolean is_view);
-
