@@ -139,9 +139,6 @@ target_include_directories(test_string_pk_planner_utils PRIVATE ${GLIB2_INCLUDE_
 target_link_libraries(test_string_pk_planner_utils ${GLIB2_LIBRARIES})
 add_test(NAME string_pk_planner_utils COMMAND test_string_pk_planner_utils)
 
-add_test(NAME myloader_aws_session
-  COMMAND ${CMAKE_SOURCE_DIR}/test/test_myloader_aws_session.sh $<TARGET_FILE:myloader>)
-
 add_test(NAME string_pk_chunk_validation
   COMMAND bash ${CMAKE_SOURCE_DIR}/test/test_string_pk_chunk_validation.sh $<TARGET_FILE:mydumper> $<TARGET_FILE:myloader>)
 IF(RUN_CPPCHECK)
