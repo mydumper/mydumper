@@ -24,6 +24,7 @@
 
 GOptionContext * load_contex_entries();
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
+void aws_session_command_append(const gchar *command);
 
 static inline
 const char * purgemode2str(enum purge_mode pm)
