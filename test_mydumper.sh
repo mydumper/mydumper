@@ -374,6 +374,11 @@ test_case_dir (){
       if [[ ! -n "$skip_backup"  ]]; then
         mv $mysqldumplog $mydumper_stor_dir
       fi
+      echo "=== specific_26 dump files ==="
+      find /tmp/data -maxdepth 1 -type f -name '*specific_26*' -ls
+
+      echo "=== myloader log ==="
+      cat "$tmp_myloader_log"
       echo "Error running: $myloader ${myloader_parameters}"
       echo "Error running myloader with mydumper: $mydumper ${mydumper_parameters}"
 #      cat $tmp_mydumper_log
