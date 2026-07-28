@@ -49,4 +49,4 @@ struct chunk_step_item *new_string_step_item(
     guint64 step, guint64 part, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position,
     gboolean multicolumn, guint64 rows_in_explain);
 
-void update_string_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field, gchar *str_min, gchar*str_max);
+void update_string_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field, gchar *str_min, gchar*str_max, gboolean is_last_range);
