@@ -331,7 +331,9 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
         g_mutex_unlock(dbt->chunks_mutex);
         return;
       }
-      if (dbt->split_integer_tables) {
+      /* Tables without a usable key, including views exported as tables,
+       * must be dumped as one non-splittable chunk. */
+      if (dbt->split_integer_tables && dbt->primary_key) {
         csi = initialize_chunk_step_item(conn, dbt, 0, rows, NULL);
       }else{
         csi = new_none_chunk_step();
