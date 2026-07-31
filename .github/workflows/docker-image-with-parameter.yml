@@ -6,7 +6,7 @@ on:
       os:
         description: 'OS'
         required: true
-        default: 'jammy'
+        default: 'noble'
         type: choice
         options:
           - el7
