@@ -14,7 +14,6 @@ load-data-character-set=binary
 # string-pk-planner-timeout=30
 # string-pk-planner-max-probes=64
 # string-pk-planner-max-prefixes=256
-# string-pk-planner-max-depth=1
 # string-pk-planner-min-rows=1000000
 
 # Example large-string-PK dump profile
@@ -25,7 +24,6 @@ load-data-character-set=binary
 # string-pk-planner-timeout=0
 # string-pk-planner-max-probes=0
 # string-pk-planner-max-prefixes=256
-# string-pk-planner-max-depth=1
 # max-char-size=2
 # max-items-per-string-chunk=1
 # compress=zstd

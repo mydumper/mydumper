@@ -40,7 +40,6 @@ extern gboolean string_pk_planner_metadata_enabled;
 extern guint string_pk_planner_timeout_seconds;
 extern guint string_pk_planner_max_probes;
 extern guint string_pk_planner_max_prefixes;
-extern guint string_pk_planner_max_depth;
 extern guint64 string_pk_planner_min_rows;
 extern enum string_pk_planner_strategy string_pk_planner_strategy;
 
@@ -246,8 +245,7 @@ static gboolean collect_prefix_roots(MYSQL *conn,
     }
 
     if (estimated_rows > target_rows_per_root &&
-        current_depth + 1 < max_char_size &&
-        current_depth + 1 < string_pk_planner_max_depth) {
+        current_depth + 1 < max_char_size) {
       GList *child_roots = NULL;
       if (!collect_prefix_roots(conn, dbt, candidate, current_depth + 1,
                                 target_rows_per_root, alphabet, &child_roots)) {

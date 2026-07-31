@@ -81,7 +81,6 @@ string-pk-planner = auto
 string-pk-planner-timeout = 30
 string-pk-planner-max-probes = 64
 string-pk-planner-max-prefixes = 256
-string-pk-planner-max-depth = 1
 string-pk-planner-min-rows = 1000000
 
 [myloader]
@@ -161,13 +160,13 @@ behavior as a safe fallback, but you can tune the planner with:
 * `--string-pk-planner-timeout=<seconds>`
 * `--string-pk-planner-max-probes=<n>`
 * `--string-pk-planner-max-prefixes=<n>`
-* `--string-pk-planner-max-depth=<n>`
 * `--string-pk-planner-min-rows=<n>`
 
-`--string-pk-planner-max-depth=1` is intentional for large tables: it uses
-fast EXPLAIN-only probes for the first prefix character and lets the normal
-chunk worker refine those roots. Increasing the depth increases the number of
-EXPLAIN probes before data export begins.
+The planner's prefix depth is bounded by `--max-char-size` (default 2). For
+large tables it uses fast EXPLAIN-only probes to seed prefix roots and lets the
+normal chunk worker refine those roots during export. Increasing
+`--max-char-size` increases the number of EXPLAIN probes before data export
+begins, but produces finer-grained root chunks.
 
 - Per table sections:
 ```bash

@@ -70,7 +70,6 @@ extern gchar *string_pk_planner_strategy_str;
 extern guint string_pk_planner_timeout_seconds;
 extern guint string_pk_planner_max_probes;
 extern guint string_pk_planner_max_prefixes;
-extern guint string_pk_planner_max_depth;
 extern guint64 string_pk_planner_min_rows;
 extern gchar *table_engine_for_view_dependency;
 extern gchar *load_data_character_set;
@@ -135,7 +134,6 @@ void print_help(){
   print_int("string-pk-planner-timeout", string_pk_planner_timeout_seconds, FALSE);
   print_int("string-pk-planner-max-probes", string_pk_planner_max_probes, FALSE);
   print_int("string-pk-planner-max-prefixes", string_pk_planner_max_prefixes, FALSE);
-  print_int("string-pk-planner-max-depth", string_pk_planner_max_depth, FALSE);
   gchar *string_pk_planner_min_rows_str = g_strdup_printf("%"G_GUINT64_FORMAT, string_pk_planner_min_rows);
   print_string("string-pk-planner-min-rows", string_pk_planner_min_rows_str);
   g_free(string_pk_planner_min_rows_str);

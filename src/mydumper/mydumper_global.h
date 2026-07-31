@@ -148,6 +148,5 @@ extern gboolean string_pk_planner_metadata_enabled;
 extern guint string_pk_planner_timeout_seconds;
 extern guint string_pk_planner_max_probes;
 extern guint string_pk_planner_max_prefixes;
-extern guint string_pk_planner_max_depth;
 extern guint64 string_pk_planner_min_rows;
 extern enum string_pk_planner_strategy string_pk_planner_strategy;
