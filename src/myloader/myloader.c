@@ -696,7 +696,7 @@ int main(int argc, char *argv[]) {
   wait_schema_worker_to_finish(&conf);
   wait_worker_loader_main();
   enqueue_indexes_if_possible(&conf);
-  create_index_shutdown_job(&conf);
+  create_index_shutdown_job();
   wait_index_worker_to_finish();
   initialize_post_loding_threads(&conf);
   create_post_shutdown_job(&conf);

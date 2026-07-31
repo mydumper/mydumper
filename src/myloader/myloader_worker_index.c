@@ -91,7 +91,7 @@ void *worker_index_thread(struct thread_data *td) {
   return NULL;
 }
 
-void create_index_shutdown_job(){
+void create_index_shutdown_job(void){
   guint n=0;
   trace("Sending SHUTDOWN to index threads");
   for (n = 0; n < max_threads_for_index_creation; n++) {
