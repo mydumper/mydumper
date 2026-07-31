@@ -176,6 +176,7 @@ list_build=(
   "focal_mysql80_amd64"   # "focal_mariadb1011_arm64"
   "jammy_mysql80_amd64"   # "jammy_mariadb1011_arm64"
   "noble_mysql84_amd64"         "noble_ubuntu_default_arm64"
+  "resolute_mysql84_amd64"
   "el7_percona57_x86_64" 
   "el8_mysql84_x86_64"          "el8_mysql84_aarch64"
   "el9_mysql84_x86_64"          "el9_mysql84_aarch64"
@@ -192,6 +193,7 @@ list_compile=(
 # jammy is in the tests list 
 #                                                                                          "noble_mysql84" This is already on the list of test
                                                                                                              "noble_ubuntu_default"
+                                                                                                             "resolute_ubuntu_default"
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"

@@ -12281,6 +12281,7 @@ workflows:
     - compile_and_test_mydumper_in_focal_percona57
     - compile_and_test_mydumper_in_focal_percona80
     - compile_and_test_mydumper_in_noble_ubuntu_default
+    - compile_and_test_mydumper_in_resolute_ubuntu_default
     - compile_and_test_mydumper_in_el7_percona57
     - compile_and_test_mydumper_in_el7_percona80
     - compile_and_test_mydumper_in_el7_mariadb1011
@@ -12352,6 +12353,14 @@ workflows:
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_noble_ubuntu_default_arm64:
+        requires:
+          - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
+    - build_resolute_mysql84_amd64:
         requires:
           - build_jammy_mysql80_amd64
         filters:
@@ -12463,6 +12472,7 @@ workflows:
           - build_jammy_mysql80_amd64
           - build_noble_mysql84_amd64
           - build_noble_ubuntu_default_arm64
+          - build_resolute_mysql84_amd64
           - build_el7_percona57_x86_64
           - build_el8_mysql84_x86_64
           - build_el8_mysql84_aarch64
