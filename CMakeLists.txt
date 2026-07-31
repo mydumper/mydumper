@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 2.8.12...3.5)
 project(mydumper)
 file(READ "VERSION" ver_str)
 string(REGEX MATCH "ver=\"([^\"]+)\"" _ ${ver_str})
