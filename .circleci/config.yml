@@ -483,9 +483,9 @@ executors:
         MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper
 
-  noble_mariadb1011:
+  resolute_mariadb1011:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -499,9 +499,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_mariadb1006:
+  resolute_mariadb1006:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -515,9 +515,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_percona57:
+  resolute_percona57:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -531,9 +531,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_percona80:
+  resolute_percona80:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -547,9 +547,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_percona84:
+  resolute_percona84:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -563,9 +563,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_tidb:
+  resolute_tidb:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -579,9 +579,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_mysql80:
+  resolute_mysql80:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -592,9 +592,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_mysql84:
+  resolute_mysql84:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -605,9 +605,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_debian_default:
+  resolute_debian_default:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -618,9 +618,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_ubuntu_default:
+  resolute_ubuntu_default:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -631,9 +631,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble:
+  resolute:
     docker:
-    - image: mydumper/mydumper-builder-noble
+    - image: mydumper/mydumper-builder-resolute
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -2220,62 +2220,124 @@ commands:
     - prepare_apt_mariadb1006
 
 
-  prepare_noble_tidb:
+  prepare_resolute_tidb:
     steps:
     - run: sudo apt-get update
     - prepare_apt_percona57
 
 
-  prepare_noble_percona57:
+  prepare_resolute_percona57:
     steps:
     - run: sudo apt-get update
     - prepare_apt_percona57
 
 
-  prepare_noble_percona80:
+  prepare_resolute_percona80:
     steps:
     - run: sudo apt-get update
     - prepare_apt_percona80
 
 
-  prepare_noble_percona84:
+  prepare_resolute_percona84:
     steps:
     - run: sudo apt-get update
     - prepare_apt_percona84
 
 
-  prepare_noble_mysql80:
+  prepare_resolute_mysql80:
     steps:
     - run: sudo apt-get update
     - prepare_apt_mysql80
 
 
-  prepare_noble_mysql84:
+  prepare_resolute_mysql84:
     steps:
     - run: sudo apt-get update
     - prepare_apt_mysql84
 
 
-  prepare_noble_debian_default:
+  prepare_resolute_debian_default:
     steps:
     - run: sudo apt-get update
     - prepare_apt_debian_default
 
 
-  prepare_noble_ubuntu_default:
+  prepare_resolute_ubuntu_default:
     steps:
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default
 
 
-  prepare_noble_mariadb1011:
+  prepare_resolute_mariadb1011:
     steps:
     - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
 
-  prepare_noble_mariadb1006:
+  prepare_resolute_mariadb1006:
+    steps:
+    - run: sudo apt-get update
+    - prepare_mariadb1006
+    - prepare_apt_mariadb1006
+
+
+  prepare__tidb:
+    steps:
+    - run: sudo apt-get update
+    - prepare_apt_percona57
+
+
+  prepare__percona57:
+    steps:
+    - run: sudo apt-get update
+    - prepare_apt_percona57
+
+
+  prepare__percona80:
+    steps:
+    - run: sudo apt-get update
+    - prepare_apt_percona80
+
+
+  prepare__percona84:
+    steps:
+    - run: sudo apt-get update
+    - prepare_apt_percona84
+
+
+  prepare__mysql80:
+    steps:
+    - run: sudo apt-get update
+    - prepare_apt_mysql80
+
+
+  prepare__mysql84:
+    steps:
+    - run: sudo apt-get update
+    - prepare_apt_mysql84
+
+
+  prepare__debian_default:
+    steps:
+    - run: sudo apt-get update
+    - prepare_apt_debian_default
+
+
+  prepare__ubuntu_default:
+    steps:
+    - run: sudo apt-get update
+    - prepare_apt_ubuntu_default
+
+
+  prepare__mariadb1011:
+    steps:
+    - run: sudo apt-get update
+    - prepare_mariadb1011
+    - prepare_apt_mariadb1011
+
+
+  prepare__mariadb1006:
     steps:
     - run: sudo apt-get update
     - prepare_mariadb1006
@@ -3137,19 +3199,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_mysql80:
+  compile_and_test_mydumper_in_resolute_mysql80:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_mysql80
+        default: resolute_mysql80
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_mysql80
+    - prepare_resolute_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3157,19 +3219,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_mysql84:
+  compile_and_test_mydumper_in_resolute_mysql84:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_mysql84
+        default: resolute_mysql84
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_mysql84
+    - prepare_resolute_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3177,19 +3239,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_debian_default:
+  compile_and_test_mydumper_in_resolute_debian_default:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_debian_default
+        default: resolute_debian_default
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_debian_default
+    - prepare_resolute_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3197,19 +3259,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_ubuntu_default:
+  compile_and_test_mydumper_in_resolute_ubuntu_default:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_ubuntu_default
+        default: resolute_ubuntu_default
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_ubuntu_default
+    - prepare_resolute_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3217,19 +3279,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_percona57:
+  compile_and_test_mydumper_in_resolute_percona57:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_percona57
+        default: resolute_percona57
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_percona57
+    - prepare_resolute_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3237,19 +3299,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_percona80:
+  compile_and_test_mydumper_in_resolute_percona80:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_percona80
+        default: resolute_percona80
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_percona80
+    - prepare_resolute_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3257,19 +3319,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_percona84:
+  compile_and_test_mydumper_in_resolute_percona84:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_percona84
+        default: resolute_percona84
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_percona84
+    - prepare_resolute_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3277,19 +3339,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_mariadb1011:
+  compile_and_test_mydumper_in_resolute_mariadb1011:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_mariadb1011
+        default: resolute_mariadb1011
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_mariadb1011
+    - prepare_resolute_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3297,19 +3359,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_mariadb1006:
+  compile_and_test_mydumper_in_resolute_mariadb1006:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_mariadb1006
+        default: resolute_mariadb1006
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_mariadb1006
+    - prepare_resolute_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3317,19 +3379,219 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_tidb:
+  compile_and_test_mydumper_in_resolute_tidb:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_tidb
+        default: resolute_tidb
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_tidb
+    - prepare_resolute_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _mysql80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare__mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _mysql84
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare__mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _debian_default
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare__debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _ubuntu_default
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare__ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__percona57:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _percona57
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare__percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__percona80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _percona80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare__percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__percona84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _percona84
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare__percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _mariadb1011
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare__mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _mariadb1006
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare__mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__tidb:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _tidb
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare__tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -7302,8 +7564,8 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_noble_mysql80_arm64:
-    executor: noble
+  build_resolute_mysql80_arm64:
+    executor: resolute
     resource_class: arm.medium
     parameters:
       build_man:
@@ -7315,7 +7577,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_mysql80
+    - prepare_resolute_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -7334,15 +7596,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_mysql80_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/resolute_mysql80_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_mysql80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_mysql84_arm64:
-    executor: noble
+  build_resolute_mysql84_arm64:
+    executor: resolute
     resource_class: arm.medium
     parameters:
       build_man:
@@ -7354,7 +7616,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_mysql84
+    - prepare_resolute_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -7373,15 +7635,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_mysql84_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/resolute_mysql84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_mysql84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_debian_default_arm64:
-    executor: noble
+  build_resolute_debian_default_arm64:
+    executor: resolute
     resource_class: arm.medium
     parameters:
       build_man:
@@ -7393,7 +7655,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_debian_default
+    - prepare_resolute_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -7412,15 +7674,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_debian_default_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_debian_default_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_debian_default_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/resolute_debian_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_debian_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_debian_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_ubuntu_default_arm64:
-    executor: noble
+  build_resolute_ubuntu_default_arm64:
+    executor: resolute
     resource_class: arm.medium
     parameters:
       build_man:
@@ -7432,7 +7694,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_ubuntu_default
+    - prepare_resolute_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -7451,15 +7713,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_ubuntu_default_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_ubuntu_default_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_ubuntu_default_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/resolute_ubuntu_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_ubuntu_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_ubuntu_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_percona57_arm64:
-    executor: noble
+  build_resolute_percona57_arm64:
+    executor: resolute
     resource_class: arm.medium
     parameters:
       build_man:
@@ -7471,7 +7733,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_percona57
+    - prepare_resolute_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -7490,15 +7752,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_percona57_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/resolute_percona57_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_percona57_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_percona57_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_percona80_arm64:
-    executor: noble
+  build_resolute_percona80_arm64:
+    executor: resolute
     resource_class: arm.medium
     parameters:
       build_man:
@@ -7510,7 +7772,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_percona80
+    - prepare_resolute_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -7529,15 +7791,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_percona80_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/resolute_percona80_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_percona80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_percona80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_percona84_arm64:
-    executor: noble
+  build_resolute_percona84_arm64:
+    executor: resolute
     resource_class: arm.medium
     parameters:
       build_man:
@@ -7549,7 +7811,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_percona84
+    - prepare_resolute_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -7568,15 +7830,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_percona84_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona84_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/resolute_percona84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_percona84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_percona84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_mariadb1011_arm64:
-    executor: noble
+  build_resolute_mariadb1011_arm64:
+    executor: resolute
     resource_class: arm.medium
     parameters:
       build_man:
@@ -7588,7 +7850,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_mariadb1011
+    - prepare_resolute_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -7607,15 +7869,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_mariadb1011_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/resolute_mariadb1011_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_mariadb1011_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_mariadb1011_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_mariadb1006_arm64:
-    executor: noble
+  build_resolute_mariadb1006_arm64:
+    executor: resolute
     resource_class: arm.medium
     parameters:
       build_man:
@@ -7627,7 +7889,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_mariadb1006
+    - prepare_resolute_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -7646,9 +7908,360 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_mariadb1006_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/resolute_mariadb1006_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_mariadb1006_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_mariadb1006_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mysql80_arm64:
+    executor: 
+    resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__mysql80
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_mysql80_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mysql80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mysql84_arm64:
+    executor: 
+    resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__mysql84
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_mysql84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mysql84_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__debian_default_arm64:
+    executor: 
+    resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__debian_default
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_debian_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_debian_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _debian_default_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__ubuntu_default_arm64:
+    executor: 
+    resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__ubuntu_default
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_ubuntu_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_ubuntu_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _ubuntu_default_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__percona57_arm64:
+    executor: 
+    resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__percona57
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_percona57_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_percona57_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _percona57_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__percona80_arm64:
+    executor: 
+    resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__percona80
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_percona80_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_percona80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _percona80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__percona84_arm64:
+    executor: 
+    resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__percona84
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_percona84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_percona84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _percona84_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mariadb1011_arm64:
+    executor: 
+    resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__mariadb1011
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_mariadb1011_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_mariadb1011_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mariadb1011_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mariadb1006_arm64:
+    executor: 
+    resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__mariadb1006
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_mariadb1006_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_mariadb1006_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mariadb1006_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -9761,8 +10374,8 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_noble_mysql80_amd64:
-    executor: noble
+  build_resolute_mysql80_amd64:
+    executor: resolute
     resource_class: large
     parameters:
       build_man:
@@ -9774,7 +10387,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_mysql80
+    - prepare_resolute_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -9793,15 +10406,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_mysql80_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/resolute_mysql80_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_mysql80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_mysql84_amd64:
-    executor: noble
+  build_resolute_mysql84_amd64:
+    executor: resolute
     resource_class: large
     parameters:
       build_man:
@@ -9813,7 +10426,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_mysql84
+    - prepare_resolute_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -9832,15 +10445,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_mysql84_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/resolute_mysql84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_mysql84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_debian_default_amd64:
-    executor: noble
+  build_resolute_debian_default_amd64:
+    executor: resolute
     resource_class: large
     parameters:
       build_man:
@@ -9852,7 +10465,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_debian_default
+    - prepare_resolute_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -9871,15 +10484,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_debian_default_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_debian_default_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_debian_default_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/resolute_debian_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_debian_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_debian_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_ubuntu_default_amd64:
-    executor: noble
+  build_resolute_ubuntu_default_amd64:
+    executor: resolute
     resource_class: large
     parameters:
       build_man:
@@ -9891,7 +10504,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_ubuntu_default
+    - prepare_resolute_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -9910,15 +10523,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_ubuntu_default_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_ubuntu_default_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_ubuntu_default_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/resolute_ubuntu_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_ubuntu_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_ubuntu_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_percona57_amd64:
-    executor: noble
+  build_resolute_percona57_amd64:
+    executor: resolute
     resource_class: large
     parameters:
       build_man:
@@ -9930,7 +10543,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_percona57
+    - prepare_resolute_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -9949,15 +10562,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_percona57_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/resolute_percona57_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_percona57_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_percona57_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_percona80_amd64:
-    executor: noble
+  build_resolute_percona80_amd64:
+    executor: resolute
     resource_class: large
     parameters:
       build_man:
@@ -9969,7 +10582,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_percona80
+    - prepare_resolute_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -9988,15 +10601,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_percona80_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/resolute_percona80_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_percona80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_percona80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_percona84_amd64:
-    executor: noble
+  build_resolute_percona84_amd64:
+    executor: resolute
     resource_class: large
     parameters:
       build_man:
@@ -10008,7 +10621,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_percona84
+    - prepare_resolute_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -10027,15 +10640,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_percona84_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona84_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/resolute_percona84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_percona84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_percona84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_mariadb1011_amd64:
-    executor: noble
+  build_resolute_mariadb1011_amd64:
+    executor: resolute
     resource_class: large
     parameters:
       build_man:
@@ -10047,7 +10660,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_mariadb1011
+    - prepare_resolute_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -10066,15 +10679,15 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_mariadb1011_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/resolute_mariadb1011_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_mariadb1011_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_mariadb1011_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_mariadb1006_amd64:
-    executor: noble
+  build_resolute_mariadb1006_amd64:
+    executor: resolute
     resource_class: large
     parameters:
       build_man:
@@ -10086,7 +10699,7 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_mariadb1006
+    - prepare_resolute_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
@@ -10105,9 +10718,360 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble_mariadb1006_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/resolute_mariadb1006_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/resolute_mariadb1006_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb resolute_mariadb1006_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mysql80_amd64:
+    executor: 
+    resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__mysql80
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_mysql80_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mysql80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mysql84_amd64:
+    executor: 
+    resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__mysql84
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_mysql84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mysql84_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__debian_default_amd64:
+    executor: 
+    resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__debian_default
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_debian_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_debian_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _debian_default_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__ubuntu_default_amd64:
+    executor: 
+    resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__ubuntu_default
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_ubuntu_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_ubuntu_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _ubuntu_default_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__percona57_amd64:
+    executor: 
+    resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__percona57
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_percona57_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_percona57_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _percona57_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__percona80_amd64:
+    executor: 
+    resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__percona80
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_percona80_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_percona80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _percona80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__percona84_amd64:
+    executor: 
+    resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__percona84
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_percona84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_percona84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _percona84_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mariadb1011_amd64:
+    executor: 
+    resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__mariadb1011
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_mariadb1011_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_mariadb1011_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mariadb1011_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mariadb1006_amd64:
+    executor: 
+    resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+    steps:
+    - checkout
+    - attach_workspace:
+        at: /tmp/man
+    - set_env_vars
+    - prepare__mariadb1006
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/man/
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
+    - run: mkdir -p /tmp/src/mydumper/_mariadb1006_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/_mariadb1006_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mariadb1006_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -11181,7 +12145,7 @@ jobs:
     docker:
       - image: mydumper/mydumper-builder-noble
     steps:
-    - run: sudo apt update
+	- run: sudo apt update
     - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c rpm reprepro
     - attach_workspace:
         at: /tmp/package    
@@ -11211,6 +12175,7 @@ jobs:
           reprepro ${REPREPRO_OPTIONS} includedeb focal /tmp/package/mydumper*focal*deb
           reprepro ${REPREPRO_OPTIONS} includedeb jammy /tmp/package/mydumper*jammy*deb
           reprepro ${REPREPRO_OPTIONS} includedeb noble /tmp/package/mydumper*noble*deb
+          reprepro ${REPREPRO_OPTIONS} includedeb resolute /tmp/package/mydumper*resolute*deb
           git add $(find -type f)
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}

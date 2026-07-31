@@ -112,6 +112,12 @@ all_os[${os}_1]="cimg/base:current-24.04"
 all_os[${os}_2]="percona-release_latest.noble_all.deb"
 all_os[${os}_3]="true"
 
+os=noble
+all_os[${os}_0]="resolute"
+all_os[${os}_1]="cimg/base:current-26.04"
+all_os[${os}_2]="percona-release_latest.resolute_all.deb"
+all_os[${os}_3]="true"
+
 os=el7
 all_os[${os}_0]="el7"
 all_os[${os}_1]="centos:7"
@@ -159,7 +165,7 @@ all_os[${os}_3]="true"
 # all_os[${os}_1]=""
 list_el_os=("el7" "el8" "el9" "el10")
 list_el_os_without_el=( "7" "8" "9" "10")
-list_ubuntu_os=("bionic" "focal" "jammy" "noble")
+list_ubuntu_os=("bionic" "focal" "jammy" "noble" "resolute")
 list_debian_os=("bullseye" "bookworm" "trixie")
 list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "el10" "bullseye" "bookworm" "trixie")
 
