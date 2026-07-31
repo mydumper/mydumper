@@ -13,13 +13,14 @@ on:
           - el8
           - el9
           - el10
-          - bionic
-          - bookworm
           - bullseye
+          - bookworm
+          - trixie 
+          - bionic
           - focal
           - jammy
           - noble
-          - trixie 
+          - resolute
 
 jobs:
 
