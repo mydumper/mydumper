@@ -167,7 +167,7 @@ list_el_os=("el7" "el8" "el9" "el10")
 list_el_os_without_el=( "7" "8" "9" "10")
 list_ubuntu_os=("bionic" "focal" "jammy" "noble" "resolute")
 list_debian_os=("bullseye" "bookworm" "trixie")
-list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "el10" "bullseye" "bookworm" "trixie")
+list_all_os=("bionic" "focal" "jammy" "noble" "resolute" "el7" "el8" "el9" "el10" "bullseye" "bookworm" "trixie")
 
 build_man_os="jammy_mysql80_amd64"
 
@@ -193,7 +193,6 @@ list_compile=(
 # jammy is in the tests list 
 #                                                                                          "noble_mysql84" This is already on the list of test
                                                                                                              "noble_ubuntu_default"
-                                                                                                             "resolute_ubuntu_default"
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
