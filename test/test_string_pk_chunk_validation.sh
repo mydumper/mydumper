@@ -105,6 +105,7 @@ pipeline_log="${workdir}/pipeline.log"
   "${password_args[@]}" \
   --regex "^(${source_db//./\\.}\\.${table_name})$" \
   -o "${dumpdir}" \
+  --logfile "${workdir}/mydumper.log" \
   --stream NO_STREAM_AND_NO_DELETE \
   --clear \
   -t 4 \
@@ -117,6 +118,7 @@ pipeline_log="${workdir}/pipeline.log"
   --string-pk-planner-max-probes=256 \
   --string-pk-planner-max-prefixes=8 \
   --string-pk-planner-min-rows=1 \
+  --string-pk-planner-target-rows-per-prefix=1000 \
   --max-items-per-string-chunk=1 \
   --max-char-size=2 \
   --compress=zstd \
@@ -176,4 +178,18 @@ if grep -q "Duplicate entry" "${workdir}/myloader.log" 2>/dev/null; then
   exit 1
 fi
 
-echo "String PK chunk validation passed: ${source_count} rows restored without duplicate-key errors"
+# Regression guard: the metadata planner must not collapse this multi-prefix
+# table into a single root. Confirm it reported more than one prefix chunk.
+planner_line=$(grep "String PK planner selected metadata-assisted prefix chunks" "${workdir}/mydumper.log" 2>/dev/null | tail -1)
+if [[ -z "${planner_line}" ]]; then
+  echo "Expected the metadata-assisted planner to run, but no planner log line was found" >&2
+  cat "${workdir}/mydumper.log" >&2
+  exit 1
+fi
+root_count=$(printf '%s\n' "${planner_line}" | grep -oE '\(([0-9]+) roots' | grep -oE '[0-9]+' | tail -1)
+if [[ -z "${root_count}" || "${root_count}" -le 1 ]]; then
+  echo "String PK planner collapsed to ${root_count:-unknown} root(s); expected more than one: ${planner_line}" >&2
+  exit 1
+fi
+
+echo "String PK chunk validation passed: ${source_count} rows restored without duplicate-key errors (${root_count} prefix roots)"

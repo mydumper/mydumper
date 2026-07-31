@@ -82,3 +82,20 @@ guint64 string_pk_planner_compute_root_step(guint64 rows, guint prefix_count, gu
   }
   return root_step;
 }
+
+guint64 string_pk_planner_compute_target(guint64 rows, guint64 target_rows_per_prefix, guint max_prefixes, guint64 min_chunk_step_size_value){
+  guint64 target = target_rows_per_prefix > 0 ?
+      target_rows_per_prefix :
+      (max_prefixes > 0 ? rows / max_prefixes : rows);
+  if (target == 0) {
+    target = 1;
+  }
+  if (target < min_chunk_step_size_value) {
+    target = min_chunk_step_size_value;
+  }
+  return target;
+}
+
+gboolean string_pk_planner_level_fits_budget(guint candidate_count, guint max_prefixes){
+  return max_prefixes == 0 || candidate_count <= max_prefixes;
+}

@@ -149,4 +149,5 @@ extern guint string_pk_planner_timeout_seconds;
 extern guint string_pk_planner_max_probes;
 extern guint string_pk_planner_max_prefixes;
 extern guint64 string_pk_planner_min_rows;
+extern guint64 string_pk_planner_target_rows_per_prefix;
 extern enum string_pk_planner_strategy string_pk_planner_strategy;

@@ -34,4 +34,18 @@ const gchar *string_pk_planner_strategy_name(enum string_pk_planner_strategy str
 gboolean string_pk_planner_should_use_metadata_mode(enum string_pk_planner_strategy strategy, gboolean metadata_enabled, gboolean split_string_pk, guint64 rows, guint64 min_rows);
 guint64 string_pk_planner_compute_root_step(guint64 rows, guint prefix_count, guint64 min_chunk_step_size);
 
+/*
+ * Resolves the effective per-prefix row target used by the metadata-assisted
+ * planner.  When target_rows_per_prefix is greater than zero it is used
+ * directly; otherwise the target is derived from rows / max_prefixes.  The
+ * result is always at least 1 and never below min_chunk_step_size.
+ */
+guint64 string_pk_planner_compute_target(guint64 rows, guint64 target_rows_per_prefix, guint max_prefixes, guint64 min_chunk_step_size);
+
+/*
+ * Returns TRUE when a candidate level with candidate_count prefixes still fits
+ * within the configured max_prefixes budget (0 means unbounded).
+ */
+gboolean string_pk_planner_level_fits_budget(guint candidate_count, guint max_prefixes);
+
 #endif

@@ -82,6 +82,7 @@ string-pk-planner-timeout = 30
 string-pk-planner-max-probes = 64
 string-pk-planner-max-prefixes = 256
 string-pk-planner-min-rows = 1000000
+string-pk-planner-target-rows-per-prefix = 0
 
 [myloader]
 host = 127.0.0.1
@@ -151,7 +152,7 @@ myloader \
   --aws-session-command='CALL mysql.some_other_aws_proc()'
 ```
 
-For very large tables with string primary keys, `mydumper` now has a bounded
+For very large tables with string primary keys, `mydumper` has a bounded
 metadata-assisted planner that seeds prefix-based root chunks before falling
 back to the existing recursive splitter. The defaults keep the current
 behavior as a safe fallback, but you can tune the planner with:
@@ -161,12 +162,41 @@ behavior as a safe fallback, but you can tune the planner with:
 * `--string-pk-planner-max-probes=<n>`
 * `--string-pk-planner-max-prefixes=<n>`
 * `--string-pk-planner-min-rows=<n>`
+* `--string-pk-planner-target-rows-per-prefix=<n>`
 
-The planner's prefix depth is bounded by `--max-char-size` (default 2). For
-large tables it uses fast EXPLAIN-only probes to seed prefix roots and lets the
-normal chunk worker refine those roots during export. Increasing
-`--max-char-size` increases the number of EXPLAIN probes before data export
-begins, but produces finer-grained root chunks.
+The planner works with three orthogonal bounds:
+
+* `--string-pk-planner-target-rows-per-prefix` sets the desired chunk size, in
+  rows. When `0` (the default) the target is derived as
+  `table_rows / --string-pk-planner-max-prefixes`; a positive value is used
+  directly. The planner deepens prefixes (uses more leading characters) until
+  each prefix's estimated row count is at or under this target.
+* `--max-char-size` (default 2) caps how many leading characters a prefix may
+  use, i.e. the maximum planning depth. A larger value allows finer chunks on
+  skewed key distributions at the cost of more `EXPLAIN` probes before export.
+* `--string-pk-planner-max-prefixes` caps the total number of prefix chunks.
+
+The planner starts from single-character prefixes and deepens one character at
+a time, expanding only the prefixes that are still over target. If deepening
+would exceed `--string-pk-planner-max-prefixes`, it keeps the shallowest level
+that still fits (graceful degradation): coverage stays complete and the table
+is never collapsed to a single chunk. The row targeting is best-effort because
+depth is chosen from `EXPLAIN` estimates; skewed data or a single dominant
+primary-key value may leave some chunks above the target.
+
+The `String PK planner selected metadata-assisted prefix chunks ...` log line
+reports the achieved root count, prefix length, and effective target so you can
+confirm the planner produced the parallelism you expect.
+
+Tuning for a very large (e.g. 30TB) table: set
+`--string-pk-planner=metadata`, pick a `--string-pk-planner-target-rows-per-prefix`
+that matches your desired per-chunk size (or leave it `0` and size via
+`--string-pk-planner-max-prefixes`), and raise `--max-char-size` to `2` or `3`
+if a single leading character does not spread the key space enough. Keep
+`--string-pk-planner-timeout` and `--string-pk-planner-max-probes` at sane
+non-zero values: setting both to `0` removes all planning-cost bounds, and on a
+30TB table with a skewed key that can lead to a very large number of `EXPLAIN`
+probes before export begins.
 
 - Per table sections:
 ```bash

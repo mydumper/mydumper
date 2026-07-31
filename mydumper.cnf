@@ -15,6 +15,8 @@ load-data-character-set=binary
 # string-pk-planner-max-probes=64
 # string-pk-planner-max-prefixes=256
 # string-pk-planner-min-rows=1000000
+# 0 derives the per-prefix row target from rows/max-prefixes; a positive value is used directly
+# string-pk-planner-target-rows-per-prefix=0
 
 # Example large-string-PK dump profile
 # bulk-metadata-prefetch
@@ -24,6 +26,7 @@ load-data-character-set=binary
 # string-pk-planner-timeout=0
 # string-pk-planner-max-probes=0
 # string-pk-planner-max-prefixes=256
+# string-pk-planner-target-rows-per-prefix=0
 # max-char-size=2
 # max-items-per-string-chunk=1
 # compress=zstd
