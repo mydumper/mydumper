@@ -884,8 +884,13 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           gchar *to = strchr(from, '\'');
           if (to == NULL) goto STMT_IGNORED;
           load_data_filename=g_strndup(from, to-from);
-          /* Wait for .dat file to be available (in streaming mode) */
-          load_data_mutex_locate(load_data_filename);
+          /* Wait for .dat file to be available (in streaming mode).
+             In directory mode the .dat file is already on disk, and waiting here can
+             deadlock: this thread holds a decompressor slot and a connection while the
+             file-type workers (the only threads that can signal this condition) may be
+             blocked waiting for those same decompressor slots. */
+          if (stream)
+            load_data_mutex_locate(load_data_filename);
           gchar **command=NULL;
 //          int load_data_child_pid = 0;  // Issue #2075: Track subprocess for FIFO unlink
           gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
