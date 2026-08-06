@@ -163,19 +163,6 @@ gboolean string_pk_planner_note_probe(struct db_table *dbt){
   return TRUE;
 }
 
-static void free_prefix_list(GList *prefixes){
-  GList *iter = prefixes;
-  while (iter != NULL) {
-    g_free(iter->data);
-    iter = iter->next;
-  }
-  g_list_free(prefixes);
-}
-
-static gint compare_prefix_strings(gconstpointer a, gconstpointer b){
-  return g_strcmp0((const gchar *)a, (const gchar *)b);
-}
-
 static gchar *escape_sql_string(MYSQL *conn, const gchar *value){
   gulong len = strlen(value);
   gchar *escaped = g_new(gchar, len * 2 + 1);
@@ -217,12 +204,19 @@ static guint64 estimate_prefix_rows(MYSQL *conn, struct db_table *dbt, const gch
 struct prefix_estimate {
   gchar *prefix;
   guint64 rows;
+  /*
+   * FALSE once the prefix can no longer be usefully deepened (it reached the
+   * max_char_size ceiling, has no non-empty children, or splitting it would
+   * exceed the max_prefixes budget).  Such prefixes stay as final roots.
+   */
+  gboolean expandable;
 };
 
 static struct prefix_estimate *new_prefix_estimate(const gchar *prefix, guint64 rows){
   struct prefix_estimate *pe = g_new0(struct prefix_estimate, 1);
   pe->prefix = g_strdup(prefix);
   pe->rows = rows;
+  pe->expandable = TRUE;
   return pe;
 }
 
@@ -233,6 +227,12 @@ static void free_prefix_estimate_list(GList *estimates){
     g_free(pe);
   }
   g_list_free(estimates);
+}
+
+static gint compare_prefix_estimate_prefix(gconstpointer a, gconstpointer b){
+  const struct prefix_estimate *pa = a;
+  const struct prefix_estimate *pb = b;
+  return g_strcmp0(pa->prefix, pb->prefix);
 }
 
 /*
@@ -261,61 +261,71 @@ static GList *seed_prefix_level(MYSQL *conn, struct db_table *dbt, const gchar *
 }
 
 /*
- * Builds the next-deeper full cover from the current level: prefixes at or
- * below the target are kept as-is, prefixes above the target are replaced by
- * their non-empty one-character children.  Sets *any_over when at least one
- * prefix was expanded.  Returns NULL and sets *aborted when the budget is
- * exhausted mid-expansion (the caller then keeps the current level).
+ * Probes every non-empty one-character child of victim->prefix, returning them
+ * as a new prefix_estimate list.  *child_count receives the number of non-empty
+ * children.  Because a prefix can only be split all-or-nothing (keeping only
+ * some children would leave gaps in the key space), the probe stops early and
+ * sets *over_budget as soon as accepting the children collected so far would
+ * push the total prefix count above max_prefixes.  Sets *aborted when the
+ * probe/timeout budget is exhausted mid-expansion.  Returns NULL (freeing any
+ * partial children) whenever *over_budget or *aborted is set.
  */
-static GList *expand_prefix_level(MYSQL *conn, struct db_table *dbt, GList *current,
-                                  guint64 target_rows_per_root, const gchar *alphabet,
-                                  gboolean *any_over, gboolean *aborted){
-  GList *candidate = NULL;
-  *any_over = FALSE;
+static GList *probe_prefix_children(MYSQL *conn, struct db_table *dbt,
+                                    const struct prefix_estimate *victim,
+                                    guint current_count, const gchar *alphabet,
+                                    guint *child_count, gboolean *over_budget,
+                                    gboolean *aborted){
+  GList *children = NULL;
+  *child_count = 0;
+  *over_budget = FALSE;
   *aborted = FALSE;
 
-  for (GList *iter = current; iter != NULL; iter = iter->next) {
-    struct prefix_estimate *pe = iter->data;
-    if (pe->rows <= target_rows_per_root) {
-      candidate = g_list_append(candidate, new_prefix_estimate(pe->prefix, pe->rows));
+  for (const gchar *character = alphabet; *character != '\0'; character++) {
+    gchar child[64];
+    g_snprintf(child, sizeof(child), "%s%c", victim->prefix, *character);
+    guint64 estimated_rows = estimate_prefix_rows(conn, dbt, child);
+    if (string_pk_planner_budget_exhausted(dbt)) {
+      *aborted = TRUE;
+      free_prefix_estimate_list(children);
+      return NULL;
+    }
+    if (estimated_rows == 0) {
       continue;
     }
-
-    *any_over = TRUE;
-    for (const gchar *character = alphabet; *character != '\0'; character++) {
-      gchar child[64];
-      g_snprintf(child, sizeof(child), "%s%c", pe->prefix, *character);
-      guint64 estimated_rows = estimate_prefix_rows(conn, dbt, child);
-      if (string_pk_planner_budget_exhausted(dbt)) {
-        *aborted = TRUE;
-        free_prefix_estimate_list(candidate);
-        return NULL;
-      }
-      if (estimated_rows == 0) {
-        continue;
-      }
-      candidate = g_list_append(candidate, new_prefix_estimate(child, estimated_rows));
+    children = g_list_append(children, new_prefix_estimate(child, estimated_rows));
+    (*child_count)++;
+    /* Replacing one prefix with child_count children is a net +(child_count - 1). */
+    if (!string_pk_planner_level_fits_budget(current_count - 1 + *child_count,
+                                             string_pk_planner_max_prefixes)) {
+      *over_budget = TRUE;
+      free_prefix_estimate_list(children);
+      return NULL;
     }
   }
 
-  return candidate;
+  return children;
 }
 
 /*
- * Iterative-deepening prefix planner.  Starts from the single-character cover
- * and deepens one character at a time, expanding only prefixes that exceed the
- * target, until every prefix is at/under target, the max_char_size depth
- * ceiling is reached, or the next level would exceed the max_prefixes budget.
- * On a budget overflow it keeps the deepest level that still fits, preserving
- * both parallelism and full row coverage (it never collapses to a single
- * empty-prefix root).  *chosen_depth reports the achieved prefix length.
+ * Greedy best-first prefix planner.  Starts from the single-character cover and
+ * repeatedly lengthens, by one character, the single over-target prefix with
+ * the most estimated rows, replacing it with its non-empty children.  Only hot
+ * prefixes are ever drilled into, so the number of EXPLAIN probes scales with
+ * the number of chunks produced rather than with alphabet^depth.
+ *
+ * A prefix stops growing once it is at/under target_rows_per_root, once it
+ * reaches the max_char_size length ceiling, or once it can no longer be split
+ * without exceeding the max_prefixes budget; in the latter two cases it stays a
+ * root as-is.  The single-character seed is always kept, so the planner never
+ * collapses to a single empty-prefix root and always yields a full cover.
+ * *chosen_depth reports the deepest prefix length produced.
  */
 static GList *build_prefix_roots(MYSQL *conn, struct db_table *dbt, guint64 target_rows_per_root, guint *chosen_depth){
   gchar *alphabet = get_probe_alphabet(conn, dbt);
 
-  GList *current = seed_prefix_level(conn, dbt, alphabet);
-  if (current == NULL || g_list_length(current) == 0) {
-    free_prefix_estimate_list(current);
+  GList *cover = seed_prefix_level(conn, dbt, alphabet);
+  if (cover == NULL || g_list_length(cover) == 0) {
+    free_prefix_estimate_list(cover);
     g_free(alphabet);
     if (chosen_depth != NULL) {
       *chosen_depth = 0;
@@ -323,57 +333,74 @@ static GList *build_prefix_roots(MYSQL *conn, struct db_table *dbt, guint64 targ
     return NULL;
   }
 
-  guint depth = 1;
-  while (depth < max_char_size && !string_pk_planner_budget_exhausted(dbt)) {
-    gboolean any_over = FALSE;
+  guint deepest = 1;
+  while (!string_pk_planner_budget_exhausted(dbt)) {
+    /* Pick the hottest prefix that is still over target and can be deepened. */
+    struct prefix_estimate *victim = NULL;
+    for (GList *iter = cover; iter != NULL; iter = iter->next) {
+      struct prefix_estimate *pe = iter->data;
+      if (!pe->expandable || pe->rows <= target_rows_per_root) {
+        continue;
+      }
+      if (strlen(pe->prefix) >= max_char_size) {
+        /* Reached the length ceiling: keep it as a root even if over target. */
+        pe->expandable = FALSE;
+        continue;
+      }
+      if (victim == NULL || pe->rows > victim->rows) {
+        victim = pe;
+      }
+    }
+    if (victim == NULL) {
+      /* Every prefix is at/under target or can no longer be deepened. */
+      break;
+    }
+
+    guint child_count = 0;
+    gboolean over_budget = FALSE;
     gboolean aborted = FALSE;
-    GList *candidate = expand_prefix_level(conn, dbt, current, target_rows_per_root,
-                                           alphabet, &any_over, &aborted);
+    GList *children = probe_prefix_children(conn, dbt, victim, g_list_length(cover),
+                                            alphabet, &child_count, &over_budget, &aborted);
     if (aborted) {
-      /* Keep the last complete level; it is a full cover. */
+      /* Out of probe/time budget: keep the complete cover we already have. */
       break;
     }
-    if (!any_over) {
-      /* Every prefix is already at/under the target. */
-      free_prefix_estimate_list(candidate);
-      break;
-    }
-    if (!string_pk_planner_level_fits_budget(g_list_length(candidate), string_pk_planner_max_prefixes)) {
+    if (over_budget || child_count == 0) {
       /*
-       * Graceful degradation: the deeper level would exceed the prefix
-       * budget, so keep the shallower level that still fits rather than
-       * collapsing the whole table to a single root.
+       * Either splitting this prefix would exceed the prefix budget, or every
+       * row equals the prefix itself, so it cannot be split.  Keep it as a root
+       * and stop reconsidering it; smaller prefixes and single-child chains
+       * (which never grow the total count) may still be split.
        */
-      free_prefix_estimate_list(candidate);
-      break;
+      victim->expandable = FALSE;
+      continue;
     }
-    free_prefix_estimate_list(current);
-    current = candidate;
-    depth++;
+
+    guint victim_depth = (guint)strlen(victim->prefix) + 1;
+    if (victim_depth > deepest) {
+      deepest = victim_depth;
+    }
+    cover = g_list_remove(cover, victim);
+    g_free(victim->prefix);
+    g_free(victim);
+    cover = g_list_concat(cover, children);
   }
 
   g_free(alphabet);
 
-  GList *roots = NULL;
-  for (GList *iter = current; iter != NULL; iter = iter->next) {
-    struct prefix_estimate *pe = iter->data;
-    roots = g_list_append(roots, g_strdup(pe->prefix));
-  }
-  free_prefix_estimate_list(current);
-
-  if (roots == NULL || g_list_length(roots) == 0) {
-    free_prefix_list(roots);
+  if (cover == NULL || g_list_length(cover) == 0) {
+    free_prefix_estimate_list(cover);
     if (chosen_depth != NULL) {
       *chosen_depth = 0;
     }
     return NULL;
   }
 
-  roots = g_list_sort(roots, compare_prefix_strings);
+  cover = g_list_sort(cover, compare_prefix_estimate_prefix);
   if (chosen_depth != NULL) {
-    *chosen_depth = depth;
+    *chosen_depth = deepest;
   }
-  return roots;
+  return cover;
 }
 
 static void append_string_chunk_root(struct db_table *dbt, GList **chunks, const gchar *prefix, guint64 part, guint64 step, guint64 rows_in_explain, guint prefix_len){
@@ -404,17 +431,25 @@ gboolean string_pk_plan_prefix_chunks(MYSQL *conn, struct db_table *dbt, guint64
     return FALSE;
   }
 
-  guint prefix_count = g_list_length(prefixes);
-  guint64 root_step = string_pk_planner_compute_root_step(rows, prefix_count, dbt->min_chunk_step_size);
+  /*
+   * The chunk step doubles as the per-chunk row target for the runtime string
+   * splitter: process_string_chunk_step() dumps a root whole only when its
+   * EXPLAIN estimate is at/under the step, and subdivides it further otherwise.
+   * Tying the step to target_rows_per_root therefore makes the emitted chunks
+   * honor --string-pk-planner-target-rows-per-prefix even for roots the planner
+   * had to leave over target (max-char-size or max-prefixes bound), instead of
+   * dumping each root as one huge statement.
+   */
+  guint64 root_step = target_rows_per_root;
 
   GList *chunks = NULL;
   guint64 part = 0;
   for (GList *iter = prefixes; iter != NULL; iter = iter->next) {
-    const gchar *prefix = iter->data;
-    guint64 rows_in_explain = prefix_count > 0 ? rows / prefix_count : 0;
-    append_string_chunk_root(dbt, &chunks, prefix, part++, root_step, rows_in_explain, strlen(prefix));
+    struct prefix_estimate *pe = iter->data;
+    /* Carry the real per-prefix estimate so the runtime split decision is accurate. */
+    append_string_chunk_root(dbt, &chunks, pe->prefix, part++, root_step, pe->rows, strlen(pe->prefix));
   }
-  free_prefix_list(prefixes);
+  free_prefix_estimate_list(prefixes);
 
   if (chunks == NULL) {
     return FALSE;
