@@ -19,14 +19,13 @@
 
 #include "mydumper/mydumper_table.h"
 
+#include "mydumper.h"
 #include "mydumper/mydumper.h"
 #include "mydumper/mydumper_chunks.h"
 #include "mydumper/mydumper_common.h"
 #include "mydumper/mydumper_database.h"
 #include "mydumper/mydumper_global.h"
 #include "mydumper/mydumper_start_dump.h"
-
-#include "mydumper.h"
 #include "mydumper_chunks.h"
 #include "mydumper_database.h"
 #include "mydumper_global.h"

@@ -30,7 +30,6 @@
 #include "mydumper/mydumper_global.h"
 #include "mydumper/mydumper_stream.h"
 #include "mydumper/mydumper_table.h"
-
 #include "mydumper_exec_command.h"
 #include "mydumper_global.h"
 #include "mydumper_stream.h"

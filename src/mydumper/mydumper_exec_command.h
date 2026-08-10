@@ -18,9 +18,6 @@
 #ifndef _src_mydumper_mydumper_exec_command_h
 #define _src_mydumper_mydumper_exec_command_h
 
-#ifndef _src_mydumper_mydumper_exec_command_h
-#define _src_mydumper_mydumper_exec_command_h
-
 void load_exec_entries(GOptionGroup *main_group);
 void initialize_exec_command();
 void wait_exec_command_to_finish();
