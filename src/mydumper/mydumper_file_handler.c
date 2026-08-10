@@ -24,7 +24,12 @@
 #include <gio/gio.h>
 #include <sys/wait.h>
 
-#include "mydumper_file_handler.h"
+#include "mydumper/mydumper_file_handler.h"
+
+#include "mydumper/mydumper_exec_command.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_stream.h"
+#include "mydumper/mydumper_table.h"
 
 #include "mydumper_exec_command.h"
 #include "mydumper_global.h"

@@ -15,4 +15,13 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#ifndef _src_myloader_myloader_pmm_h
+#define _src_myloader_myloader_pmm_h
+
+#include <glib.h>
+
+#include "myloader/myloader.h"
+
 void write_myloader_pmm_entries(const gchar *filename, GString *content, struct configuration *conf);
+
+#endif

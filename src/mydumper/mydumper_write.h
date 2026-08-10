@@ -19,14 +19,17 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#define LOAD_DATA_PREFIX "LOAD DATA LOCAL INFILE '"
-
 #ifndef _src_mydumper_mydumper_write_h
 #define _src_mydumper_mydumper_write_h
 
-#include "mydumper_create_jobs.h"
+#include <glib.h>
 
-#endif
+#include "mydumper/mydumper_create_jobs.h"
+
+#define LOAD_DATA_PREFIX "LOAD DATA LOCAL INFILE '"
+
+struct thread_data;
+struct db_table;
 
 void     load_write_entries(GOptionGroup *main_group, GOptionContext *context);
 void     initialize_write();
@@ -39,7 +42,7 @@ void     close_table_job_files(struct table_job *tj);
 // Thread-local row batching: accumulates rows locally, flushes every 10K rows
 // update_dbt_rows_batched: Thread-local batching (call during processing)
 // flush_dbt_rows: Force flush thread-local count (call at end of table chunk)
-struct thread_data;
-struct db_table;
 void update_dbt_rows_batched(struct thread_data *td, struct db_table *dbt, guint64 num_rows);
 void flush_dbt_rows(struct thread_data *td);
+
+#endif

@@ -26,15 +26,15 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#include "myloader_common.h"
+#include "myloader/myloader_restore.h"
 
-#include "myloader.h"
-#include "myloader_database.h"
-#include "myloader_global.h"
-#include "myloader_process.h"
-#include "myloader_process_filename.h"
-#include "myloader_restore.h"
-#include "../logging.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_process.h"
+#include "myloader/myloader_process_filename.h"
+#include "logging.h"
 
 extern gboolean dry_run;
 

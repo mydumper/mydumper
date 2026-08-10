@@ -15,12 +15,17 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _src_myloader_table_h
-#define _src_myloader_table_h
+#ifndef _src_myloader_myloader_table_h
+#define _src_myloader_myloader_table_h
 
-#include <stdio.h>
+#include <glib.h>
 
-#include "myloader.h"
+#include "checksum.h"
+#include "common.h"
+#include "myloader/myloader.h"
+
+struct database;
+struct configuration;
 
 struct db_table
 {
@@ -64,4 +69,5 @@ gint             compare_dbt_short(gconstpointer a, gconstpointer b);
 void             initialize_table(struct configuration *c);
 void             table_lock(struct db_table *dbt);
 void             table_unlock(struct db_table *dbt);
+
 #endif

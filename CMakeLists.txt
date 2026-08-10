@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 2.8.12...3.5)
 project(mydumper)
 file(READ "VERSION" ver_str)
 string(REGEX MATCH "ver=\"([^\"]+)\"" _ ${ver_str})
@@ -45,7 +45,7 @@ if (MARIADB_FOUND AND NOT MARIADB_SSL AND WITH_SSL)
 endif()
 
 set(CMAKE_C_FLAGS "-std=gnu99 -Wall -Wno-deprecated-declarations -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -g -Werror ${MYSQL_CFLAGS}")
-include_directories(${MYDUMPER_SOURCE_DIR} ${MYSQL_INCLUDE_DIR} ${GLIB2_INCLUDE_DIR} ${PCRE2_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS} )
+include_directories(${CMAKE_SOURCE_DIR}/src ${MYSQL_INCLUDE_DIR} ${GLIB2_INCLUDE_DIR} ${PCRE2_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS} )
 
 OPTION(WITH_ASAN "Build with ASAN" OFF)
 OPTION(WITH_TSAN "Build with TSAN" OFF)

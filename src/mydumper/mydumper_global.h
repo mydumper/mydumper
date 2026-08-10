@@ -1,9 +1,29 @@
+/*
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef _src_mydumper_mydumper_global_h
+#define _src_mydumper_mydumper_global_h
 
 #include <gio/gio.h>
 #include <glib/gstdio.h>
 #include <mysql.h>
 
-#include "mydumper_start_dump.h"
+#include "common.h"
+#include "mydumper/mydumper_arguments.h"
+#include "mydumper/mydumper_start_dump.h"
+
 extern gchar       *defaults_file;
 extern char        *defaults_extra_file;
 extern GHashTable  *all_dbts;
@@ -143,3 +163,5 @@ extern guint                      isms;
 extern guint64 max_statement_size;
 extern gchar  *set_names_in_conn_for_sct, *set_names_in_file_for_sct, *set_names_in_file_by_default;
 extern guint   num_sequences;
+
+#endif

@@ -14,8 +14,15 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include "myloader.h"
+
+#ifndef _src_myloader_myloader_stream_h
+#define _src_myloader_myloader_stream_h
+
+#include "myloader/myloader.h"
+
 void initialize_stream(struct configuration *conf);
 void wait_stream_to_finish();
 void wait_stream_to_process_metadata_header();
 void metadata_has_been_processed();
+
+#endif

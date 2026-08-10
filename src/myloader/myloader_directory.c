@@ -20,14 +20,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "myloader_common.h"
-
-#include "myloader.h"
-#include "myloader_control_job.h"
-#include "myloader_global.h"
-#include "myloader_process.h"
-#include "myloader_process_filename.h"
-#include "../logging.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_control_job.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_process.h"
+#include "myloader/myloader_process_filename.h"
+#include "logging.h"
 
 GAsyncQueue *metadata_sync_queue = NULL;
 

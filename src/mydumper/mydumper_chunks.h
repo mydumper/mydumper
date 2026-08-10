@@ -25,9 +25,9 @@
 #include <glib.h>
 #include <mysql.h>
 
-#include "mydumper_integer_chunks.h"
-#include "mydumper_partition_chunks.h"
-#include "mydumper_string_chunks.h"
+#include "mydumper/mydumper_integer_chunks.h"
+#include "mydumper/mydumper_partition_chunks.h"
+#include "mydumper/mydumper_string_chunks.h"
 
 struct table_job;
 struct db_table;

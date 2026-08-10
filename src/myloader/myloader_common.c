@@ -25,17 +25,18 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "myloader_common.h"
+#include "myloader/myloader_common.h"
 
-#include "myloader.h"
-#include "myloader_arguments.h"
-#include "myloader_control_job.h"
-#include "myloader_database.h"
-#include "myloader_global.h"
-#include "myloader_process.h"
-#include "myloader_restore_job.h"
-#include "myloader_stream.h"
-#include "myloader_table.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_arguments.h"
+#include "myloader/myloader_control_job.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_process.h"
+#include "myloader/myloader_restore_job.h"
+#include "myloader/myloader_stream.h"
+#include "myloader/myloader_table.h"
+
 GHashTable *tbl_hash = NULL;
 guint       refresh_table_list_interval = 100;
 guint       refresh_table_list_counter = 1;

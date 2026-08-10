@@ -14,21 +14,21 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 #include <glib.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "myloader_common.h"
+#include "myloader/myloader_control_job.h"
 
-#include "myloader_control_job.h"
-#include "myloader_restore.h"
-#include "myloader_restore_job.h"
-// #include "myloader_jobs_manager.h"
-#include "myloader_database.h"
-#include "myloader_global.h"
-#include "myloader_worker_index.h"
-#include "myloader_worker_loader.h"
-#include "myloader_worker_schema.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_restore.h"
+#include "myloader/myloader_restore_job.h"
+#include "myloader/myloader_worker_index.h"
+#include "myloader/myloader_worker_loader.h"
+#include "myloader/myloader_worker_schema.h"
 
 /* control_job_queue is for data loads */
 GAsyncQueue *control_job_queue = NULL;

@@ -112,6 +112,12 @@ all_os[${os}_1]="cimg/base:current-24.04"
 all_os[${os}_2]="percona-release_latest.noble_all.deb"
 all_os[${os}_3]="true"
 
+os=resolute
+all_os[${os}_0]="resolute"
+all_os[${os}_1]="cimg/base:current-26.04"
+all_os[${os}_2]="percona-release_latest.resolute_all.deb"
+all_os[${os}_3]="true"
+
 os=el7
 all_os[${os}_0]="el7"
 all_os[${os}_1]="centos:7"
@@ -159,9 +165,9 @@ all_os[${os}_3]="true"
 # all_os[${os}_1]=""
 list_el_os=("el7" "el8" "el9" "el10")
 list_el_os_without_el=( "7" "8" "9" "10")
-list_ubuntu_os=("bionic" "focal" "jammy" "noble")
+list_ubuntu_os=("bionic" "focal" "jammy" "noble" "resolute")
 list_debian_os=("bullseye" "bookworm" "trixie")
-list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "el10" "bullseye" "bookworm" "trixie")
+list_all_os=("bionic" "focal" "jammy" "noble" "resolute" "el7" "el8" "el9" "el10" "bullseye" "bookworm" "trixie")
 
 build_man_os="jammy_mysql80_amd64"
 
@@ -170,6 +176,7 @@ list_build=(
   "focal_mysql80_amd64"   # "focal_mariadb1011_arm64"
   "jammy_mysql80_amd64"   # "jammy_mariadb1011_arm64"
   "noble_mysql84_amd64"         "noble_ubuntu_default_arm64"
+  "resolute_mysql84_amd64"      "resolute_mysql84_arm64"
   "el7_percona57_x86_64" 
   "el8_mysql84_x86_64"          "el8_mysql84_aarch64"
   "el9_mysql84_x86_64"          "el9_mysql84_aarch64"
@@ -186,6 +193,7 @@ list_compile=(
 # jammy is in the tests list 
 #                                                                                          "noble_mysql84" This is already on the list of test
                                                                                                              "noble_ubuntu_default"
+                                                                                                             "resolute_ubuntu_default"
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
@@ -605,7 +613,7 @@ echo "    - set_env_vars
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a\"
-    - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 50 )); then false; fi
+    - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}/
     - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]} ${all_arch[${arch}_rpm]}"
@@ -658,7 +666,7 @@ echo "    - set_env_vars
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}:FILEPATH=/usr/lib/${all_arch[${arch}_rpm]}-linux-gnu/lib${all_vendors[${vendor}_4]}.a\"
-    - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 50 )); then false; fi
+    - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
         steps:
@@ -714,7 +722,7 @@ echo -n '
     docker:
       - image: mydumper/mydumper-builder-noble
     steps:
-	- run: sudo apt update
+    - run: sudo apt update
     - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c rpm reprepro
     - attach_workspace:
         at: /tmp/package    

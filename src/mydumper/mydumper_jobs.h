@@ -22,6 +22,38 @@
 #ifndef _src_mydumper_mydumper_jobs_h
 #define _src_mydumper_mydumper_jobs_h
 
+#include <stdio.h>
+#include <glib.h>
+
+struct db_table;
+struct database;
+struct thread_data;
+
+enum job_type
+{
+  JOB_SHUTDOWN,
+  JOB_RESTORE,
+  JOB_DUMP,
+  JOB_DUMP_NON_INNODB,
+  JOB_DEFER,
+  JOB_DETERMINE_CHUNK_TYPE,
+  JOB_TABLE,
+  JOB_CHECKSUM,
+  JOB_SCHEMA,
+  JOB_VIEW,
+  JOB_SEQUENCE,
+  JOB_TRIGGERS,
+  JOB_SCHEMA_TRIGGERS,
+  JOB_SCHEMA_POST,
+  JOB_BINLOG,
+  JOB_CREATE_DATABASE,
+  JOB_CREATE_TABLESPACE,
+  JOB_DUMP_DATABASE,
+  JOB_DUMP_ALL_DATABASES,
+  JOB_DUMP_TABLE_LIST,
+  JOB_WRITE_SOURCE_AND_REPLICA_STATUS
+};
+
 struct job
 {
   enum job_type type;
@@ -70,8 +102,6 @@ struct view_job
   char            *view_filename;
 };
 
-#endif
-
 void initialize_jobs();
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job);
 void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job);
@@ -82,3 +112,5 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job);
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job);
+
+#endif

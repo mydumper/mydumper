@@ -20,15 +20,14 @@
 
 #include <errno.h>
 #include <glib.h>
+#include <glib/gstdio.h>
+#include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-// #include <zlib.h>
-#include <glib/gstdio.h>
-#include <signal.h>
 
 #include "common.h"
 

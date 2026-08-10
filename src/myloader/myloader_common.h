@@ -14,12 +14,20 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#ifndef _src_myloader_common_h
-#define _src_myloader_common_h
+
+#ifndef _src_myloader_myloader_common_h
+#define _src_myloader_myloader_common_h
 
 #include <stdio.h>
+#include <glib.h>
+#include <mysql.h>
 
-#include "myloader.h"
+#include "myloader/myloader_deps.h"
+#include "myloader/myloader.h"
+
+struct db_table;
+struct database;
+
 gboolean eval_table(char *db_name, char *table_name, GMutex *mutex);
 gboolean should_queue_filename(const gchar *filename, GMutex *mutex);
 void     get_database_table_from_file(const gchar *filename, const char *sufix, gchar **database, gchar **table);

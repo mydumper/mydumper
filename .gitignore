@@ -2,6 +2,8 @@ CMakeCache.txt
 CMakeFiles/
 Makefile
 cmake_install.cmake
+CTestTestfile.cmake
+test_use_defer_livelock
 config.h
 docs/CMakeFiles/
 docs/Makefile

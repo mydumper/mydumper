@@ -19,15 +19,20 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include "../common.h"
+#ifndef _src_mydumper_mydumper_h
+#define _src_mydumper_mydumper_h
 
-#include "../checksum.h"
-#include "../common_options.h"
-#include "../config.h"
-#include "../connection.h"
-#include "../pmm_thread.h"
-#include "../regex.h"
-#include "../server_detect.h"
-#include "../set_verbose.h"
-#include "../tables_skiplist.h"
-#include "../logging.h"
+#include "common.h"
+
+#include "checksum.h"
+#include "common_options.h"
+#include "config.h"
+#include "connection.h"
+#include "pmm_thread.h"
+#include "regex.h"
+#include "server_detect.h"
+#include "set_verbose.h"
+#include "tables_skiplist.h"
+#include "logging.h"
+
+#endif

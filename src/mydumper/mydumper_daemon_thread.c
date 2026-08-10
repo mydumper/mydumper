@@ -25,11 +25,10 @@
 #include <glib/gstdio.h>
 #include <mysql.h>
 
-#include "mydumper_common.h"
-
-#include "mydumper.h"
-#include "mydumper_global.h"
-#include "mydumper_start_dump.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_common.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_start_dump.h"
 
 guint        snapshot_interval = 60;
 guint        snapshot_count = 2;

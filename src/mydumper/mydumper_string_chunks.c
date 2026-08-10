@@ -29,17 +29,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "mydumper_common.h"
-#include "mydumper_string_chunks.h"
+#include "mydumper/mydumper_string_chunks.h"
 
-#include "mydumper.h"
-#include "mydumper_chunks.h"
-#include "mydumper_database.h"
-#include "mydumper_global.h"
-#include "mydumper_jobs.h"
-#include "mydumper_start_dump.h"
-#include "mydumper_working_thread.h"
-#include "mydumper_write.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_chunks.h"
+#include "mydumper/mydumper_common.h"
+#include "mydumper/mydumper_database.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_jobs.h"
+#include "mydumper/mydumper_start_dump.h"
+#include "mydumper/mydumper_working_thread.h"
+#include "mydumper/mydumper_write.h"
 
 extern guint max_items_per_string_chunk;
 extern guint max_time_per_select;

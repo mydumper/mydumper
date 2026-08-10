@@ -25,18 +25,17 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#include "myloader_common.h"
-
-#include "myloader.h"
-#include "myloader_arguments.h"
-#include "myloader_control_job.h"
-#include "myloader_database.h"
-#include "myloader_directory.h"
-#include "myloader_global.h"
-#include "myloader_process.h"
-#include "myloader_restore_job.h"
-#include "myloader_stream.h"
-#include "myloader_worker_schema.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_arguments.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_control_job.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_directory.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_process.h"
+#include "myloader/myloader_restore_job.h"
+#include "myloader/myloader_stream.h"
+#include "myloader/myloader_worker_schema.h"
 
 struct configuration *__conf;
 extern gboolean       schema_sequence_fix;

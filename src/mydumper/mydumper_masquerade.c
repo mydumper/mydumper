@@ -22,10 +22,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "mydumper_common.h"
+#include "mydumper/mydumper_masquerade.h"
 
-#include "mydumper.h"
-#include "mydumper_masquerade.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_common.h"
 struct function_pointer identity_function_pointer = {&identity_function, FALSE, NULL, NULL, NULL, NULL, FALSE, 0, 0, NULL, FALSE};
 
 GHashTable *file_hash = NULL;

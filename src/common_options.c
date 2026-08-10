@@ -24,6 +24,7 @@
 
 #include "common_options.h"
 #include "config.h"
+
 char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
 

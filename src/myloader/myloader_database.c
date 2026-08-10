@@ -17,13 +17,13 @@
 
 #include <glib.h>
 
-#include "myloader_common.h"
+#include "myloader/myloader_database.h"
 
-#include "myloader_database.h"
-#include "myloader_global.h"
-#include "myloader_restore.h"
-#include "myloader_restore_job.h"
-#include "../logging.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_restore.h"
+#include "myloader/myloader_restore_job.h"
+#include "logging.h"
 
 GHashTable      *database_hash = NULL;
 static GMutex   *database_hash_mutex = NULL;

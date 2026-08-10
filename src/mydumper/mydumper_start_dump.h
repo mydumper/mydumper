@@ -15,18 +15,15 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-struct MList;
-struct configuration;
-
 #ifndef _src_mydumper_mydumper_start_dump_h
 #define _src_mydumper_mydumper_start_dump_h
+
+#include <glib.h>
 
 #define MAX_START_TRANSACTION_RETRIES 5
 #define MYDUMPER "mydumper"
 
-#include "mydumper.h"
-#include "mydumper_create_jobs.h"
-#include "mydumper_table.h"
+struct db_table;
 
 enum sync_thread_lock_mode
 {
@@ -98,13 +95,11 @@ struct configuration
   int                  done;
 };
 
-#endif
-
 void load_start_dump_entries(GOptionContext *context, GOptionGroup *filter_group);
 void start_dump(struct configuration *conf, GOptionContext *context);
-// void *exec_thread(void *data);
 gboolean sig_triggered_int(void *user_data);
 gboolean sig_triggered_term(void *user_data);
 void     set_disk_limits(guint p_at, guint r_at);
-// void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt);
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data);
+
+#endif

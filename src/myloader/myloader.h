@@ -15,24 +15,16 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include "../common.h"
+#ifndef _src_myloader_myloader_h
+#define _src_myloader_myloader_h
 
-#include "../checksum.h"
-#include "../common_options.h"
-#include "../config.h"
-#include "../connection.h"
-#include "../pmm_thread.h"
-#include "../regex.h"
-#include "../server_detect.h"
-#include "../set_verbose.h"
-#include "../tables_skiplist.h"
-#include "myloader_table.h"
-#include "../logging.h"
-
-#ifndef _src_myloader_h
-#define _src_myloader_h
+#include <glib.h>
 #include <mysql.h>
+
 #define MYLOADER "myloader"
+
+struct database;
+struct db_table;
 
 enum purge_mode
 {
@@ -59,7 +51,6 @@ struct restore_errors
   guint skip_errors;
   guint retries;
 };
-struct database;
 
 enum thread_states
 {

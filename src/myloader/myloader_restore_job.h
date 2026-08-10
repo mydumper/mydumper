@@ -15,10 +15,12 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _src_myloader_restore_job_h
-#define _src_myloader_restore_job_h
-#include "myloader.h"
-#include "myloader_control_job.h"
+#ifndef _src_myloader_myloader_restore_job_h
+#define _src_myloader_myloader_restore_job_h
+
+#include "myloader/myloader.h"
+#include "myloader/myloader_control_job.h"
+
 enum restore_job_type
 {
   JOB_RESTORE_SCHEMA_FILENAME,
@@ -26,6 +28,7 @@ enum restore_job_type
   JOB_TO_CREATE_TABLE,
   JOB_RESTORE_STRING
 };
+
 enum restore_job_statement_type
 {
   SEQUENCE,
@@ -121,4 +124,5 @@ void                stop_signal_thread();
 void               *signal_thread(void *data);
 void                execute_drop_database(struct thread_data *td, gchar *database);
 gboolean            process_job(struct thread_data *td, struct control_job *job, gboolean *retry);
+
 #endif

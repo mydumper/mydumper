@@ -12,8 +12,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot
-   org)
+    Authors: Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
 
 #ifndef _src_common_options_h

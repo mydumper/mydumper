@@ -15,9 +15,19 @@
     Authors:        David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <mysql.h>
 #ifndef _src_checksum_h
 #define _src_checksum_h
+
+#include <stdio.h>
+#include <glib.h>
+#include <mysql.h>
+
+enum checksum_modes
+{
+  CHECKSUM_SKIP = 0,
+  CHECKSUM_WARN,
+  CHECKSUM_FAIL
+};
 
 extern enum checksum_modes checksum_mode;
 extern gboolean            skip_database_checksums;
@@ -33,13 +43,6 @@ extern gboolean data_checksums;
 extern gboolean dump_checksums;
 extern gboolean routine_checksums;
 extern gboolean schema_checksums;
-
-enum checksum_modes
-{
-  CHECKSUM_SKIP = 0,
-  CHECKSUM_WARN,
-  CHECKSUM_FAIL
-};
 
 struct database_level_checksum
 {
@@ -86,4 +89,5 @@ gboolean checksum_database(gchar   *target_database,
 gboolean checksum_dbt(gchar *target_database, gchar *source_table_name, gboolean is_view, struct table_level_checksum *table_checksum, MYSQL *conn);
 void     initilize_checksum();
 void     print_checksum_help();
+
 #endif

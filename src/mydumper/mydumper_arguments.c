@@ -22,11 +22,11 @@
 #include <gio/gio.h>
 #include <glib/gstdio.h>
 
-#include "mydumper_arguments.h"
-#include "mydumper_common.h"
+#include "mydumper/mydumper_arguments.h"
 
-#include "mydumper.h"
-#include "mydumper_global.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_common.h"
+#include "mydumper/mydumper_global.h"
 
 extern guint64             min_integer_chunk_step_size;
 extern guint64             max_integer_chunk_step_size;

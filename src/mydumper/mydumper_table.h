@@ -18,6 +18,19 @@
 #ifndef _src_mydumper_mydumper_table_h
 #define _src_mydumper_mydumper_table_h
 
+#include <stdio.h>
+#include <glib.h>
+#include <mysql.h>
+
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+
+#include "checksum.h"
+#include "common.h"
+
+struct database;
+struct configuration;
+
 enum db_table_states
 {
   UNDEFINED,
@@ -76,10 +89,10 @@ struct db_table
   guint                       current_threads_running;
 };
 
-#endif
-
 void     initialize_table();
 void     finalize_table();
 void     prefetch_table_metadata(MYSQL *conn);
 void     free_db_table(struct db_table *dbt);
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf, struct database *database, char *table, char *table_collation, gboolean is_sequence, gboolean is_view);
+
+#endif

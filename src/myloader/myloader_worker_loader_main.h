@@ -15,10 +15,14 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _src_myloader_worker_loader_main_h
-#define _src_myloader_worker_loader_main_h
+#ifndef _src_myloader_myloader_worker_loader_main_h
+#define _src_myloader_myloader_worker_loader_main_h
 
-#include "myloader.h"
+#include "myloader/myloader.h"
+#include "myloader/myloader_worker_loader.h"
+
+struct restore_job;
+struct db_table;
 
 enum data_control_type
 {

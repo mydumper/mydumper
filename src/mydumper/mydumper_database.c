@@ -17,11 +17,12 @@
 
 #include <glib.h>
 
-#include "mydumper_common.h"
+#include "mydumper/mydumper_database.h"
 
-#include "mydumper_create_jobs.h"
-#include "mydumper_database.h"
-#include "mydumper_global.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_common.h"
+#include "mydumper/mydumper_create_jobs.h"
+#include "mydumper/mydumper_global.h"
 
 GHashTable    *database_hash = NULL;
 static GMutex *database_hash_mutex = NULL;
