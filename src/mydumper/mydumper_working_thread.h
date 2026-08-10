@@ -24,11 +24,11 @@
 #define REPLACE "REPLACE"
 #define UNLOCK_TABLES "UNLOCK TABLES"
 
+#ifndef _src_mydumper_mydumper_working_thread_h
+#define _src_mydumper_mydumper_working_thread_h
 
-#ifndef _src_mydumper_working_thread_h
-#define _src_mydumper_working_thread_h
-
-struct thread_data_buffers {
+struct thread_data_buffers
+{
   GString *statement;
   GString *row;
   GString *escaped;
@@ -37,32 +37,31 @@ struct thread_data_buffers {
   GString *target_column;
 };
 
-struct thread_data {
-  struct configuration *conf;
-  guint thread_id;
-  char *table_name;
-  MYSQL *thrconn;
-  gchar *binlog_snapshot_gtid_executed;
-  GMutex *pause_resume_mutex;
+struct thread_data
+{
+  struct configuration      *conf;
+  guint                      thread_id;
+  char                      *table_name;
+  MYSQL                     *thrconn;
+  gchar                     *binlog_snapshot_gtid_executed;
+  GMutex                    *pause_resume_mutex;
   struct thread_data_buffers thread_data_buffers;
   // Thread-local row counter for batched updates (reduces atomic ops 1000x)
-  guint64 local_row_count;
+  guint64          local_row_count;
   struct db_table *local_row_count_dbt;
 };
 
 #endif
 
-
-typedef gchar * (*fun_ptr2)(gchar **);
+typedef gchar *(*fun_ptr2)(gchar **);
 
 void initialize_working_thread();
-void start_working_thread(struct configuration *conf );
+void start_working_thread(struct configuration *conf);
 void wait_working_thread_to_finish();
 void finalize_working_thread();
 
-void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup * filter_group);
+void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup *filter_group);
 void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_transactional);
 void build_lock_tables_statement(struct configuration *conf);
-void check_pause_resume( struct thread_data *td );
+void check_pause_resume(struct thread_data *td);
 void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt);
-void free_db_table(struct db_table * dbt);

@@ -14,33 +14,43 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include "myloader.h"
+
+#ifndef _src_myloader_myloader_worker_loader_h
+#define _src_myloader_myloader_worker_loader_h
+
+#include "myloader/myloader.h"
+
+struct restore_job;
+
 #define RESTORE_JOB_RUNNING_INTERVAL 10
 
-
-enum data_job_type {DATA_JOB, DATA_PROCESS_ENDED, DATA_ENDED};
-
-struct data_job{
-  enum data_job_type type;
-  struct restore_job *restore_job;
-//  struct database *use_database;
+enum data_job_type
+{
+  DATA_JOB,
+  DATA_PROCESS_ENDED,
+  DATA_ENDED
 };
 
+struct data_job
+{
+  enum data_job_type  type;
+  struct restore_job *restore_job;
+};
 
-static inline
-const char *data_job_type2str(enum data_job_type ft){
-  switch (ft) {
-  case DATA_JOB:
-    return "DATA_JOB";
-  case DATA_PROCESS_ENDED:
-    return "DATA_PROCESS_ENDED";
-  case DATA_ENDED:
-    return "DATA_ENDED";
+static inline const char *data_job_type2str(enum data_job_type ft)
+{
+  switch (ft)
+  {
+    case DATA_JOB:
+      return "DATA_JOB";
+    case DATA_PROCESS_ENDED:
+      return "DATA_PROCESS_ENDED";
+    case DATA_ENDED:
+      return "DATA_ENDED";
   }
   g_assert(0);
   return NULL;
 }
-
 
 void initialize_loader_threads(struct configuration *conf);
 void wait_loader_threads_to_finish();
@@ -48,3 +58,5 @@ void free_loader_threads();
 void inform_restore_job_running();
 void data_ended();
 void data_job_push(enum data_job_type type, struct restore_job *rj);
+
+#endif

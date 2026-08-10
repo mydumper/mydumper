@@ -12,15 +12,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors:    Domas Mituzas, Facebook ( domas at fb dot com )
-                    Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
-                    Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
-                    Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
-                    David Ducos, Percona (david dot ducos at percona dot com)
+    Authors: David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _src_mydumper_mydumper_h
-#define _src_mydumper_mydumper_h
+#ifndef _src_myloader_myloader_deps_h
+#define _src_myloader_myloader_deps_h
 
 #include "common.h"
 
@@ -34,5 +30,6 @@
 #include "set_verbose.h"
 #include "tables_skiplist.h"
 #include "logging.h"
+#include "myloader/myloader_table.h"
 
 #endif
