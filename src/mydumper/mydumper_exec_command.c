@@ -14,58 +14,68 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include <mysql.h>
+
+#include <errno.h>
+#include <glib.h>
 #include <glib/gstdio.h>
+#include <mysql.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <glib.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <sys/wait.h>
-#include <errno.h>
+#include <unistd.h>
 
-#include "mydumper.h"
-#include "mydumper_global.h"
-#include "mydumper_start_dump.h"
-#include "mydumper_stream.h"
-#include "mydumper_file_handler.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_file_handler.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_start_dump.h"
+#include "mydumper/mydumper_stream.h"
 
 extern GAsyncQueue *stream_queue;
 
 GAsyncQueue *exec_queue;
-GThread **exec_command_thread = NULL;
-guint num_exec_threads = 4;
-gchar * global_bin = NULL;
-GHashTable* pid_file_table=NULL;
-GMutex *exec_mutex=NULL;
-void exec_this_command(gchar **c_arg,struct filename_queue_element * sqe){
-  int childpid=vfork();
-  if(!childpid){
-    int fd=0;
-    for (fd=3; fd<256; fd++) (void) close(fd);
-    execv(global_bin,c_arg);
-  }else{
-    gchar *_key=NULL;
+GThread    **exec_command_thread = NULL;
+guint        num_exec_threads = 4;
+gchar       *global_bin = NULL;
+GHashTable  *pid_file_table = NULL;
+GMutex      *exec_mutex = NULL;
+void         exec_this_command(gchar **c_arg, struct filename_queue_element *sqe)
+{
+  int childpid = vfork();
+  if (!childpid)
+  {
+    int fd = 0;
+    for (fd = 3; fd < 256; fd++)
+      (void)close(fd);
+    execv(global_bin, c_arg);
+  }
+  else
+  {
+    gchar *_key = NULL;
     g_mutex_lock(exec_mutex);
-    _key=g_strdup_printf("%d",childpid);
-    g_hash_table_insert(pid_file_table,g_strdup(_key),sqe);
+    _key = g_strdup_printf("%d", childpid);
+    g_hash_table_insert(pid_file_table, g_strdup(_key), sqe);
     g_mutex_unlock(exec_mutex);
     g_free(_key);
     int wstatus;
-    int waitchildpid=wait(&wstatus);
+    int waitchildpid = wait(&wstatus);
     // TODO: do we want to keep the file depending og the wstatus ??
-    if (no_delete == FALSE){
-      _key=g_strdup_printf("%d",waitchildpid);
+    if (no_delete == FALSE)
+    {
+      _key = g_strdup_printf("%d", waitchildpid);
       g_mutex_lock(exec_mutex);
-      struct filename_queue_element *sqe2=g_hash_table_lookup(pid_file_table, g_strdup(_key));
+      struct filename_queue_element *sqe2 = g_hash_table_lookup(pid_file_table, g_strdup(_key));
       g_mutex_unlock(exec_mutex);
-      if (sqe2!=NULL){
+      if (sqe2 != NULL)
+      {
         remove(sqe2->filename);
         if (g_hash_table_contains(pid_file_table, _key))
           g_hash_table_remove(pid_file_table, _key);
         if (sqe2->done)
           g_async_queue_push(sqe2->done, GINT_TO_POINTER(1));
-      }else{
+      }
+      else
+      {
         g_error("pid not found: %s", _key);
       }
       g_free(_key);
@@ -73,84 +83,97 @@ void exec_this_command(gchar **c_arg,struct filename_queue_element * sqe){
   }
 }
 
-
-void exec_queue_push(struct db_table *dbt, gchar *filename){
+void exec_queue_push(struct db_table *dbt, gchar *filename)
+{
   GAsyncQueue *done = g_async_queue_new();
-  g_async_queue_push(exec_queue, new_filename_queue_element(dbt,filename,done));
+  g_async_queue_push(exec_queue, new_filename_queue_element(dbt, filename, done));
   g_async_queue_pop(done);
   g_async_queue_unref(done);
 }
 
-void *process_exec_command(void *data){
+void *process_exec_command(void *data)
+{
   (void)data;
-  char * filename=NULL;
+  char *filename = NULL;
   // Perf: Use strchr instead of g_strstr_len for single character search (SIMD optimized)
-  gchar *space=strchr(exec_command, ' ');
-  gchar ** arguments=g_strsplit(space," ", 0);
-  gchar ** volatile c_arg=NULL;
-  guint i=0;
-  GList *filename_pos=NULL;
+  gchar  *space = strchr(exec_command, ' ');
+  gchar **arguments = g_strsplit(space, " ", 0);
+  gchar **volatile c_arg = NULL;
+  guint  i = 0;
+  GList *filename_pos = NULL;
   GList *iter;
-  c_arg=g_strdupv(arguments);
-  if (strlen(c_arg[g_strv_length(c_arg)-1])==0)
-    c_arg[g_strv_length(c_arg)-1]=NULL;
-  for(i=0; i<g_strv_length(c_arg); i++){
-    if (g_strcmp0(c_arg[i],"FILENAME") == 0){
-      int *c=g_new(int, 1);
-      *c=i;
-      filename_pos=g_list_prepend(filename_pos,c);
+  c_arg = g_strdupv(arguments);
+  if (strlen(c_arg[g_strv_length(c_arg) - 1]) == 0)
+    c_arg[g_strv_length(c_arg) - 1] = NULL;
+  for (i = 0; i < g_strv_length(c_arg); i++)
+  {
+    if (g_strcmp0(c_arg[i], "FILENAME") == 0)
+    {
+      int *c = g_new(int, 1);
+      *c = i;
+      filename_pos = g_list_prepend(filename_pos, c);
     }
   }
 
   if (!filename_pos)
     g_warning("Common use case requires FILENAME on --exec.");
 
-  for(;;){
-    struct filename_queue_element * sqe=g_async_queue_pop(exec_queue);
-    filename=sqe->filename;
-    if (strlen(filename) == 0){
+  for (;;)
+  {
+    struct filename_queue_element *sqe = g_async_queue_pop(exec_queue);
+    filename = sqe->filename;
+    if (strlen(filename) == 0)
+    {
       break;
     }
-    iter=filename_pos;
-    while (iter!=NULL){
-      c_arg[(*((guint *)(iter->data)))]=filename;
-      iter=iter->next;
+    iter = filename_pos;
+    while (iter != NULL)
+    {
+      c_arg[(*((guint *)(iter->data)))] = filename;
+      iter = iter->next;
     }
-    exec_this_command(c_arg,sqe);
+    exec_this_command(c_arg, sqe);
   }
   return NULL;
 }
 
-void initialize_exec_command(){
+void initialize_exec_command()
+{
   exec_queue = g_async_queue_new();
-  exec_mutex=g_mutex_new();
-  exec_command_thread=g_new(GThread * , num_exec_threads) ;
+  exec_mutex = g_mutex_new();
+  exec_command_thread = g_new(GThread *, num_exec_threads);
   // Perf: Use strchr instead of g_strstr_len for single character search (SIMD optimized)
-  gchar *space=strchr(exec_command, ' ');
+  gchar *space = strchr(exec_command, ' ');
   // Perf: Use pointer arithmetic instead of strlen(exec_command) - strlen(space)
   guint len = space ? (guint)(space - exec_command) : 0;
-  while (len==0){
+  while (len == 0)
+  {
     exec_command++;
-    space=strchr(exec_command, ' ');
+    space = strchr(exec_command, ' ');
     len = space ? (guint)(space - exec_command) : 0;
   }
-  global_bin=g_strndup(exec_command,len);
-  if (!g_file_test(global_bin, G_FILE_TEST_EXISTS)){
+  global_bin = g_strndup(exec_command, len);
+  if (!g_file_test(global_bin, G_FILE_TEST_EXISTS))
+  {
     g_error("Command not found: %s", global_bin);
   }
   guint i;
-  pid_file_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free ); 
-  for(i=0;i<num_exec_threads;i++){
-    exec_command_thread[i]=m_thread_new("exec_command", (GThreadFunc)process_exec_command, stream_queue, "Exec command thread could not be created");
+  pid_file_table = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, &g_free);
+  for (i = 0; i < num_exec_threads; i++)
+  {
+    exec_command_thread[i] = m_thread_new("exec_command", (GThreadFunc)process_exec_command, stream_queue, "Exec command thread could not be created");
   }
 }
 
-void wait_exec_command_to_finish(){
+void wait_exec_command_to_finish()
+{
   guint i;
-  for(i=0;i<num_exec_threads;i++){
+  for (i = 0; i < num_exec_threads; i++)
+  {
     g_async_queue_push(stream_queue, g_strdup(""));
   }
-  for(i=0;i<num_exec_threads;i++){
+  for (i = 0; i < num_exec_threads; i++)
+  {
     g_thread_join(exec_command_thread[i]);
   }
 }

@@ -14,32 +14,51 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_myloader_myloader_restore_h
+#define _src_myloader_myloader_restore_h
+
+#include <glib.h>
+
+#include "myloader/myloader.h"
+
 #define DEFAULT_DELIMITER ";\n"
 #define DEFAULT_MAX_TRANSACTION_SIZE 1000
 
-enum kind_of_statement { NOT_DEFINED, INSERT, OTHER, CLOSE};
+struct db_table;
 
-struct statement{
-  guint result;
-  guint preline;
-  GString *buffer;
-  const gchar *filename;
+enum kind_of_statement
+{
+  NOT_DEFINED,
+  INSERT,
+  OTHER,
+  CLOSE
+};
+
+struct statement
+{
+  guint                  result;
+  guint                  preline;
+  GString               *buffer;
+  const gchar           *filename;
   enum kind_of_statement kind_of_statement;
-  gboolean is_schema;
-  gchar *error;
-  guint error_number;
-  struct db_table *dbt;
-  struct thread_data*td;
+  gboolean               is_schema;
+  gchar                 *error;
+  guint                  error_number;
+  struct db_table       *dbt;
+  struct thread_data    *td;
 };
 
 void initialize_restore();
 void initialize_connection_pool();
 void start_connection_pool();
 
-int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database);
-int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database, void log_fun(const char *, ...) , const char *fmt, ...);
-int restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
-void release_load_data_as_it_is_close( gchar * filename );
-void close_restore_thread();
-void wait_restore_threads_to_close();
+int      restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database);
+int      restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database, void log_fun(const char *, ...), const char *fmt, ...);
+int      restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
+void     release_load_data_as_it_is_close(gchar *filename);
+void     close_restore_thread();
+void     wait_restore_threads_to_close();
 gboolean release_idle_connection_if_possible();
+
+#endif

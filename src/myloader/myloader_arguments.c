@@ -21,34 +21,38 @@
 
 #include <gio/gio.h>
 
-#include "myloader.h"
-#include "myloader_global.h"
-#include "myloader_arguments.h"
+#include "myloader/myloader_arguments.h"
 
-gchar *optimize_keys_str=NULL;
-gchar *checksum_str=NULL;
-gboolean set_gtid_purge = FALSE;
-gchar *fifo_directory = NULL;
-gchar *load_data_tmp_directory=NULL;
-gboolean show_warnings=FALSE;
-GList *ignore_set_list=NULL;
-gboolean mysqldump = FALSE;
-gboolean drop_database = FALSE;
+#include "myloader/myloader_deps.h"
+#include "myloader/myloader_global.h"
+
+gchar          *optimize_keys_str = NULL;
+gchar          *checksum_str = NULL;
+gboolean        set_gtid_purge = FALSE;
+gchar          *fifo_directory = NULL;
+gchar          *load_data_tmp_directory = NULL;
+gboolean        show_warnings = FALSE;
+GList          *ignore_set_list = NULL;
+gboolean        mysqldump = FALSE;
+gboolean        drop_database = FALSE;
 extern gboolean local_infile;
-extern guint64 max_transaction_size;
-extern guint optimize_keys_batchsize;
-guint64 max_statement_size=0;
+extern guint64  max_transaction_size;
+extern guint    optimize_keys_batchsize;
+guint64         max_statement_size = 0;
 
-static void append_normalized_sql(GString *buffer, const gchar *command){
+static void append_normalized_sql(GString *buffer, const gchar *command)
+{
   gchar *normalized = g_strdup(command);
   g_strstrip(normalized);
 
-  while (normalized[0] != '\0' && normalized[strlen(normalized) - 1] == ';') {
+  while (normalized[0] != '\0' && normalized[strlen(normalized) - 1] == ';')
+  {
     normalized[strlen(normalized) - 1] = '\0';
     g_strstrip(normalized);
   }
 
-  if (normalized[0] == '\0') {
+  if (normalized[0] == '\0')
+  {
     g_free(normalized);
     return;
   }
@@ -58,7 +62,8 @@ static void append_normalized_sql(GString *buffer, const gchar *command){
   g_free(normalized);
 }
 
-void aws_session_command_append(const gchar *command){
+void aws_session_command_append(const gchar *command)
+{
   if (command == NULL)
     return;
   if (aws_session_commands == NULL)
@@ -66,273 +71,309 @@ void aws_session_command_append(const gchar *command){
   append_normalized_sql(aws_session_commands, command);
 }
 
-gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error)
+{
   *error=NULL;
-  if (!g_strcmp0(option_name, "--optimize-keys")) {
+  if (!g_strcmp0(option_name, "--optimize-keys"))
+  {
     optimize_keys_str=g_strdup(value);
-    if (value==NULL || !g_strcmp0(value,"1")){
+    if (value==NULL || !g_strcmp0(value,"1"))
+    {
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value, SKIP)) {
+    if (!g_ascii_strcasecmp(value, SKIP))
+    {
       optimize_keys = FALSE;
       optimize_keys_per_table = FALSE;
       optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value, AFTER_IMPORT_PER_TABLE)) {
+    if (!g_ascii_strcasecmp(value, AFTER_IMPORT_PER_TABLE))
+    {
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value, AFTER_IMPORT_ALL_TABLES)) {
+    if (!g_ascii_strcasecmp(value, AFTER_IMPORT_ALL_TABLES))
+    {
       optimize_keys_all_tables = TRUE;
       optimize_keys_per_table = FALSE;
       return TRUE;
     }
     g_critical("--optimize-keys accepts: after_import_per_table (default value), after_import_all_tables");
-  } else if (!g_strcmp0(option_name, "--quote-character")) {
-    if (!g_ascii_strcasecmp(value, "BACKTICK") || !g_ascii_strcasecmp(value, "BT") || !g_strcmp0(value, "`")) {
-      identifier_quote_character= BACKTICK;
+  }
+  else if (!g_strcmp0(option_name, "--quote-character"))
+  {
+    if (!g_ascii_strcasecmp(value, "BACKTICK") || !g_ascii_strcasecmp(value, "BT") || !g_strcmp0(value, "`"))
+    {
+      identifier_quote_character = BACKTICK;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value, "DOUBLE_QUOTE") || !g_ascii_strcasecmp(value, "DQ") || !g_strcmp0(value, "\"")) {
-      identifier_quote_character= DOUBLE_QUOTE;
+    if (!g_ascii_strcasecmp(value, "DOUBLE_QUOTE") || !g_ascii_strcasecmp(value, "DQ") || !g_strcmp0(value, "\""))
+    {
+      identifier_quote_character = DOUBLE_QUOTE;
       return TRUE;
     }
     g_critical("--quote-character accepts: backtick, bt, `, double_quote, dq, \"");
-  } else if (!g_strcmp0(option_name, "--checksum")) {
-    checksum_str=g_strdup(value);
-    if (value == NULL || !g_ascii_strcasecmp(value, "FAIL")) {
-      checksum_mode= CHECKSUM_FAIL;
+  }
+  else if (!g_strcmp0(option_name, "--checksum"))
+  {
+    checksum_str = g_strdup(value);
+    if (value == NULL || !g_ascii_strcasecmp(value, "FAIL"))
+    {
+      checksum_mode = CHECKSUM_FAIL;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value, "WARN")) {
-      checksum_mode= CHECKSUM_WARN;
+    if (!g_ascii_strcasecmp(value, "WARN"))
+    {
+      checksum_mode = CHECKSUM_WARN;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value, SKIP)) {
-      checksum_mode= CHECKSUM_SKIP;
+    if (!g_ascii_strcasecmp(value, SKIP))
+    {
+      checksum_mode = CHECKSUM_SKIP;
       return TRUE;
     }
     g_critical("--checksum accepts: fail, warn (default), skip");
-  } else if (!g_strcmp0(option_name, "--ignore-set")){
-    gchar** ignore_set_items= g_strsplit(value, ",", 0);
-    guint i=0;
-    for (i=0; g_strv_length(ignore_set_items)>i; i++)
-      ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf("%s",ignore_set_items[i]));
+  }
+  else if (!g_strcmp0(option_name, "--ignore-set"))
+  {
+    gchar **ignore_set_items = g_strsplit(value, ",", 0);
+    guint   i = 0;
+    for (i = 0; g_strv_length(ignore_set_items) > i; i++)
+      ignore_set_list = g_list_prepend(ignore_set_list, g_strdup_printf("%s", ignore_set_items[i]));
     g_strfreev(ignore_set_items);
     return TRUE;
-  } else if (!g_strcmp0(option_name, "--drop-table") || !g_strcmp0(option_name, "-o")){
-    overwrite_tables=TRUE;
-    if (value){
-      if (!g_strcmp0(value,"TRUNCATE")){
-        purge_mode=TRUNCATE;
-      } else if (!g_ascii_strcasecmp(value,"DROP") || !g_strcmp0(value,"") || !g_strcmp0(value,"1")){
-        purge_mode=DROP;
-      } else if (!g_ascii_strcasecmp(value,"DELETE")){
-        purge_mode=DELETE;
-      } else if (!g_ascii_strcasecmp(value,"NONE")){
-        purge_mode=NONE;
-      } else if (!g_ascii_strcasecmp(value,"FAIL")){
-        purge_mode=FAIL;
-      } else if (!g_ascii_strcasecmp(value,SKIP)){
-        overwrite_tables=FALSE;
-        purge_mode=PM_SKIP;
-      } else {
+  }
+  else if (!g_strcmp0(option_name, "--drop-table") || !g_strcmp0(option_name, "-o"))
+  {
+    overwrite_tables = TRUE;
+    if (value)
+    {
+      if (!g_strcmp0(value, "TRUNCATE"))
+      {
+        purge_mode = TRUNCATE;
+      }
+      else if (!g_ascii_strcasecmp(value, "DROP") || !g_strcmp0(value, "") || !g_strcmp0(value, "1"))
+      {
+        purge_mode = DROP;
+      }
+      else if (!g_ascii_strcasecmp(value, "DELETE"))
+      {
+        purge_mode = DELETE;
+      }
+      else if (!g_ascii_strcasecmp(value, "NONE"))
+      {
+        purge_mode = NONE;
+      }
+      else if (!g_ascii_strcasecmp(value, "FAIL"))
+      {
+        purge_mode = FAIL;
+      }
+      else if (!g_ascii_strcasecmp(value, SKIP))
+      {
+        overwrite_tables = FALSE;
+        purge_mode = PM_SKIP;
+      }
+      else
+      {
         m_error("Purge mode unknown: %s", value);
         return FALSE;
       }
-    }else
-      purge_mode=DROP;
+    }
+    else
+      purge_mode = DROP;
     return TRUE;
-  } else if (!g_strcmp0(option_name, "--enable-binlog") || !g_strcmp0(option_name, "-e")){
+  }
+  else if (!g_strcmp0(option_name, "--enable-binlog") || !g_strcmp0(option_name, "-e"))
+  {
     m_warning("Option --enable-binlog / -e is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead");
-    enable_binlog=TRUE;
+    enable_binlog = TRUE;
     return TRUE;
   } else if (!g_strcmp0(option_name, "--aws-session-command")) {
     aws_session_command_append(value);
     return TRUE;
   }
-  
+
   return common_arguments_callback(option_name, value, data, error);
 }
 
 static GOptionEntry entries[] = {
-    {"help", '?', 0, G_OPTION_ARG_NONE, &help, 
-      "Show help options", NULL},
+    {"help", '?', 0, G_OPTION_ARG_NONE, &help,
+        "Show help options", NULL},
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
-     "Directory of the dump to import", NULL},
+        "Directory of the dump to import", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
-     "Log file name to use, by default stderr is used", NULL},
+        "Log file name to use, by default stderr is used", NULL},
     {"fifodir", 0, 0, G_OPTION_ARG_FILENAME, &fifo_directory,
-     "Directory where the FIFO files will be created when needed. Default: temporary directoy will be created", NULL},
+        "Directory where the FIFO files will be created when needed. Default: temporary directoy will be created", NULL},
     {"load-data-tmp-dir", 0, 0, G_OPTION_ARG_FILENAME, &load_data_tmp_directory,
-     "Directory where the FIFO temporary files will be created when needed for LOAD DATA statements. Default: temporary directoy will be created", NULL},
+        "Directory where the FIFO temporary files will be created when needed for LOAD DATA statements. Default: temporary directoy will be created", NULL},
     {"database", 'B', 0, G_OPTION_ARG_STRING, &target_db,
-     "An alternative database to restore into", NULL},
-    {"show-warnings", 0,0, G_OPTION_ARG_NONE, &show_warnings, 
-      "If enabled, during INSERT IGNORE the warnings will be printed", NULL},
-    {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
-      "Expect to find resume file in backup dir and will only process those files",NULL},
-    {"kill-at-once", 'k', 0, G_OPTION_ARG_NONE, &kill_at_once, 
-      "When Ctrl+c is pressed it immediately terminates the process", NULL},
-    {"mysqldump", 0, 0, G_OPTION_ARG_NONE, &mysqldump, 
-      "It expect a mysqldump format when stream is used", NULL},
+        "An alternative database to restore into", NULL},
+    {"show-warnings", 0, 0, G_OPTION_ARG_NONE, &show_warnings,
+        "If enabled, during INSERT IGNORE the warnings will be printed", NULL},
+    {"resume", 0, 0, G_OPTION_ARG_NONE, &resume,
+        "Expect to find resume file in backup dir and will only process those files", NULL},
+    {"kill-at-once", 'k', 0, G_OPTION_ARG_NONE, &kill_at_once,
+        "When Ctrl+c is pressed it immediately terminates the process", NULL},
+    {"mysqldump", 0, 0, G_OPTION_ARG_NONE, &mysqldump,
+        "It expect a mysqldump format when stream is used", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry load_from_metadata_entries[] = {
     {"quote-character", 'Q', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-      "Identifier quote character used in INSERT statements. "
-      "Possible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
-      "Default: detect from metadata file if possible, otherwise BACKTICK", NULL},
+        "Identifier quote character used in INSERT statements. "
+        "Possible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
+        "Default: detect from metadata file if possible, otherwise BACKTICK",
+        NULL},
     {"local-infile", 0, 0, G_OPTION_ARG_NONE, &local_infile,
-      "Enables the ability to use the 'LOAD DATA LOCAL INFILE' statement"
-      "Default: detect from metadata file if possible, otherwise is disabled", NULL},
+        "Enables the ability to use the 'LOAD DATA LOCAL INFILE' statement"
+        "Default: detect from metadata file if possible, otherwise is disabled",
+        NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry threads_entries[] = {
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
-      "Maximum number of threads per table to use, defaults to --threads", NULL},
+        "Maximum number of threads per table to use, defaults to --threads", NULL},
     {"max-threads-for-index-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_index_creation,
-      "Maximum number of threads for index creation, default 4", NULL},
-    {"max-threads-for-post-actions", 0, 0, G_OPTION_ARG_INT,&max_threads_for_post_creation,
-      "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 1", NULL},
+        "Maximum number of threads for index creation, default 4", NULL},
+    {"max-threads-for-post-actions", 0, 0, G_OPTION_ARG_INT, &max_threads_for_post_creation,
+        "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 1", NULL},
     {"max-threads-for-schema-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_schema_creation,
-      "Maximum number of threads for schema creation, default 4", NULL},
-    {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
-      "Set the command that will receive by STDIN from the input file and write in the STDOUT", NULL},
-    {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
-      "Set the input file extension when --exec-per-thread is used. Otherwise it will be ignored", NULL},
+        "Maximum number of threads for schema creation, default 4", NULL},
+    {"exec-per-thread", 0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
+        "Set the command that will receive by STDIN from the input file and write in the STDOUT", NULL},
+    {"exec-per-thread-extension", 0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
+        "Set the input file extension when --exec-per-thread is used. Otherwise it will be ignored", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry execution_entries[] = {
     {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
+        "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
     {"aws-session-command", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-      "Raw SQL executed on every myloader connection after the normal session setup. "
-      "Useful for Aurora-specific calls such as CALL mysql.rds_disable_session_binlog().", NULL},
+        "Raw SQL executed on every myloader connection after the normal session setup. "
+        "Useful for Aurora-specific calls such as CALL mysql.rds_disable_session_binlog().", NULL},
     {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "Creates the table without the indexes unless SKIP is selected. "
-      "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
-      "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
+        "Creates the table without the indexes unless SKIP is selected. "
+        "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
+        "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
     {"optimize-keys-batchsize", 0, 0, G_OPTION_ARG_INT, &optimize_keys_batchsize,
-      "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimited)", NULL},
-    {"no-schemas", 0, 0, G_OPTION_ARG_NONE, &no_schemas, 
-      "Do not import table schemas and triggers ", NULL},
-    { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
-      "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
-    {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "Treat checksums: skip, fail, warn(default).", NULL },
+        "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimited)", NULL},
+    {"no-schemas", 0, 0, G_OPTION_ARG_NONE, &no_schemas,
+        "Do not import table schemas and triggers ", NULL},
+    {"disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
+        "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL},
+    {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
+        "Treat checksums: skip, fail, warn(default).", NULL},
     {"drop-database", 0, 0, G_OPTION_ARG_NONE, &drop_database,
-      "Executes a DROP DATABASE if the schema database file is found. ", NULL},
-    {"drop-table", 'o', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "Executes or simulates a DROP TABLE if the table already exists. The drop modes can be: FAIL, NONE, DROP, TRUNCATE and DELETE. "
-      "If the option is not set, the default is set to: FAIL. "
-      "If the option is used without a parameter, the default is: DROP.", NULL},
+        "Executes a DROP DATABASE if the schema database file is found. ", NULL},
+    {"drop-table", 'o', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
+        "Executes or simulates a DROP TABLE if the table already exists. The drop modes can be: FAIL, NONE, DROP, TRUNCATE and DELETE. "
+        "If the option is not set, the default is set to: FAIL. "
+        "If the option is used without a parameter, the default is: DROP.",
+        NULL},
     {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
-      "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
+        "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
     {"retry-count", 0, 0, G_OPTION_ARG_INT, &retry_count,
-      "Lock wait timeout exceeded retry count, default 10 (currently only for DROP TABLE)", NULL},
-    {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
-      "It will receive the stream from STDIN and create the file in the disk before start processing. "
-      "Accepts NO_STREAM, NO_DELETE, NO_STREAM_AND_NO_DELETE, UNPACK and TRADITIONAL "
-      "which is the default value and used if no parameter is given", NULL},
-    {"metadata-refresh-interval", 0, 0, G_OPTION_ARG_INT, &refresh_table_list_interval, 
-      "Every this amount of tables the internal metadata will be refreshed. "
-      "If the amount of tables you have in your metadata file is high, then you should increase this value. Default: 100", NULL},
-    {"skip-table-sorting", 0, 0, G_OPTION_ARG_NONE, &skip_table_sorting, 
-      "Starting with largest table is better, but this can be ignored due performance impact when you have high amount of tables", NULL},
+        "Lock wait timeout exceeded retry count, default 10 (currently only for DROP TABLE)", NULL},
+    {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &stream_arguments_callback,
+        "It will receive the stream from STDIN and create the file in the disk before start processing. "
+        "Accepts NO_STREAM, NO_DELETE, NO_STREAM_AND_NO_DELETE, UNPACK and TRADITIONAL "
+        "which is the default value and used if no parameter is given",
+        NULL},
+    {"metadata-refresh-interval", 0, 0, G_OPTION_ARG_INT, &refresh_table_list_interval,
+        "Every this amount of tables the internal metadata will be refreshed. "
+        "If the amount of tables you have in your metadata file is high, then you should increase this value. Default: 100",
+        NULL},
+    {"skip-table-sorting", 0, 0, G_OPTION_ARG_NONE, &skip_table_sorting,
+        "Starting with largest table is better, but this can be ignored due performance impact when you have high amount of tables", NULL},
     {"set-gtid-purged", 0, 0, G_OPTION_ARG_NONE, &set_gtid_purge,
-      "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
+        "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
     {"num-sequences", 0, 0, G_OPTION_ARG_INT, &num_sequences,
-      "Amount of sequences in the backup. It is read from [config] in the metadata file. Default: 0 ", NULL},
+        "Amount of sequences in the backup. It is read from [config] in the metadata file. Default: 0 ", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-static GOptionEntry filter_entries[] ={
+static GOptionEntry filter_entries[] = {
     {"source-db", 's', 0, G_OPTION_ARG_STRING, &source_db,
-     "Database to restore", NULL},
+        "Database to restore", NULL},
     {"skip-create-table", 0, 0, G_OPTION_ARG_NONE, &skip_create_table,
-      "Do not execute the CREATE TABLE statement. By default, it executes the CREATE TABLE statement", NULL},
+        "Do not execute the CREATE TABLE statement. By default, it executes the CREATE TABLE statement", NULL},
     {"skip-create-database", 0, 0, G_OPTION_ARG_NONE, &skip_create_database,
-      "Do not execute any CREATE DATABASE statement, when -schema-create.sql file is found or even when -B is used. By default, it executes the CREATE DATABASE statement", NULL},
+        "Do not execute any CREATE DATABASE statement, when -schema-create.sql file is found or even when -B is used. By default, it executes the CREATE DATABASE statement", NULL},
     {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers,
-      "Do not import triggers. By default, it imports triggers", NULL},
+        "Do not import triggers. By default, it imports triggers", NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
-     "Do not import events, stored procedures and functions. By default, it imports events, stored procedures or functions", NULL},
-    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, 
-      "Do not import constraints. By default, it imports constraints", NULL },
+        "Do not import events, stored procedures and functions. By default, it imports events, stored procedures or functions", NULL},
+    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints,
+        "Do not import constraints. By default, it imports constraints", NULL},
     {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes,
-      "Do not import secondary indexes on InnoDB tables. By default, it import the indexes", NULL},
-    {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, 
-      "Do not dump or import table data", NULL},
+        "Do not import secondary indexes on InnoDB tables. By default, it import the indexes", NULL},
+    {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data,
+        "Do not dump or import table data", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-static GOptionEntry statement_entries[] ={
+static GOptionEntry statement_entries[] = {
     {"rows", 'r', 0, G_OPTION_ARG_INT, &rows,
-     "Split the INSERT statement into this many rows.", NULL},
+        "Split the INSERT statement into this many rows.", NULL},
     {"queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count,
-     "Number of queries per transaction, default 1000", NULL},
+        "Number of queries per transaction, default 1000", NULL},
     {"max-statement-size", 0, 0, G_OPTION_ARG_INT, &max_statement_size,
-     "Informs what is the max statement size. Currently not being used.", NULL},
+        "Informs what is the max statement size. Currently not being used.", NULL},
     {"max-transaction-size", 0, 0, G_OPTION_ARG_INT, &max_transaction_size,
-     "Set the max size of the transaction in megabytes, default 1000", NULL},
-    {"append-if-not-exist", 0, 0, G_OPTION_ARG_NONE,&append_if_not_exist,
-      "Appends IF NOT EXISTS to the create table statements. This will be removed when https://bugs.mysql.com/bug.php?id=103791 has been implemented", NULL},
-    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_in_conn_by_default,
-      "Sets the names, use it at your own risk, default binary", NULL },
+        "Set the max size of the transaction in megabytes, default 1000", NULL},
+    {"append-if-not-exist", 0, 0, G_OPTION_ARG_NONE, &append_if_not_exist,
+        "Appends IF NOT EXISTS to the create table statements. This will be removed when https://bugs.mysql.com/bug.php?id=103791 has been implemented", NULL},
+    {"set-names", 0, 0, G_OPTION_ARG_STRING, &set_names_in_conn_by_default,
+        "Sets the names, use it at your own risk, default binary", NULL},
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
-     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
+        "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {"replace-definer", 0, 0, G_OPTION_ARG_STRING, &replace_definer,
-     "Replaces the user in the DEFINER by the new string. By default, statements are not modified", NULL},
-    {"ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
-      "List of variables that will be ignored from the header of SET", NULL},
+        "Replaces the user in the DEFINER by the new string. By default, statements are not modified", NULL},
+    {"ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+        "List of variables that will be ignored from the header of SET", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-
-GOptionContext * load_contex_entries(){
-
-
-  GOptionContext * context = g_option_context_new("multi-threaded MySQL loader");
-  GOptionGroup *main_group =
+GOptionContext *load_contex_entries()
+{
+  GOptionContext *context = g_option_context_new("multi-threaded MySQL loader");
+  GOptionGroup   *main_group =
       g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
-//  load_common_entries(main_group);
-//  GOptionGroup *
+  //  load_common_entries(main_group);
+  //  GOptionGroup *
   load_connection_entries(context);
-//  g_option_group_add_entries(connection_group, common_connection_entries);
+  //  g_option_group_add_entries(connection_group, common_connection_entries);
   GOptionGroup *filter_group = load_regex_entries(context);
   g_option_group_add_entries(filter_group, filter_entries);
   g_option_group_add_entries(filter_group, common_filter_entries);
 
-
-
-  GOptionGroup *pmm_group=g_option_group_new("pmm", "PMM Options", "PMM Options", NULL, NULL);
+  GOptionGroup *pmm_group = g_option_group_new("pmm", "PMM Options", "PMM Options", NULL, NULL);
   g_option_group_add_entries(pmm_group, pmm_entries);
   g_option_context_add_group(context, pmm_group);
 
-  GOptionGroup *execution_group=g_option_group_new("execution", "Execution Options", "Execution Options", NULL, NULL);
+  GOptionGroup *execution_group = g_option_group_new("execution", "Execution Options", "Execution Options", NULL, NULL);
   g_option_group_add_entries(execution_group, execution_entries);
   g_option_context_add_group(context, execution_group);
 
-  GOptionGroup *threads_group=g_option_group_new("threads", "Threads Options", "Threads Options", NULL, NULL);
+  GOptionGroup *threads_group = g_option_group_new("threads", "Threads Options", "Threads Options", NULL, NULL);
   g_option_group_add_entries(threads_group, threads_entries);
   g_option_context_add_group(context, threads_group);
 
-  GOptionGroup *statement_group=g_option_group_new("statement", "Statement Options", "Statement Options", NULL, NULL);
+  GOptionGroup *statement_group = g_option_group_new("statement", "Statement Options", "Statement Options", NULL, NULL);
   g_option_group_add_entries(statement_group, statement_entries);
   g_option_context_add_group(context, statement_group);
 
-  GOptionGroup *checksum_group=g_option_group_new("checksum", "Checksum Options", "Checksum Options", NULL, NULL);
+  GOptionGroup *checksum_group = g_option_group_new("checksum", "Checksum Options", "Checksum Options", NULL, NULL);
   g_option_group_add_entries(checksum_group, common_checksum_entries);
   g_option_context_add_group(context, checksum_group);
 
-  GOptionGroup *load_from_metadata_group=g_option_group_new("load_from_metadata", "Load from metadata Options", "Load from metadata Options", NULL, NULL);
+  GOptionGroup *load_from_metadata_group = g_option_group_new("load_from_metadata", "Load from metadata Options", "Load from metadata Options", NULL, NULL);
   g_option_group_add_entries(load_from_metadata_group, load_from_metadata_entries);
   g_option_context_add_group(context, load_from_metadata_group);
-
 
   g_option_context_set_help_enabled(context, FALSE);
 

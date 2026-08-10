@@ -14,14 +14,21 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include "myloader.h"
 
-struct process_filename_filename{
-  gchar * filename;
-  guint iterations;
+#ifndef _src_myloader_myloader_process_filename_h
+#define _src_myloader_myloader_process_filename_h
+
+#include "myloader/myloader.h"
+
+struct process_filename_filename
+{
+  gchar *filename;
+  guint  iterations;
 };
 
-void process_filename_queue_incomplete(struct process_filename_filename * iflnm);
+void process_filename_queue_incomplete(struct process_filename_filename *iflnm);
 void process_filename_queue_end();
 void process_filename_push(const gchar *filename);
-void initialize_process_filename (struct configuration *c);
+void initialize_process_filename(struct configuration *c);
+
+#endif

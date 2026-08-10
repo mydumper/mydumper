@@ -14,172 +14,207 @@
 
     Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
-#include <string.h>
+
+#include <gio/gio.h>
 #include <glib.h>
 #include <glib/gstdio.h>
-#include <gio/gio.h>
 #include <mysql.h>
+#include <string.h>
+
 #include "common.h"
-#include "config.h"
+
 #include "common_options.h"
+#include "config.h"
+
 char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
 
-gboolean help =FALSE;
-GString *set_session = NULL;
-GString *set_global = NULL;
-GString *set_global_back = NULL;
-gchar *sql_mode= NULL;
-MYSQL *main_connection = NULL;
-gboolean no_schemas = FALSE;
-gboolean no_data = FALSE;
-gboolean dry_run=FALSE;
+gboolean  help = FALSE;
+GString  *set_session = NULL;
+GString  *set_global = NULL;
+GString  *set_global_back = NULL;
+gchar    *sql_mode = NULL;
+MYSQL    *main_connection = NULL;
+gboolean  no_schemas = FALSE;
+gboolean  no_data = FALSE;
+gboolean  dry_run = FALSE;
 GKeyFile *key_file = NULL;
 
-gchar *ignore_errors=NULL;
+gchar *ignore_errors = NULL;
 
-guint num_threads= 4;
-guint verbose = 2;
+guint    num_threads = 4;
+guint    verbose = 2;
 gboolean debug = FALSE;
 gboolean program_version = FALSE;
 gboolean machine_log_json = FALSE;
 
 gchar *tables_list = NULL;
 gchar *tables_skiplist_file = NULL;
+gchar *tables_includelist_file = NULL;
 char **tables = NULL;
 
 gboolean no_stream = FALSE;
-gboolean no_sync=FALSE;
+gboolean no_sync = FALSE;
 
-gchar *set_names_in_conn_by_default=NULL;
-gchar *set_names_statement=NULL;
+gchar *set_names_in_conn_by_default = NULL;
+gchar *set_names_statement = NULL;
 
-gchar identifier_quote_character=BACKTICK;
-const char *identifier_quote_character_str= "`";
+gchar       identifier_quote_character = BACKTICK;
+const char *identifier_quote_character_str = "`";
 
 gboolean schema_sequence_fix = FALSE;
-guint max_threads_per_table= 4;
+guint    max_threads_per_table = 4;
 
 enum source_control_command source_control_command = TRADITIONAL;
 
-struct replication_settings source_data={FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE};
-struct replication_settings replica_data={FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE};
+struct replication_settings source_data = {FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE};
+struct replication_settings replica_data = {FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE};
 
-gchar *throttle_variable=NULL;
-guint throttle_value=0;
+gchar *throttle_variable = NULL;
+guint  throttle_value = 0;
 
-gchar *server_version_arg=NULL;
+gchar *server_version_arg = NULL;
 
-GList *optimize_key_engines=NULL;
+GList *optimize_key_engines = NULL;
 
-
-void parse_source_replica_options(const gchar *value, struct replication_settings *rep_set){
-  rep_set->enabled=TRUE;
-  if (value){
-    gchar ** lp=g_strsplit(value, ",", 0);
-    if (g_strv_length(lp)==1){
+void parse_source_replica_options(const gchar *value, struct replication_settings *rep_set)
+{
+  rep_set->enabled = TRUE;
+  if (value)
+  {
+    gchar **lp = g_strsplit(value, ",", 0);
+    if (g_strv_length(lp) == 1)
+    {
       guint64 _source_data;
-      if (g_ascii_string_to_unsigned(value, 10, 0, 256, &_source_data, NULL)){
-        rep_set->exec_reset_replica=((_source_data) & (1<<(0)))>0;
-        rep_set->exec_change_source=((_source_data) & (1<<(1)))>0;
-        rep_set->exec_start_replica=((_source_data) & (1<<(2)))>0;
-        rep_set->source_ssl        =((_source_data) & (1<<(3)))>0;
-        rep_set->auto_position     =((_source_data) & (1<<(4)))>0;
-        rep_set->exec_start_replica_until=((_source_data) & (1<<(5)))>0;
+      if (g_ascii_string_to_unsigned(value, 10, 0, 256, &_source_data, NULL))
+      {
+        rep_set->exec_reset_replica = ((_source_data) & (1 << (0))) > 0;
+        rep_set->exec_change_source = ((_source_data) & (1 << (1))) > 0;
+        rep_set->exec_start_replica = ((_source_data) & (1 << (2))) > 0;
+        rep_set->source_ssl = ((_source_data) & (1 << (3))) > 0;
+        rep_set->auto_position = ((_source_data) & (1 << (4))) > 0;
+        rep_set->exec_start_replica_until = ((_source_data) & (1 << (5))) > 0;
         return;
       }
     }
-    rep_set->exec_reset_replica=g_strv_contains((const char * const*)lp,"exec_reset_replica");
-    rep_set->exec_change_source=g_strv_contains((const char * const*)lp,"exec_change_source");
-    rep_set->exec_start_replica=g_strv_contains((const char * const*)lp,"exec_start_replica");
-    rep_set->source_ssl=g_strv_contains((const char * const*)lp,"enable_ssl");
-    rep_set->auto_position=g_strv_contains((const char * const*)lp,"use_auto_position");
-    rep_set->exec_start_replica_until=g_strv_contains((const char * const*)lp,"exec_start_replica_until");
+    rep_set->exec_reset_replica = g_strv_contains((const char *const *)lp, "exec_reset_replica");
+    rep_set->exec_change_source = g_strv_contains((const char *const *)lp, "exec_change_source");
+    rep_set->exec_start_replica = g_strv_contains((const char *const *)lp, "exec_start_replica");
+    rep_set->source_ssl = g_strv_contains((const char *const *)lp, "enable_ssl");
+    rep_set->auto_position = g_strv_contains((const char *const *)lp, "use_auto_position");
+    rep_set->exec_start_replica_until = g_strv_contains((const char *const *)lp, "exec_start_replica_until");
     g_strfreev(lp);
   }
 }
 
-GList *build_list_from_replica_options(struct replication_settings *rep_set){
-  GList *source_data_list=NULL;
+GList *build_list_from_replica_options(struct replication_settings *rep_set)
+{
+  GList *source_data_list = NULL;
   if (rep_set->exec_reset_replica)
-    source_data_list=g_list_append(source_data_list,g_strdup("exec_reset_replica"));
+    source_data_list = g_list_append(source_data_list, g_strdup("exec_reset_replica"));
   if (rep_set->exec_change_source)
-    source_data_list=g_list_append(source_data_list,g_strdup("exec_change_source"));
+    source_data_list = g_list_append(source_data_list, g_strdup("exec_change_source"));
   if (rep_set->exec_start_replica)
-    source_data_list=g_list_append(source_data_list,g_strdup("exec_start_replica"));
+    source_data_list = g_list_append(source_data_list, g_strdup("exec_start_replica"));
   if (rep_set->source_ssl)
-    source_data_list=g_list_append(source_data_list,g_strdup("enable_ssl"));
+    source_data_list = g_list_append(source_data_list, g_strdup("enable_ssl"));
   if (rep_set->auto_position)
-    source_data_list=g_list_append(source_data_list,g_strdup("use_auto_position"));
+    source_data_list = g_list_append(source_data_list, g_strdup("use_auto_position"));
   if (rep_set->exec_start_replica_until)
-    source_data_list=g_list_append(source_data_list,g_strdup("exec_start_replica_until"));
+    source_data_list = g_list_append(source_data_list, g_strdup("exec_start_replica_until"));
   return source_data_list;
 }
 
-gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
-  *error=NULL;
-  (void) data;
-  if (!strcmp(option_name,"--throttle")){
-    if (value){
-      gchar ** tp;
-      gchar ** tq=g_strsplit(value, ":", 2);
-      if (tq[1]){
-        throttle_max_usleep_limit=atoi(tq[0]);
-        tp=g_strsplit(tq[1], "=", 2);
-      }else{
-        tp=g_strsplit(value, "=", 2);
+gboolean common_arguments_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
+{
+  *error = NULL;
+  (void)data;
+  if (!strcmp(option_name, "--throttle"))
+  {
+    if (value)
+    {
+      gchar **tp;
+      gchar **tq = g_strsplit(value, ":", 2);
+      if (tq[1])
+      {
+        throttle_max_usleep_limit = atoi(tq[0]);
+        tp = g_strsplit(tq[1], "=", 2);
       }
-      guint len=g_strv_length(tp);
-      if (len>2){
+      else
+      {
+        tp = g_strsplit(value, "=", 2);
+      }
+      guint len = g_strv_length(tp);
+      if (len > 2)
+      {
         m_error("Error parsing --throttle with: %s. You should use for instance 20:Threads_running=10, where 20 indicates the microseconds waiting, then the variable and max allowed value to start throttling", value);
       }
-      if (len > 1){
-        throttle_variable=g_strdup(tp[0]);
+      if (len > 1)
+      {
+        throttle_variable = g_strdup(tp[0]);
         throttle_value = atoi(tp[1]);
-      }else{
-        throttle_variable=g_strdup("Threads_running");
+      }
+      else
+      {
+        throttle_variable = g_strdup("Threads_running");
         throttle_value = atoi(tp[0]);
       }
       g_strfreev(tq);
       g_strfreev(tp);
-    }else{
-      throttle_variable=g_strdup("Threads_running");
+    }
+    else
+    {
+      throttle_variable = g_strdup("Threads_running");
       throttle_value = 4;
     }
     return TRUE;
-  } else if (!strcmp(option_name, "--optimize-keys-engines")){
-    if (value){
+  }
+  else if (!strcmp(option_name, "--optimize-keys-engines"))
+  {
+    if (value)
+    {
       optimize_key_engines = m_glistsplit(value);
       return TRUE;
     }
-
-  } else if (!strcmp(option_name, "--source-control-command")){
-    if (!strcasecmp(value, "TRADITIONAL")) {
-      source_control_command=TRADITIONAL;
+  }
+  else if (!strcmp(option_name, "--source-control-command"))
+  {
+    if (!strcasecmp(value, "TRADITIONAL"))
+    {
+      source_control_command = TRADITIONAL;
       return TRUE;
     }
-    if (!strcasecmp(value, "AWS")) {
-      source_control_command=AWS;
+    if (!strcasecmp(value, "AWS"))
+    {
+      source_control_command = AWS;
       return TRUE;
     }
-  } else if (!strcmp(option_name, "--ignore-errors")){
-    guint n=0;
+  }
+  else if (!strcmp(option_name, "--ignore-errors"))
+  {
+    guint   n = 0;
     gchar **tmp_ignore_errors_list = g_strsplit(value, ",", 0);
-    if (ignore_errors_set == NULL) {
+    if (ignore_errors_set == NULL)
+    {
       ignore_errors_set = g_hash_table_new(g_direct_hash, g_direct_equal);
     }
-    while(tmp_ignore_errors_list[n]!=NULL){
+    while (tmp_ignore_errors_list[n] != NULL)
+    {
       gint error_code = atoi(tmp_ignore_errors_list[n]);
-      ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(error_code));
+      ignore_errors_list = g_list_append(ignore_errors_list, GINT_TO_POINTER(error_code));
       g_hash_table_add(ignore_errors_set, GINT_TO_POINTER(error_code));
       n++;
     }
     return TRUE;
-  } else if (!strcmp(option_name, "--source-data")){
-    parse_source_replica_options(value,&source_data);
+  }
+  else if (!strcmp(option_name, "--source-data"))
+  {
+    parse_source_replica_options(value, &source_data);
     return TRUE;
-  } else if (!strcmp(option_name, "--replica-data")){
-    parse_source_replica_options(value,&replica_data);
+  }
+  else if (!strcmp(option_name, "--replica-data"))
+  {
+    parse_source_replica_options(value, &replica_data);
     return TRUE;
   }
   return FALSE;
@@ -187,49 +222,55 @@ gboolean common_arguments_callback(const gchar *option_name,const gchar *value, 
 
 GOptionEntry common_entries[] = {
     {"source-data", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
-      "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
+        "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
-      "Number of threads to use, 0 means to use number of CPUs. Default: 4, Minimum: 2", NULL},
+        "Number of threads to use, 0 means to use number of CPUs. Default: 4, Minimum: 2", NULL},
     {"version", 'V', 0, G_OPTION_ARG_NONE, &program_version,
-      "Show the program version and exit", NULL},
+        "Show the program version and exit", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_INT, &verbose,
-      "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL},
-    {"debug", 0, 0, G_OPTION_ARG_NONE, &debug, 
-      "Turn on debugging output "
-      "(automatically sets verbosity to 3)", NULL},
+        "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL},
+    {"debug", 0, 0, G_OPTION_ARG_NONE, &debug,
+        "Turn on debugging output "
+        "(automatically sets verbosity to 3)",
+        NULL},
     {"machine-log-json", 0, 0, G_OPTION_ARG_NONE, &machine_log_json,
-      "Emit runtime logs as JSON lines for machine consumption", NULL},
+        "Emit runtime logs as JSON lines for machine consumption", NULL},
     {"ignore-errors", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
-      "Not increment error count and Warning instead of Critical in case of any of the comma-separated error number list", NULL},
+        "Not increment error count and Warning instead of Critical in case of any of the comma-separated error number list", NULL},
     {"defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file,
-      "Use a specific defaults file. Default: /etc/mydumper.cnf", NULL},
+        "Use a specific defaults file. Default: /etc/mydumper.cnf", NULL},
     {"defaults-extra-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_extra_file,
-      "Use an additional defaults file. This is loaded after --defaults-file, replacing previous defined values", NULL},
+        "Use an additional defaults file. This is loaded after --defaults-file, replacing previous defined values", NULL},
     {"source-control-command", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
-      "Instruct the proper commands to execute depending where are configuring the replication. Options: TRADITIONAL, AWS", NULL},
-    {"optimize-keys-engines", 0, 0, G_OPTION_ARG_CALLBACK , &common_arguments_callback,
-      "List of engines that will be used to split the create table statement into multiple stages if possible. Default: InnoDB,ROCKSDB", NULL},
+        "Instruct the proper commands to execute depending where are configuring the replication. Options: TRADITIONAL, AWS", NULL},
+    {"optimize-keys-engines", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
+        "List of engines that will be used to split the create table statement into multiple stages if possible. Default: InnoDB,ROCKSDB", NULL},
     {"server-version", 0, 0, G_OPTION_ARG_STRING, &server_version_arg,
-      "Set the server version avoid automatic detection", NULL},
+        "Set the server version avoid automatic detection", NULL},
     {"dry-run", 0, 0, G_OPTION_ARG_NONE, &dry_run,
-      "In dry-run mode, it skips the connection to the database and the execution of any query", NULL},
+        "In dry-run mode, it skips the connection to the database and the execution of any query", NULL},
     {"throttle", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
-      "Expects a string like 20:Threads_running=10, where 20 indicates the microseconds waiting, then the variable and max allowed value to start throttling. It will check the SHOW GLOBAL STATUS and if it is higher, it will increase the sleep time between SELECT. "
-      "If option is used without parameters it will use Threads_running and the amount of threads", NULL},
+        "Expects a string like 20:Threads_running=10, where 20 indicates the microseconds waiting, then the variable and max allowed value to start throttling. It will check the SHOW GLOBAL STATUS and if it is higher, it will increase the sleep time between SELECT. "
+        "If option is used without parameters it will use Threads_running and the amount of threads",
+        NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 GOptionEntry common_filter_entries[] = {
     {"omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file,
-      "File containing a list of database.table entries to skip, one per line "
-      "(skips before applying regex option)", NULL},
+        "File containing a list of database.table entries to skip, one per line "
+        "(skips before applying regex option)",
+        NULL},
+    {"include-from-file", 0, 0, G_OPTION_ARG_STRING, &tables_includelist_file,
+        "File containing a list of database.table entries to include, one per line.", NULL},
     {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
-      "Comma delimited table list to dump (does not exclude regex option). "
-      "Table name must include database name. For instance: test.t1,test.t2", NULL},
+        "Comma delimited table list to dump (does not exclude regex option). "
+        "Table name must include database name. For instance: test.t1,test.t2",
+        NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 GOptionEntry pmm_entries[] = {
     {"pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
-      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
+        "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL},
     {"pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
-      "which default will be high", NULL },
+        "which default will be high", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

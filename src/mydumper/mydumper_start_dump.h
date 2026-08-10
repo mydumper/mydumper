@@ -15,19 +15,18 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-struct MList;
-struct configuration;
+#ifndef _src_mydumper_mydumper_start_dump_h
+#define _src_mydumper_mydumper_start_dump_h
 
-#ifndef _mydumper_start_dump_h 
-#define _mydumper_start_dump_h
+#include <glib.h>
+
 #define MAX_START_TRANSACTION_RETRIES 5
 #define MYDUMPER "mydumper"
 
-#include "mydumper.h"
-#include "mydumper_create_jobs.h"
-#include "mydumper_table.h"
+struct db_table;
 
-enum sync_thread_lock_mode {
+enum sync_thread_lock_mode
+{
   AUTO,
   FTWRL,
   LOCK_ALL,
@@ -36,10 +35,10 @@ enum sync_thread_lock_mode {
   SAFE_NO_LOCK
 };
 
-static inline
-const char * syncthreadlockmode2str(enum sync_thread_lock_mode stlm)
+static inline const char *syncthreadlockmode2str(enum sync_thread_lock_mode stlm)
 {
-  switch (stlm) {
+  switch (stlm)
+  {
     case AUTO:
       return "AUTO";
     case FTWRL:
@@ -57,49 +56,50 @@ const char * syncthreadlockmode2str(enum sync_thread_lock_mode stlm)
   return 0;
 }
 
-struct MList{
-  GList *list;
+struct MList
+{
+  GList  *list;
   GMutex *mutex;
-  guint count;  // Cached list length for O(1) access in hot paths
+  guint   count;  // Cached list length for O(1) access in hot paths
 };
 
-struct table_queuing {
-  GAsyncQueue *queue;
-  GAsyncQueue *defer;
-  GAsyncQueue *request_chunk;
+struct table_queuing
+{
+  GAsyncQueue  *queue;
+  GAsyncQueue  *defer;
+  GAsyncQueue  *request_chunk;
   struct MList *table_list;
-  const char *descr;
+  const char   *descr;
 };
 
-struct configuration {
-  char use_any_index;
-  GAsyncQueue *initial_queue;
-  GAsyncQueue *initial_completed_queue;
-  GAsyncQueue *schema_queue;
+struct configuration
+{
+  char                 use_any_index;
+  GAsyncQueue         *initial_queue;
+  GAsyncQueue         *initial_completed_queue;
+  GAsyncQueue         *schema_queue;
   struct table_queuing non_transactional;
   struct table_queuing transactional;
-  GAsyncQueue *post_data_queue;
-  GAsyncQueue *ready;
-  GAsyncQueue *ready_non_transactional_queue;
-  GAsyncQueue *db_ready;
-  GAsyncQueue *source_and_replica_status_queue;
-  GAsyncQueue *unlock_tables;
-  GAsyncQueue *pause_resume;
-  GAsyncQueue *gtid_pos_checked;
-  GAsyncQueue *are_all_threads_in_same_pos;
-  GMainLoop * loop;
-  GString *lock_tables_statement;
-  GMutex *mutex;
-  int done;
+  GAsyncQueue         *post_data_queue;
+  GAsyncQueue         *ready;
+  GAsyncQueue         *ready_non_transactional_queue;
+  GAsyncQueue         *db_ready;
+  GAsyncQueue         *source_and_replica_status_queue;
+  GAsyncQueue         *unlock_tables;
+  GAsyncQueue         *pause_resume;
+  GAsyncQueue         *gtid_pos_checked;
+  GAsyncQueue         *are_all_threads_in_same_pos;
+  GMainLoop           *loop;
+  GString             *lock_tables_statement;
+  GMutex              *mutex;
+  int                  done;
 };
 
-#endif
-
-void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);
+void load_start_dump_entries(GOptionContext *context, GOptionGroup *filter_group);
 void start_dump(struct configuration *conf, GOptionContext *context);
-//void *exec_thread(void *data);
-gboolean sig_triggered_int(void * user_data);
-gboolean sig_triggered_term(void * user_data);
-void set_disk_limits(guint p_at, guint r_at);
-//void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt);
+gboolean sig_triggered_int(void *user_data);
+gboolean sig_triggered_term(void *user_data);
+void     set_disk_limits(guint p_at, guint r_at);
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data);
+
+#endif

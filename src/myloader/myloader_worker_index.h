@@ -14,11 +14,19 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include "myloader.h"
+
+#ifndef _src_myloader_myloader_worker_index_h
+#define _src_myloader_myloader_worker_index_h
+
+#include "myloader/myloader.h"
+
+struct db_table;
 
 void initialize_worker_index(struct configuration *conf);
 void wait_index_worker_to_finish();
 void create_index_shutdown_job();
 void start_optimize_keys_all_tables();
 void enqueue_indexes_if_possible(struct configuration *conf);
-void enqueue_index_for_dbt_if_possible(struct db_table * dbt);
+void enqueue_index_for_dbt_if_possible(struct db_table *dbt);
+
+#endif

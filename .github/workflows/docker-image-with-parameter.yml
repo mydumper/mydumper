@@ -6,20 +6,21 @@ on:
       os:
         description: 'OS'
         required: true
-        default: 'jammy'
+        default: 'noble'
         type: choice
         options:
           - el7
           - el8
           - el9
           - el10
-          - bionic
-          - bookworm
           - bullseye
+          - bookworm
+          - trixie 
+          - bionic
           - focal
           - jammy
           - noble
-          - trixie 
+          - resolute
 
 jobs:
 
