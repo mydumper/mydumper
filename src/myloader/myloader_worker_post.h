@@ -14,8 +14,14 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include "myloader.h"
+
+#ifndef _src_myloader_myloader_worker_post_h
+#define _src_myloader_myloader_worker_post_h
+
+#include "myloader/myloader.h"
 
 void initialize_post_loding_threads(struct configuration *conf);
 void create_post_shutdown_job(struct configuration *conf);
 void wait_post_worker_to_finish();
+
+#endif
