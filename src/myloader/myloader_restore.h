@@ -40,6 +40,7 @@ struct statement
   guint                  result;
   guint                  preline;
   GString               *buffer;
+  guint                  reallocate;
   const gchar           *filename;
   enum kind_of_statement kind_of_statement;
   gboolean               is_schema;
