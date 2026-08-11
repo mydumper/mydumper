@@ -18,35 +18,39 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-#if !defined(mydumper_mydumper_string_chunks)
-#define mydumper_mydumper_string_chunks
 
-#include "mydumper_chunks.h"
+#ifndef _src_mydumper_mydumper_string_chunks_h
+#define _src_mydumper_mydumper_string_chunks_h
 
-struct string_step {
+#include <glib.h>
+
+struct chunk_step_item;
+struct table_job;
+struct db_table;
+
+struct string_step
+{
   gboolean is_step_fixed_length;
-  guint64 step;
-  guint64 estimated_remaining_steps;
-  guint64 rows_in_explain;
+  guint64  step;
+  guint64  estimated_remaining_steps;
+  guint64  rows_in_explain;
   gboolean check_max;
   gboolean check_min;
-  gchar *str_min;
-  gchar *str_prev_cur;
-  gchar *str_cur;
-  gchar *str_max;
-  guint left_length;
-  GCond *cond;
-  GMutex *cond_mutex;
+  gchar   *str_min;
+  gchar   *str_prev_cur;
+  gchar   *str_cur;
+  gchar   *str_max;
+  guint    left_length;
+  GCond   *cond;
+  GMutex  *cond_mutex;
 };
-#endif 
 
-guint process_string_chunk_step(struct table_job *tj, struct chunk_step_item *csi);
-void process_string_chunk(struct table_job *tj, struct chunk_step_item *csi);
+guint                   process_string_chunk_step(struct table_job *tj, struct chunk_step_item *csi);
+void                    process_string_chunk(struct table_job *tj, struct chunk_step_item *csi);
 struct chunk_step_item *get_next_string_chunk(struct db_table *dbt);
 
 struct chunk_step_item *new_string_step_item(
-    gboolean include_null, GString *prefix, gchar *field, guint deep, gboolean is_step_fixed_length, guint left_length, gchar *str_min, gchar *str_max,
-    guint64 step, guint64 part, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position,
-    gboolean multicolumn, guint64 rows_in_explain);
+    gboolean include_null, GString *prefix, gchar *field, guint deep, gboolean is_step_fixed_length, guint left_length, gchar *str_min, gchar *str_max, guint64 step, guint64 part, gboolean check_min, gboolean check_max, struct chunk_step_item *next, guint position, gboolean multicolumn, guint64 rows_in_explain);
 
 void update_string_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field, gchar *str_min, gchar*str_max, gboolean is_last_range);
+#endif

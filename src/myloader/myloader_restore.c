@@ -15,62 +15,61 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <mysql.h>
 #include <errmsg.h>
-#include <glib.h>
-#include <glib/gstdio.h>
-#include <stdio.h>
-#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <glib.h>
+#include <glib/gstdio.h>
+#include <mysql.h>
 #include <poll.h>
+#include <stdio.h>
+#include <string.h>
 #include <sys/wait.h>
 
-#include "myloader.h"
-#include "myloader_common.h"
-#include "myloader_global.h"
-#include "myloader_process_filename.h"
-#include "myloader_process.h"
-#include "myloader_restore.h"
-#include "myloader_database.h"
-#include "../logging.h"
+#include "myloader/myloader_restore.h"
+
+#include "myloader/myloader.h"
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_process.h"
+#include "myloader/myloader_process_filename.h"
+#include "logging.h"
 
 extern gboolean dry_run;
 
-struct statement * new_statement();
-guint64 max_transaction_size=DEFAULT_MAX_TRANSACTION_SIZE;
-gboolean skip_definer = FALSE;
-gchar *replace_definer = NULL;
-GAsyncQueue *connection_pool = NULL;
-GAsyncQueue *restore_queues=NULL;
-GAsyncQueue *free_results_queue=NULL;
-int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , struct database *) = NULL;
-gchar *replace_definer_str = NULL;
-GMutex *load_data_list_mutex=NULL;
-GHashTable * load_data_list = NULL;
+struct statement *new_statement();
+guint64           max_transaction_size = DEFAULT_MAX_TRANSACTION_SIZE;
+gboolean          skip_definer = FALSE;
+gchar            *replace_definer = NULL;
+GAsyncQueue      *connection_pool = NULL;
+GAsyncQueue      *restore_queues = NULL;
+GAsyncQueue      *free_results_queue = NULL;
+int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *) = NULL;
+gchar      *replace_definer_str = NULL;
+GMutex     *load_data_list_mutex = NULL;
+GHashTable *load_data_list = NULL;
 
 /* Structure for synchronizing LOAD DATA file processing.
  * When .sql file (with LOAD DATA statement) arrives before .dat file,
  * the processor must wait until .dat file is ready. */
-struct load_data_sync {
-  GMutex *mutex;
-  GCond *cond;
-  gboolean ready;  /* TRUE when .dat file has been received */
+struct load_data_sync
+{
+  GMutex  *mutex;
+  GCond   *cond;
+  gboolean ready; /* TRUE when .dat file has been received */
 };
 
-static void emit_restore_file_event(GLogLevelFlags level, const gchar *message,
-                                    const gchar *event, const gchar *phase,
-                                    const gchar *status, struct thread_data *td,
-                                    struct connection_data *cd,
-                                    const gchar *filename, guint line_from,
-                                    guint line_to, gint error_code) {
+static void emit_restore_file_event(GLogLevelFlags level, const gchar *message, const gchar *event, const gchar *phase, const gchar *status, struct thread_data *td, struct connection_data *cd, const gchar *filename, guint line_from, guint line_to, gint error_code)
+{
   gchar *thread_id = NULL;
   gchar *connection_id = NULL;
   gchar *line_from_text = NULL;
   gchar *line_to_text = NULL;
   gchar *error_text = NULL;
 
-  if (!machine_log_json_enabled()) {
+  if (!machine_log_json_enabled())
+  {
     return;
   }
 
@@ -81,19 +80,19 @@ static void emit_restore_file_event(GLogLevelFlags level, const gchar *message,
   error_text = error_code > 0 ? g_strdup_printf("%d", error_code) : NULL;
 
   machine_log_event(G_LOG_DOMAIN, level,
-                    "MESSAGE", message,
-                    "EVENT", event,
-                    "PHASE", phase,
-                    "STATUS", status,
-                    "THREAD_ID", thread_id != NULL ? thread_id : "",
-                    "CONNECTION_ID", connection_id != NULL ? connection_id : "",
-                    "FILENAME", filename != NULL ? filename : "",
-                    "LINE_FROM", line_from_text != NULL ? line_from_text : "",
-                    "LINE_TO", line_to_text != NULL ? line_to_text : "",
-                    "ERROR_CODE", error_text != NULL ? error_text : "",
-                    "RETRYABLE", "false",
-                    "FATAL", (level & (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL)) != 0U ? "true" : "false",
-                    NULL);
+      "MESSAGE", message,
+      "EVENT", event,
+      "PHASE", phase,
+      "STATUS", status,
+      "THREAD_ID", thread_id != NULL ? thread_id : "",
+      "CONNECTION_ID", connection_id != NULL ? connection_id : "",
+      "FILENAME", filename != NULL ? filename : "",
+      "LINE_FROM", line_from_text != NULL ? line_from_text : "",
+      "LINE_TO", line_to_text != NULL ? line_to_text : "",
+      "ERROR_CODE", error_text != NULL ? error_text : "",
+      "RETRYABLE", "false",
+      "FATAL", (level & (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL)) != 0U ? "true" : "false",
+      NULL);
 
   g_free(thread_id);
   g_free(connection_id);
@@ -102,11 +101,11 @@ static void emit_restore_file_event(GLogLevelFlags level, const gchar *message,
   g_free(error_text);
 }
 
-void *restore_thread(MYSQL *thrconn);
-struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0, NULL, NULL};
-struct io_restore_result end_restore_thread = { NULL, NULL};
+void                    *restore_thread(MYSQL *thrconn);
+struct statement         release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0, NULL, NULL};
+struct io_restore_result end_restore_thread = {NULL, NULL};
 
-GThread **restore_threads=NULL;
+GThread **restore_threads = NULL;
 
 extern gchar *ignore_errors;
 /*
@@ -157,89 +156,100 @@ static void schedule_load_data_fifo_unlink(const gchar *fifo_filename, int child
 }
 */
 
-void initialize_restore(){
-  load_data_list_mutex=g_mutex_new();
-  load_data_list = g_hash_table_new ( g_str_hash, g_str_equal );
+void initialize_restore()
+{
+  load_data_list_mutex = g_mutex_new();
+  load_data_list = g_hash_table_new(g_str_hash, g_str_equal);
   if (replace_definer)
-    replace_definer_str=g_strdup_printf("DEFINER=%s",replace_definer);
+    replace_definer_str = g_strdup_printf("DEFINER=%s", replace_definer);
 }
 
-struct connection_data *new_connection_data(MYSQL *thrconn){
-  struct connection_data *cd=g_new(struct connection_data,1);
+struct connection_data *new_connection_data(MYSQL *thrconn)
+{
+  struct connection_data *cd = g_new(struct connection_data, 1);
   if (thrconn)
     cd->thrconn = thrconn;
-  else{
+  else
+  {
     cd->thrconn = mysql_init(NULL);
     m_connect(cd->thrconn);
   }
-  cd->current_database=NULL;
-  cd->connection_id=mysql_thread_id(cd->thrconn);
-  cd->ready=g_async_queue_new();
-  cd->queue=NULL;
-  cd->in_use=g_mutex_new();
+  cd->current_database = NULL;
+  cd->connection_id = mysql_thread_id(cd->thrconn);
+  cd->ready = g_async_queue_new();
+  cd->queue = NULL;
+  cd->in_use = g_mutex_new();
   trace("Executing set session");
   execute_gstring(cd->thrconn, set_session);
   execute_aws_session_setup(cd->thrconn);
   if (aws_session_commands != NULL && aws_session_commands->len > 0)
     execute_gstring(cd->thrconn, aws_session_commands);
-  g_async_queue_push(connection_pool,cd);
+  g_async_queue_push(connection_pool, cd);
   return cd;
 }
-struct io_restore_result *new_io_restore_result(){
-  struct io_restore_result *iors=g_new(struct io_restore_result,1);
-  iors->result=g_async_queue_new();
-  iors->restore=g_async_queue_new();
+struct io_restore_result *new_io_restore_result()
+{
+  struct io_restore_result *iors = g_new(struct io_restore_result, 1);
+  iors->result = g_async_queue_new();
+  iors->restore = g_async_queue_new();
   return iors;
 }
 
-
 int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
 
-void initialize_connection_pool(){
+void initialize_connection_pool()
+{
   if (mysqldump)
-    restore_data_from_file=&restore_data_from_mysqldump_file;
+    restore_data_from_file = &restore_data_from_mysqldump_file;
   else
-    restore_data_from_file=&restore_data_from_mydumper_file;
+    restore_data_from_file = &restore_data_from_mydumper_file;
 
-  guint n=0;
-  connection_pool=g_async_queue_new();
-  restore_queues=g_async_queue_new();
-  free_results_queue=g_async_queue_new();
-  struct io_restore_result *iors=NULL;
-  restore_threads=g_new(GThread *, num_threads);
-  for (n = 0; n < num_threads; n++) {
-    iors=new_io_restore_result();
+  guint n = 0;
+  connection_pool = g_async_queue_new();
+  restore_queues = g_async_queue_new();
+  free_results_queue = g_async_queue_new();
+  struct io_restore_result *iors = NULL;
+  restore_threads = g_new(GThread *, num_threads);
+  for (n = 0; n < num_threads; n++)
+  {
+    iors = new_io_restore_result();
     g_async_queue_push(restore_queues, iors);
   }
-  for (n = 0; n < 8*num_threads; n++) {
+  for (n = 0; n < 8 * num_threads; n++)
+  {
     g_async_queue_push(free_results_queue, new_statement());
   }
 }
 
-void start_connection_pool(){
-  guint n=0;
-  for (n = 0; n < num_threads; n++) {
-    restore_threads[n]=m_thread_new("myloader_conn",(GThreadFunc)restore_thread, NULL, "Restore thread could not be created");
+void start_connection_pool()
+{
+  guint n = 0;
+  for (n = 0; n < num_threads; n++)
+  {
+    restore_threads[n] = m_thread_new("myloader_conn", (GThreadFunc)restore_thread, NULL, "Restore thread could not be created");
   }
 }
 
-void wait_restore_threads_to_close(){
-  guint n=0;
-  struct connection_data *cd=NULL;
-  for(n = 0; n < num_threads; n++){
-    cd=g_async_queue_pop(connection_pool);
+void wait_restore_threads_to_close()
+{
+  guint                   n = 0;
+  struct connection_data *cd = NULL;
+  for (n = 0; n < num_threads; n++)
+  {
+    cd = g_async_queue_pop(connection_pool);
     g_async_queue_push(cd->ready, &end_restore_thread);
   }
   for (n = 0; n < num_threads; n++)
     g_thread_join(restore_threads[n]);
 }
 
-void reconnect_connection_data(struct connection_data *cd){
+void reconnect_connection_data(struct connection_data *cd)
+{
   if (cd->thrconn != NULL)
     mysql_close(cd->thrconn);
-  cd->thrconn=mysql_init(NULL);
+  cd->thrconn = mysql_init(NULL);
   m_connect(cd->thrconn);
-  cd->connection_id=mysql_thread_id(cd->thrconn);
+  cd->connection_id = mysql_thread_id(cd->thrconn);
   execute_use(cd);
   execute_gstring(cd->thrconn, set_session);
   execute_aws_session_setup(cd->thrconn);
@@ -247,12 +257,14 @@ void reconnect_connection_data(struct connection_data *cd){
     execute_gstring(cd->thrconn, aws_session_commands);
 }
 
-gboolean release_idle_connection_if_possible(){
+gboolean release_idle_connection_if_possible()
+{
   struct connection_data *cd = g_async_queue_try_pop(connection_pool);
   if (cd == NULL)
     return FALSE;
 
-  if (cd->thrconn != NULL) {
+  if (cd->thrconn != NULL)
+  {
     trace("Closing idle connection: %ld", cd->connection_id);
     mysql_close(cd->thrconn);
     cd->thrconn = NULL;
@@ -264,110 +276,122 @@ gboolean release_idle_connection_if_possible(){
   return TRUE;
 }
 
-static
-int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter, guint offset_line, guint current_offset_line)
+static int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter, guint offset_line, guint current_offset_line)
 {
-  if (!dry_run){
-  guint en=mysql_real_query(cd->thrconn, data->str, data->len);
-  if (en) {
-    if (machine_log_json_enabled()) {
-      gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
-      gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
-      gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(cd->thrconn));
-      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-                        "MESSAGE", "restore statement failed",
-                        "EVENT", "restore_sql",
-                        "PHASE", is_schema ? "restore_schema" : "restore_data",
-                        "STATUS", "failed",
-                        "THREAD_ID", thread_id,
-                        "CONNECTION_ID", connection_id,
-                        "MYSQL_ERRNO", mysql_errno_text,
-                        "SQLSTATE", mysql_sqlstate(cd->thrconn),
-                        "STATEMENT", data->str,
-                        "RETRYABLE", "true",
-                        "FATAL", "false",
-                        NULL);
-      g_free(thread_id);
-      g_free(connection_id);
-      g_free(mysql_errno_text);
-    }
-    if (is_schema)
-      g_warning("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn), data->str);
-    else{
-      g_warning("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s",cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn));
-    }
+  if (!dry_run)
+  {
+    guint en = mysql_real_query(cd->thrconn, data->str, data->len);
+    if (en)
+    {
+      if (machine_log_json_enabled())
+      {
+        gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
+        gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
+        gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(cd->thrconn));
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+            "MESSAGE", "restore statement failed",
+            "EVENT", "restore_sql",
+            "PHASE", is_schema ? "restore_schema" : "restore_data",
+            "STATUS", "failed",
+            "THREAD_ID", thread_id,
+            "CONNECTION_ID", connection_id,
+            "MYSQL_ERRNO", mysql_errno_text,
+            "SQLSTATE", mysql_sqlstate(cd->thrconn),
+            "STATEMENT", data->str,
+            "RETRYABLE", "true",
+            "FATAL", "false",
+            NULL);
+        g_free(thread_id);
+        g_free(connection_id);
+        g_free(mysql_errno_text);
+      }
+      if (is_schema)
+        g_warning("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn), data->str);
+      else
+      {
+        g_warning("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn));
+      }
 
-    if ( mysql_errno(cd->thrconn) != 0 && !should_ignore_error_code(mysql_errno(cd->thrconn))){
-      if (mysql_ping(cd->thrconn)) {
-        reconnect_connection_data(cd);
-        if (!is_schema && commit_count > 1) {
-          if (machine_log_json_enabled()) {
+      if (mysql_errno(cd->thrconn) != 0 && !should_ignore_error_code(mysql_errno(cd->thrconn)))
+      {
+        if (mysql_ping(cd->thrconn))
+        {
+          reconnect_connection_data(cd);
+          if (!is_schema && commit_count > 1)
+          {
+            if (machine_log_json_enabled())
+            {
+              gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
+              gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
+              gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(cd->thrconn));
+              machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,
+                  "MESSAGE", "restore connection lost",
+                  "EVENT", "restore_sql",
+                  "PHASE", "restore_data",
+                  "STATUS", "failed",
+                  "THREAD_ID", thread_id,
+                  "CONNECTION_ID", connection_id,
+                  "MYSQL_ERRNO", mysql_errno_text,
+                  "SQLSTATE", mysql_sqlstate(cd->thrconn),
+                  "RETRYABLE", "false",
+                  "FATAL", "true",
+                  NULL);
+              g_free(thread_id);
+              g_free(connection_id);
+              g_free(mysql_errno_text);
+            }
+            g_critical("Thread %ld using connection %ld - ERROR %d: Lost connection error. %s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+            errors++;
+            return 2;
+          }
+        }
+
+        g_atomic_int_inc(&(detailed_errors.retries));
+        if (mysql_real_query(cd->thrconn, data->str, data->len))
+        {
+          if (machine_log_json_enabled())
+          {
             gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
             gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
             gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(cd->thrconn));
             machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,
-                              "MESSAGE", "restore connection lost",
-                              "EVENT", "restore_sql",
-                              "PHASE", "restore_data",
-                              "STATUS", "failed",
-                              "THREAD_ID", thread_id,
-                              "CONNECTION_ID", connection_id,
-                              "MYSQL_ERRNO", mysql_errno_text,
-                              "SQLSTATE", mysql_sqlstate(cd->thrconn),
-                              "RETRYABLE", "false",
-                              "FATAL", "true",
-                              NULL);
+                "MESSAGE", "restore retry failed",
+                "EVENT", "restore_sql",
+                "PHASE", is_schema ? "restore_schema" : "restore_data",
+                "STATUS", "failed",
+                "THREAD_ID", thread_id,
+                "CONNECTION_ID", connection_id,
+                "MYSQL_ERRNO", mysql_errno_text,
+                "SQLSTATE", mysql_sqlstate(cd->thrconn),
+                "STATEMENT", data->str,
+                "RETRYABLE", "false",
+                "FATAL", "true",
+                NULL);
             g_free(thread_id);
             g_free(connection_id);
             g_free(mysql_errno_text);
           }
-          g_critical("Thread %ld using connection %ld - ERROR %d: Lost connection error. %s", cd->thread_id, cd->connection_id,  mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+          if (is_schema)
+            g_critical("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn), data->str);
+          else
+          {
+            g_critical("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn));
+          }
           errors++;
-          return 2;
+          return 1;
         }
-      }
-
-      g_atomic_int_inc(&(detailed_errors.retries));
-      if (mysql_real_query(cd->thrconn, data->str, data->len)) {
-        if (machine_log_json_enabled()) {
-          gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
-          gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
-          gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(cd->thrconn));
-          machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,
-                            "MESSAGE", "restore retry failed",
-                            "EVENT", "restore_sql",
-                            "PHASE", is_schema ? "restore_schema" : "restore_data",
-                            "STATUS", "failed",
-                            "THREAD_ID", thread_id,
-                            "CONNECTION_ID", connection_id,
-                            "MYSQL_ERRNO", mysql_errno_text,
-                            "SQLSTATE", mysql_sqlstate(cd->thrconn),
-                            "STATEMENT", data->str,
-                            "RETRYABLE", "false",
-                            "FATAL", "true",
-                            NULL);
-          g_free(thread_id);
-          g_free(connection_id);
-          g_free(mysql_errno_text);
-        }
-        if (is_schema)
-          g_critical("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s\n%s",cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn), data->str);
-        else{
-          g_critical("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s",cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn));
-        }
-        errors++;
-        return 1;
       }
     }
   }
-  }
-  *query_counter=*query_counter+1;
+  *query_counter = *query_counter + 1;
   g_string_set_size(data, 0);
   return 0;
 }
 
-void setup_connection(struct connection_data *cd, struct thread_data *td, struct io_restore_result *io_restore_result , gboolean start_transaction, struct database *use_database, GString *header){
-  if (cd->thrconn == NULL) {
+void setup_connection(struct connection_data *cd, struct thread_data *td, struct io_restore_result *io_restore_result, gboolean start_transaction, struct database *use_database, GString *header)
+{
+  if (cd->thrconn == NULL)
+  {
     cd->thrconn = mysql_init(NULL);
     m_connect(cd->thrconn);
     cd->connection_id = mysql_thread_id(cd->thrconn);
@@ -378,46 +402,50 @@ void setup_connection(struct connection_data *cd, struct thread_data *td, struct
       execute_gstring(cd->thrconn, aws_session_commands);
   }
   trace("Thread %d: Connection %ld granted", td->thread_id, cd->connection_id);
-  if (mysql_ping(cd->thrconn)) {
-    if (machine_log_json_enabled()) {
+  if (mysql_ping(cd->thrconn))
+  {
+    if (machine_log_json_enabled())
+    {
       gchar *thread_id = g_strdup_printf("%d", td->thread_id);
       gchar *connection_id = g_strdup_printf("%ld", cd->connection_id);
       machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-                        "MESSAGE", "connection failed",
-                        "EVENT", "restore_connection",
-                        "PHASE", "restore_data",
-                        "STATUS", "failed",
-                        "THREAD_ID", thread_id,
-                        "CONNECTION_ID", connection_id,
-                        "RETRYABLE", "true",
-                        "FATAL", "false",
-                        NULL);
+          "MESSAGE", "connection failed",
+          "EVENT", "restore_connection",
+          "PHASE", "restore_data",
+          "STATUS", "failed",
+          "THREAD_ID", thread_id,
+          "CONNECTION_ID", connection_id,
+          "RETRYABLE", "true",
+          "FATAL", "false",
+          NULL);
       g_free(thread_id);
       g_free(connection_id);
     }
     g_warning("Thread %d: Connection %ld failed", td->thread_id, cd->connection_id);
     reconnect_connection_data(cd);
-    if (machine_log_json_enabled()) {
+    if (machine_log_json_enabled())
+    {
       gchar *thread_id = g_strdup_printf("%d", td->thread_id);
       gchar *connection_id = g_strdup_printf("%ld", cd->connection_id);
       machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-                        "MESSAGE", "new connection established",
-                        "EVENT", "restore_connection",
-                        "PHASE", "restore_data",
-                        "STATUS", "finished",
-                        "THREAD_ID", thread_id,
-                        "CONNECTION_ID", connection_id,
-                        NULL);
+          "MESSAGE", "new connection established",
+          "EVENT", "restore_connection",
+          "PHASE", "restore_data",
+          "STATUS", "finished",
+          "THREAD_ID", thread_id,
+          "CONNECTION_ID", connection_id,
+          NULL);
       g_free(thread_id);
       g_free(connection_id);
     }
     g_warning("Thread %d: New connection %ld established", td->thread_id, cd->connection_id);
   }
-  cd->thread_id=td->thread_id;
-  cd->transaction=start_transaction;
+  cd->thread_id = td->thread_id;
+  cd->transaction = start_transaction;
   if (use_database)
     execute_use_if_needs_to(cd, use_database, "request_another_connection");
-  if (td){
+  if (td)
+  {
     td->granted_connections++;
   }
 
@@ -426,56 +454,61 @@ void setup_connection(struct connection_data *cd, struct thread_data *td, struct
 
   cd->queue = io_restore_result;
   if (header)
-    execute_gstring(cd->thrconn,header);
+    execute_gstring(cd->thrconn, header);
   g_async_queue_push(cd->ready, cd->queue);
 }
 
-struct connection_data *wait_for_available_restore_thread(struct thread_data *td, gboolean start_transaction, struct database *use_database){
-  struct connection_data *cd=g_async_queue_pop(connection_pool);
-  setup_connection(cd,td,g_async_queue_pop(restore_queues), start_transaction, use_database, NULL);
+struct connection_data *wait_for_available_restore_thread(struct thread_data *td, gboolean start_transaction, struct database *use_database)
+{
+  struct connection_data *cd = g_async_queue_pop(connection_pool);
+  setup_connection(cd, td, g_async_queue_pop(restore_queues), start_transaction, use_database, NULL);
   return cd;
 }
 
 extern gboolean control_job_ended;
-gboolean request_another_connection(struct thread_data *td, struct io_restore_result *io_restore_result, gboolean start_transaction, struct database *use_database, GString *header){
-  if ( control_job_ended && td->granted_connections < td->dbt->max_threads && td->dbt->count == 0 ){  // Perf: Use cached count
+gboolean        request_another_connection(struct thread_data *td, struct io_restore_result *io_restore_result, gboolean start_transaction, struct database *use_database, GString *header)
+{
+  if (control_job_ended && td->granted_connections < td->dbt->max_threads && td->dbt->count == 0)
+  {  // Perf: Use cached count
     g_assert(header);
-    struct connection_data *cd=g_async_queue_try_pop(connection_pool);
-    if(cd){
-      setup_connection(cd,td,io_restore_result,start_transaction, use_database, header);
+    struct connection_data *cd = g_async_queue_try_pop(connection_pool);
+    if (cd)
+    {
+      setup_connection(cd, td, io_restore_result, start_transaction, use_database, header);
       return TRUE;
     }
   }
   return FALSE;
 }
 
-
-int m_commit(struct connection_data *cd){
-  return m_query_warning(cd->thrconn, "COMMIT", "COMMIT failed")?2:0;
+int m_commit(struct connection_data *cd)
+{
+  return m_query_warning(cd->thrconn, "COMMIT", "COMMIT failed") ? 2 : 0;
 }
 
-int m_commit_and_start_transaction(struct connection_data *cd, guint* query_counter){
-  int e=m_commit(cd);
-  if (e) return e;
-  *query_counter=0;
+int m_commit_and_start_transaction(struct connection_data *cd, guint *query_counter)
+{
+  int e = m_commit(cd);
+  if (e)
+    return e;
+  *query_counter = 0;
   m_query_warning(cd->thrconn, "START TRANSACTION", "START TRANSACTION failed");
   return 0;
 }
 
-static
-int restore_insert(struct connection_data *cd, struct thread_data*td,
-                  GString *data, guint *query_counter, guint offset_line, struct db_table *dbt)
+static int restore_insert(struct connection_data *cd, struct thread_data *td, GString *data, guint *query_counter, guint offset_line, struct db_table *dbt)
 {
   // Perf: Find "VALUES" using strstr (only once, not in hot loop)
-  char *next_line=strstr(data->str, "VALUES");
-  if (next_line == NULL) return 0;
+  char *next_line = strstr(data->str, "VALUES");
+  if (next_line == NULL)
+    return 0;
   next_line += 6;  // Skip past "VALUES"
 
-  guint prefix_len = next_line - data->str;
-  char *insert_statement_prefix=g_strndup(data->str, prefix_len);
-  int r=0;
-  guint tr=0,current_offset_line=offset_line-1;
-  gchar *current_line=next_line;
+  guint  prefix_len = next_line - data->str;
+  char  *insert_statement_prefix = g_strndup(data->str, prefix_len);
+  int    r = 0;
+  guint  tr = 0, current_offset_line = offset_line - 1;
+  gchar *current_line = next_line;
 
   // Perf: Calculate remaining length for bounded searches
   gchar *data_end = data->str + data->len;
@@ -484,139 +517,161 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
   // Perf: Use memchr instead of g_strstr_len for newline search (SIMD-optimized)
   next_line = (remaining > 0) ? memchr(current_line, '\n', remaining) : NULL;
 
-  GString * new_insert=g_string_sized_new(prefix_len + 4096);  // Larger initial size
-  guint current_rows=0;
-  guint64 transaction_size=0;
-  do {
-    current_rows=0;
+  GString *new_insert = g_string_sized_new(prefix_len + 4096);  // Larger initial size
+  guint    current_rows = 0;
+  guint64  transaction_size = 0;
+  do
+  {
+    current_rows = 0;
     g_string_set_size(new_insert, 0);
-    g_string_printf(new_insert,"/* Completed: %"G_GUINT64_FORMAT"%% */ ", dbt->rows>0?dbt->rows_inserted*100/dbt->rows:0);
+    g_string_printf(new_insert, "/* Completed: %" G_GUINT64_FORMAT "%% */ ", dbt->rows > 0 ? dbt->rows_inserted * 100 / dbt->rows : 0);
     // Perf: Use append_len with known prefix length
     g_string_append_len(new_insert, insert_statement_prefix, prefix_len);
-    guint line_len=0;
-    do {
+    guint line_len = 0;
+    do
+    {
       // Perf: Direct append without g_strndup + strlen + g_free
       // The length is already known: next_line - current_line
       line_len = next_line - current_line;
       g_string_append_len(new_insert, current_line, line_len);
       current_rows++;
-      current_line=next_line+1;
+      current_line = next_line + 1;
       // Perf: Update remaining length and use memchr (16-32x faster than g_strstr_len)
       remaining = data_end - current_line;
       next_line = (remaining > 0) ? memchr(current_line, '\n', remaining) : NULL;
       current_offset_line++;
     } while ((rows == 0 || current_rows < rows) && next_line != NULL);
-    if (current_rows > 1 || (current_rows==1 && line_len>0) ){
-      if (cd->transaction && ((max_transaction_size * 1024 * 1024 < new_insert->len + transaction_size) )){ //|| (max_transaction_size * 1024 * 1024 < transaction_size + max_statement_size ))){
-        tr+=m_commit_and_start_transaction(cd,query_counter);
-        transaction_size=0;
+    if (current_rows > 1 || (current_rows == 1 && line_len > 0))
+    {
+      if (cd->transaction && ((max_transaction_size * 1024 * 1024 < new_insert->len + transaction_size)))
+      {  //|| (max_transaction_size * 1024 * 1024 < transaction_size + max_statement_size ))){
+        tr += m_commit_and_start_transaction(cd, query_counter);
+        transaction_size = 0;
       }
-      transaction_size+=new_insert->len;
-      tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter, offset_line, current_offset_line);
+      transaction_size += new_insert->len;
+      tr = restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter, offset_line, current_offset_line);
       g_usleep(throttle_time);
       table_lock(dbt);
-      dbt->rows_inserted+=current_rows;
+      dbt->rows_inserted += current_rows;
       table_unlock(dbt);
-      if (cd->transaction && *query_counter == commit_count) {
-        tr+=m_commit_and_start_transaction(cd,query_counter);
-        transaction_size=0;
+      if (cd->transaction && *query_counter == commit_count)
+      {
+        tr += m_commit_and_start_transaction(cd, query_counter);
+        transaction_size = 0;
       }
 
-      if (tr > 0){
+      if (tr > 0)
+      {
         emit_restore_file_event(G_LOG_LEVEL_CRITICAL,
-                                "split insert failed",
-                                "restore_insert", "restore_data", "failed",
-                                td, cd, NULL, offset_line, current_offset_line,
-                                mysql_errno(cd->thrconn));
-        g_error("Thread %d with connection %ld: Error occurs between lines: %d and %d in a splited INSERT: %s",td->thread_id, cd->connection_id, offset_line,current_offset_line,mysql_error(cd->thrconn));
+            "split insert failed",
+            "restore_insert", "restore_data", "failed",
+            td, cd, NULL, offset_line, current_offset_line,
+            mysql_errno(cd->thrconn));
+        g_error("Thread %d with connection %ld: Error occurs between lines: %d and %d in a splited INSERT: %s", td->thread_id, cd->connection_id, offset_line, current_offset_line, mysql_error(cd->thrconn));
       }
-      if (mysql_warning_count(cd->thrconn)){
+      if (mysql_warning_count(cd->thrconn))
+      {
         emit_restore_file_event(G_LOG_LEVEL_WARNING,
-                                "insert warnings found",
-                                "restore_insert", "restore_data", "warning",
-                                td, cd, NULL, offset_line, current_offset_line,
-                                mysql_warning_count(cd->thrconn));
-        g_warning("Thread %d with connection %ld: Warnings found during INSERT between lines: %d and %d: %s",td->thread_id, cd->connection_id, offset_line,current_offset_line, show_warnings_if_possible(cd->thrconn));
-        detailed_errors.data_warnings+=mysql_warning_count(cd->thrconn);
+            "insert warnings found",
+            "restore_insert", "restore_data", "warning",
+            td, cd, NULL, offset_line, current_offset_line,
+            mysql_warning_count(cd->thrconn));
+        g_warning("Thread %d with connection %ld: Warnings found during INSERT between lines: %d and %d: %s", td->thread_id, cd->connection_id, offset_line, current_offset_line, show_warnings_if_possible(cd->thrconn));
+        detailed_errors.data_warnings += mysql_warning_count(cd->thrconn);
       }
-    }else
-      tr=0;
-    r+=tr;
-    offset_line=current_offset_line+1;
-    current_line++; // remove trailing ,
+    }
+    else
+      tr = 0;
+    r += tr;
+    offset_line = current_offset_line + 1;
+    current_line++;  // remove trailing ,
   } while (next_line != NULL);
-  cd=NULL;
-  g_string_free(new_insert,TRUE);
+  cd = NULL;
+  g_string_free(new_insert, TRUE);
   g_free(insert_statement_prefix);
   return r;
 }
 
-
-
-void *restore_thread(MYSQL *thrconn){
-  struct connection_data *cd=new_connection_data(thrconn);
-  struct statement *ir=NULL;
-  guint query_counter=0;
-//  g_mutex_lock(cd->in_use);
-  while (1){
-    cd->queue=g_async_queue_pop(cd->ready);
+void *restore_thread(MYSQL *thrconn)
+{
+  struct connection_data *cd = new_connection_data(thrconn);
+  struct statement       *ir = NULL;
+  guint                   query_counter = 0;
+  //  g_mutex_lock(cd->in_use);
+  while (1)
+  {
+    cd->queue = g_async_queue_pop(cd->ready);
     if (cd->queue->restore == NULL)
       break;
-    while(1) {
-      ir=g_async_queue_pop(cd->queue->restore);
-      if (ir->kind_of_statement == CLOSE){
+    while (1)
+    {
+      ir = g_async_queue_pop(cd->queue->restore);
+      if (ir->kind_of_statement == CLOSE)
+      {
         trace("Releasing connection: %ld", cd->connection_id);
         if (cd->transaction && query_counter > 0)
           m_commit(cd);
-        g_async_queue_push(cd->queue->result,ir);
-        cd->queue=NULL;
-        ir=NULL;
+        g_async_queue_push(cd->queue->result, ir);
+        cd->queue = NULL;
+        ir = NULL;
         break;
       }
-      if (ir->kind_of_statement==INSERT){
-        ir->result=restore_insert(cd, ir->td, ir->buffer, &query_counter,ir->preline, ir->dbt);
-        if (ir->result>0){
-          ir->error=g_strdup(mysql_error(cd->thrconn));
-          ir->error_number=mysql_errno(cd->thrconn);
+      if (ir->kind_of_statement == INSERT)
+      {
+        ir->result = restore_insert(cd, ir->td, ir->buffer, &query_counter, ir->preline, ir->dbt);
+        if (ir->result > 0)
+        {
+          ir->error = g_strdup(mysql_error(cd->thrconn));
+          ir->error_number = mysql_errno(cd->thrconn);
           emit_restore_file_event(max_errors && errors > max_errors ? G_LOG_LEVEL_CRITICAL : G_LOG_LEVEL_CRITICAL,
-                                  "restore statement processing failed",
-                                  "restore_statement", ir->filename == NULL ? "restore_data" : "restore_file",
-                                  "failed", ir->td, cd, ir->filename, ir->preline, 0,
-                                  mysql_errno(cd->thrconn));
+              "restore statement processing failed",
+              "restore_statement", ir->filename == NULL ? "restore_data" : "restore_file",
+              "failed", ir->td, cd, ir->filename, ir->preline, 0,
+              mysql_errno(cd->thrconn));
           // FIXME: CLI option for max_errors (and AUTO for --identifier-quote-character), test
           // TODO: max_errrors is not being used at the moment
-    	    if (max_errors && errors > max_errors) {
-            if (ir->filename==NULL){
-              m_critical("Error occurs processing statement: %s",mysql_error(cd->thrconn));
-            }else{
-              m_critical("Error occurs starting at line: %d on file %s: %s",ir->preline,ir->filename,mysql_error(cd->thrconn));
+          if (max_errors && errors > max_errors)
+          {
+            if (ir->filename == NULL)
+            {
+              m_critical("Error occurs processing statement: %s", mysql_error(cd->thrconn));
             }
-          } else {
-            if (ir->filename==NULL){
-              g_critical("Error occurs processing statement: %s",mysql_error(cd->thrconn));
-            }else{
-              g_critical("Error occurs between lines: %d on file %s: %s",ir->preline,ir->filename,mysql_error(cd->thrconn));
+            else
+            {
+              m_critical("Error occurs starting at line: %d on file %s: %s", ir->preline, ir->filename, mysql_error(cd->thrconn));
+            }
+          }
+          else
+          {
+            if (ir->filename == NULL)
+            {
+              g_critical("Error occurs processing statement: %s", mysql_error(cd->thrconn));
+            }
+            else
+            {
+              g_critical("Error occurs between lines: %d on file %s: %s", ir->preline, ir->filename, mysql_error(cd->thrconn));
             }
           }
         }
-        g_async_queue_push(cd->queue->result,ir);
-      }else{
-        ir->result=restore_data_in_gstring_by_statement(cd, ir->buffer, ir->is_schema, &query_counter, ir->preline, 0); //current_offset_line);
-        if (ir->result>0){
-          ir->error=g_strdup(mysql_error(cd->thrconn));
-          ir->error_number=mysql_errno(cd->thrconn);
+        g_async_queue_push(cd->queue->result, ir);
+      }
+      else
+      {
+        ir->result = restore_data_in_gstring_by_statement(cd, ir->buffer, ir->is_schema, &query_counter, ir->preline, 0);  // current_offset_line);
+        if (ir->result > 0)
+        {
+          ir->error = g_strdup(mysql_error(cd->thrconn));
+          ir->error_number = mysql_errno(cd->thrconn);
         }
-        g_async_queue_push(cd->queue->result,ir);
+        g_async_queue_push(cd->queue->result, ir);
       }
     }
     trace("Returning connection to pool: %ld", cd->connection_id);
-    g_async_queue_push(connection_pool,cd);
+    g_async_queue_push(connection_pool, cd);
   }
-//  g_mutex_unlock(cd->in_use);
+  //  g_mutex_unlock(cd->in_use);
   return NULL;
 }
-
-
 
 /* Wait for LOAD DATA file (.dat) to be ready before processing.
  * Called when processing .sql file that contains LOAD DATA statement.
@@ -626,11 +681,13 @@ void *restore_thread(MYSQL *thrconn){
  *
  * Thread-safe: Uses condition variable for proper waiting semantics.
  */
-void load_data_mutex_locate( gchar * filename ){
+void load_data_mutex_locate(gchar *filename)
+{
   g_mutex_lock(load_data_list_mutex);
   struct load_data_sync *sync = g_hash_table_lookup(load_data_list, filename);
 
-  if (sync == NULL) {
+  if (sync == NULL)
+  {
     /* First time seeing this filename - create sync object and wait */
     sync = g_new0(struct load_data_sync, 1);
     sync->mutex = g_mutex_new();
@@ -641,14 +698,16 @@ void load_data_mutex_locate( gchar * filename ){
 
     /* Wait for .dat file to arrive */
     g_mutex_lock(sync->mutex);
-    while (!sync->ready) {
+    while (!sync->ready)
+    {
       g_cond_wait(sync->cond, sync->mutex);
     }
     g_mutex_unlock(sync->mutex);
     return;
   }
 
-  if (sync->ready) {
+  if (sync->ready)
+  {
     /* .dat file already received - no need to wait */
     g_mutex_unlock(load_data_list_mutex);
     return;
@@ -657,7 +716,8 @@ void load_data_mutex_locate( gchar * filename ){
   /* Sync object exists but not ready yet - wait on existing cond */
   g_mutex_unlock(load_data_list_mutex);
   g_mutex_lock(sync->mutex);
-  while (!sync->ready) {
+  while (!sync->ready)
+  {
     g_cond_wait(sync->cond, sync->mutex);
   }
   g_mutex_unlock(sync->mutex);
@@ -666,11 +726,13 @@ void load_data_mutex_locate( gchar * filename ){
 /* Signal that LOAD DATA file (.dat) is now available.
  * Called when .dat file is received in streaming mode.
  */
-void release_load_data_as_it_is_close( gchar * filename ){
+void release_load_data_as_it_is_close(gchar *filename)
+{
   g_mutex_lock(load_data_list_mutex);
   struct load_data_sync *sync = g_hash_table_lookup(load_data_list, filename);
 
-  if (sync == NULL) {
+  if (sync == NULL)
+  {
     /* .dat arrived before .sql - create sync object marked as ready */
     sync = g_new0(struct load_data_sync, 1);
     sync->mutex = g_mutex_new();
@@ -689,137 +751,155 @@ void release_load_data_as_it_is_close( gchar * filename ){
   g_mutex_unlock(load_data_list_mutex);
 }
 
-void free_statement(struct statement *statement){
+void free_statement(struct statement *statement)
+{
   g_string_free(statement->buffer, TRUE);
   g_free(statement->error);
   g_free(statement);
 }
 
-
-struct statement *initialize_statement(struct statement *ir){
-  ir->result=0;
-  ir->error_number=0;
-  ir->error=NULL;
+struct statement *initialize_statement(struct statement *ir)
+{
+  ir->result = 0;
+  ir->error_number = 0;
+  ir->error = NULL;
   return ir;
 }
 
-struct statement * new_statement(){
-  struct statement *stmt= g_new0(struct statement, 1);
+struct statement *new_statement()
+{
+  struct statement *stmt = g_new0(struct statement, 1);
   initialize_statement(stmt);
-  stmt->filename=NULL;
-  stmt->buffer=g_string_new_len("",30);
+  stmt->filename = NULL;
+  stmt->buffer = g_string_new_len("", 30);
   return stmt;
 }
 
-void assign_statement(struct statement *ir, struct thread_data*td, struct db_table * dbt, gchar *stmt, guint preline, gboolean is_schema, enum kind_of_statement kind_of_statement){
+void assign_statement(struct statement *ir, struct thread_data *td, struct db_table *dbt, gchar *stmt, guint preline, gboolean is_schema, enum kind_of_statement kind_of_statement)
+{
   initialize_statement(ir);
-  g_assert(stmt); 
-  g_string_assign(ir->buffer,stmt);
-  ir->preline=preline;
-  ir->is_schema=is_schema;
-  ir->kind_of_statement=kind_of_statement;
-  ir->dbt=dbt;
-  ir->td=td;
+  g_assert(stmt);
+  g_string_assign(ir->buffer, stmt);
+  ir->preline = preline;
+  ir->is_schema = is_schema;
+  ir->kind_of_statement = kind_of_statement;
+  ir->dbt = dbt;
+  ir->td = td;
 }
 
-
-guint process_result_vstatement_pop(GAsyncQueue * get_insert_result_queue, struct statement **ir, void log_fun(const char *, ...) , const char *fmt, va_list args, void * g_async_queue_pop_fun(GAsyncQueue *) ){
-  *ir=g_async_queue_pop_fun(get_insert_result_queue);
-  if (*ir==NULL)
+guint process_result_vstatement_pop(GAsyncQueue *get_insert_result_queue, struct statement **ir, void log_fun(const char *, ...), const char *fmt, va_list args, void *g_async_queue_pop_fun(GAsyncQueue *))
+{
+  *ir = g_async_queue_pop_fun(get_insert_result_queue);
+  if (*ir == NULL)
     return 0;
-  if ((*ir)->kind_of_statement!=CLOSE && (*ir)->result>0){
-    gchar *c=g_strdup_vprintf(fmt,args);
+  if ((*ir)->kind_of_statement != CLOSE && (*ir)->result > 0)
+  {
+    gchar *c = g_strdup_vprintf(fmt, args);
     log_fun("%s: %s (%d)", c, (*ir)->error, (*ir)->error_number);
     g_free(c);
   }
   return (*ir)->result;
 }
 
-guint process_result_vstatement(GAsyncQueue * get_insert_result_queue, struct statement **ir, void log_fun(const char *, ...) , const char *fmt, va_list args){
-  return process_result_vstatement_pop(get_insert_result_queue,ir,log_fun,fmt,args,g_async_queue_pop);
+guint process_result_vstatement(GAsyncQueue *get_insert_result_queue, struct statement **ir, void log_fun(const char *, ...), const char *fmt, va_list args)
+{
+  return process_result_vstatement_pop(get_insert_result_queue, ir, log_fun, fmt, args, g_async_queue_pop);
 }
 
-guint process_result_statement(GAsyncQueue * get_insert_result_queue, struct statement **ir, void log_fun(const char *, ...) , const char *fmt, ...){
-  va_list    args;
+guint process_result_statement(GAsyncQueue *get_insert_result_queue, struct statement **ir, void log_fun(const char *, ...), const char *fmt, ...)
+{
+  va_list args;
   va_start(args, fmt);
-  guint r=process_result_vstatement(get_insert_result_queue,ir, log_fun, fmt, args);
+  guint r = process_result_vstatement(get_insert_result_queue, ir, log_fun, fmt, args);
   va_end(args);
   return r;
 }
 
-int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database){
-
-  FILE *infile=NULL;
+int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database)
+{
+  FILE    *infile = NULL;
   gboolean eof = FALSE;
   GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
-  guint line=0,preline=0;
-  gchar *path = g_build_filename(directory, filename, NULL);
-  infile=myl_open(path,"r");
+  guint    line = 0, preline = 0;
+  gchar   *path = g_build_filename(directory, filename, NULL);
+  infile = myl_open(path, "r");
 
-  g_log_set_always_fatal(G_LOG_LEVEL_ERROR|G_LOG_LEVEL_CRITICAL);
+  g_log_set_always_fatal(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL);
 
-  if (!infile) {
+  if (!infile)
+  {
     emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "cannot open restore file",
-                            "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
-                            "failed", td, NULL, filename, 0, 0, errno);
+        "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+        "failed", td, NULL, filename, 0, 0, errno);
     g_critical("cannot open file %s (%d)", filename, errno);
     errors++;
     return 1;
   }
-  guint r=0;
-  struct connection_data *cd=wait_for_available_restore_thread(td, !is_schema && (commit_count > 1), use_database );
-  g_assert(g_async_queue_length(cd->queue->restore)<=0);
-  g_assert(g_async_queue_length(cd->queue->result)<=0);
-  guint i=0;
-  struct statement *ir=g_async_queue_pop(free_results_queue);
-  gboolean results_added=FALSE;
-  gchar *delimiter=g_strdup(DEFAULT_DELIMITER);
-  while (eof == FALSE) {
-    if (read_data(infile, data, &eof, &line)) {
-      if (g_str_has_prefix(data->str,"DELIMITER")){
+  guint                   r = 0;
+  struct connection_data *cd = wait_for_available_restore_thread(td, !is_schema && (commit_count > 1), use_database);
+  g_assert(g_async_queue_length(cd->queue->restore) <= 0);
+  g_assert(g_async_queue_length(cd->queue->result) <= 0);
+  guint             i = 0;
+  struct statement *ir = g_async_queue_pop(free_results_queue);
+  gboolean          results_added = FALSE;
+  gchar            *delimiter = g_strdup(DEFAULT_DELIMITER);
+  while (eof == FALSE)
+  {
+    if (read_data(infile, data, &eof, &line))
+    {
+      if (g_str_has_prefix(data->str, "DELIMITER"))
+      {
         g_free(delimiter);
-        delimiter=g_strdup(&(data->str[10]));
-        preline=line+1;
+        delimiter = g_strdup(&(data->str[10]));
+        preline = line + 1;
         g_string_set_size(data, 0);
-      }else if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], delimiter)) {
+      }
+      else if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], delimiter))
+      {
         update_definer(data, replace_definer_str, skip_definer);
-        assign_statement(ir,td, td->dbt,data->str, preline, is_schema, OTHER);
-        g_async_queue_push(cd->queue->restore,ir);
-        ir=NULL;
+        assign_statement(ir, td, td->dbt, data->str, preline, is_schema, OTHER);
+        g_async_queue_push(cd->queue->restore, ir);
+        ir = NULL;
         process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
-        r|= ir->result;
+        r |= ir->result;
 
         g_string_set_size(data, 0);
-        preline=line+1;
-        if (ir->result>0){
+        preline = line + 1;
+        if (ir->result > 0)
+        {
           emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "restore file processing failed",
-                                  "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
-                                  "failed", td, cd, filename, preline, line, ir->error_number);
-          g_critical("(1)Error occurs processing file %s",filename);
+              "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+              "failed", td, cd, filename, preline, line, ir->error_number);
+          g_critical("(1)Error occurs processing file %s", filename);
         }
       }
-    } else {
+    }
+    else
+    {
       emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "error reading restore file",
-                              "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
-                              "failed", td, cd, filename, line, 0, errno);
+          "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+          "failed", td, cd, filename, line, 0, errno);
       g_critical("error reading file %s (%d)", filename, errno);
       errors++;
       return errno;
     }
   }
-  struct io_restore_result *queue= cd->queue;
-  g_async_queue_push(free_results_queue,ir);
-  if (results_added){
-    for(i=0;i<7;i++){
+  struct io_restore_result *queue = cd->queue;
+  g_async_queue_push(free_results_queue, ir);
+  if (results_added)
+  {
+    for (i = 0; i < 7; i++)
+    {
       process_result_statement(queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
-      g_assert(ir->kind_of_statement!=CLOSE);
-      g_async_queue_push(free_results_queue,ir);
+      g_assert(ir->kind_of_statement != CLOSE);
+      g_async_queue_push(free_results_queue, ir);
     }
   }
-  for(;td->granted_connections>0;td->granted_connections--){
-    g_async_queue_push(queue->restore,&release_connection_statement);
+  for (; td->granted_connections > 0; td->granted_connections--)
+  {
+    g_async_queue_push(queue->restore, &release_connection_statement);
     process_result_statement(queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
-    g_assert(ir->kind_of_statement==CLOSE);
+    g_assert(ir->kind_of_statement == CLOSE);
   }
   g_async_queue_push(restore_queues, queue);
 
@@ -830,115 +910,133 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
   return r;
 }
 
-
-int restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database){
-
-  FILE *infile=NULL;
+int restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database)
+{
+  FILE    *infile = NULL;
   gboolean eof = FALSE;
   GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
-  guint line=0,preline=0;
-  gchar *path = g_build_filename(directory, filename, NULL);
-  infile=myl_open(path,"r");
+  guint    line = 0, preline = 0;
+  gchar   *path = g_build_filename(directory, filename, NULL);
+  infile = myl_open(path, "r");
 
-  g_log_set_always_fatal(G_LOG_LEVEL_ERROR|G_LOG_LEVEL_CRITICAL);
+  g_log_set_always_fatal(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL);
 
-  if (!infile) {
+  if (!infile)
+  {
     emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "cannot open restore file",
-                            "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
-                            "failed", td, NULL, filename, 0, 0, errno);
+        "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+        "failed", td, NULL, filename, 0, 0, errno);
     g_critical("cannot open file %s (%d)", filename, errno);
     errors++;
     return 1;
   }
-  guint r=0;
-  gchar *load_data_filename=NULL;
-  gchar *load_data_fifo_filename=NULL;
-  gchar *new_load_data_fifo_filename=NULL;
-  struct connection_data *cd=wait_for_available_restore_thread(td, !is_schema && (commit_count > 1), use_database );
-  g_assert(g_async_queue_length(cd->queue->restore)<=0);
-  g_assert(g_async_queue_length(cd->queue->result)<=0);
-  guint i=0;
-  struct statement *ir=g_async_queue_pop(free_results_queue);
-  gboolean results_added=FALSE;
-  GString *header=g_string_sized_new(256);
-  while (eof == FALSE) {
-    if (read_data(infile, data, &eof, &line)) {
-      if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        if (g_str_has_prefix(data->str,"CREATE")){
-          if ( skip_definer)
+  guint                   r = 0;
+  gchar                  *load_data_filename = NULL;
+  gchar                  *load_data_fifo_filename = NULL;
+  gchar                  *new_load_data_fifo_filename = NULL;
+  struct connection_data *cd = wait_for_available_restore_thread(td, !is_schema && (commit_count > 1), use_database);
+  g_assert(g_async_queue_length(cd->queue->restore) <= 0);
+  g_assert(g_async_queue_length(cd->queue->result) <= 0);
+  guint             i = 0;
+  struct statement *ir = g_async_queue_pop(free_results_queue);
+  gboolean          results_added = FALSE;
+  GString          *header = g_string_sized_new(256);
+  while (eof == FALSE)
+  {
+    if (read_data(infile, data, &eof, &line))
+    {
+      if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n"))
+      {
+        if (g_str_has_prefix(data->str, "CREATE"))
+        {
+          if (skip_definer)
             remove_definer(data);
-          if ( replace_definer_str )
+          if (replace_definer_str)
             replace_definer_from_string(data, replace_definer_str);
         }
-        if ( g_strrstr_len(data->str,6,"INSERT")){
+        if (g_strrstr_len(data->str, 6, "INSERT"))
+        {
           request_another_connection(td, cd->queue, cd->transaction, use_database, header);
-          if (!results_added){
-            results_added=TRUE;
-            struct statement * other_ir=NULL;
-            for(i=0;i<7;i++){
-              other_ir=g_async_queue_pop(free_results_queue);
-              g_async_queue_push(cd->queue->result,initialize_statement(other_ir));
+          if (!results_added)
+          {
+            results_added = TRUE;
+            struct statement *other_ir = NULL;
+            for (i = 0; i < 7; i++)
+            {
+              other_ir = g_async_queue_pop(free_results_queue);
+              g_async_queue_push(cd->queue->result, initialize_statement(other_ir));
             }
-          } 
+          }
           assign_statement(ir, td, td->dbt, data->str, preline, FALSE, INSERT);
           g_async_queue_push(cd->queue->restore, ir);
-          ir=NULL;
+          ir = NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
-        }else if (g_strrstr_len(data->str,10,"LOAD DATA ")){
+        }
+        else if (g_strrstr_len(data->str, 10, "LOAD DATA "))
+        {
           GString *new_data = NULL;
           // Perf: Use strchr instead of g_strstr_len for single-char search
           gchar *from = strchr(data->str, '\'');
-          if (from == NULL) goto STMT_IGNORED;
+          if (from == NULL)
+            goto STMT_IGNORED;
           from++;
           gchar *to = strchr(from, '\'');
-          if (to == NULL) goto STMT_IGNORED;
-          load_data_filename=g_strndup(from, to-from);
+          if (to == NULL)
+            goto STMT_IGNORED;
+          load_data_filename = g_strndup(from, to - from);
           /* Wait for .dat file to be available (in streaming mode) */
           load_data_mutex_locate(load_data_filename);
-          gchar **command=NULL;
-//          int load_data_child_pid = 0;  // Issue #2075: Track subprocess for FIFO unlink
+          gchar **command = NULL;
+          //          int load_data_child_pid = 0;  // Issue #2075: Track subprocess for FIFO unlink
           gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
-          if (is_fifo){
-            if (load_data_tmp_directory != NULL){
+          if (is_fifo)
+          {
+            if (load_data_tmp_directory != NULL)
+            {
               new_data = g_string_new_len(data->str, from - data->str);
               g_string_append(new_data, load_data_tmp_directory);
               g_string_append_c(new_data, '/');
               g_string_append(new_data, from);
               // Perf: Use strchr instead of g_strstr_len for single-char search
               from = strchr(new_data->str, '\'');
-              if (from) from++;
+              if (from)
+                from++;
               g_string_free(data, TRUE);
-              data=new_data;
+              data = new_data;
               to = from ? strchr(from, '\'') : NULL;
             }
             // Perf: Cache strlen results instead of calling twice
             guint load_data_filename_len = strlen(load_data_filename);
             guint load_data_fifo_filename_len = strlen(load_data_fifo_filename);
-            guint a=0;
-            for(;a<load_data_filename_len-load_data_fifo_filename_len;a++){
-              *to=' '; to--;
+            guint a = 0;
+            for (; a < load_data_filename_len - load_data_fifo_filename_len; a++)
+            {
+              *to = ' ';
+              to--;
             }
-            *to='\'';
+            *to = '\'';
 
-            if (load_data_tmp_directory != NULL){
-              new_load_data_fifo_filename=g_strdup_printf("%s/%s", load_data_tmp_directory, load_data_fifo_filename);
+            if (load_data_tmp_directory != NULL)
+            {
+              new_load_data_fifo_filename = g_strdup_printf("%s/%s", load_data_tmp_directory, load_data_fifo_filename);
               g_free(load_data_fifo_filename);
-              load_data_fifo_filename=new_load_data_fifo_filename;
+              load_data_fifo_filename = new_load_data_fifo_filename;
             }
-            if (mkfifo(load_data_fifo_filename,0666)){
+            if (mkfifo(load_data_fifo_filename, 0666))
+            {
               emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "cannot create named pipe",
-                                      "restore_fifo", "restore_data_file", "failed",
-                                      td, cd, load_data_fifo_filename, 0, 0, errno);
+                  "restore_fifo", "restore_data_file", "failed",
+                  td, cd, load_data_fifo_filename, 0, 0, errno);
               g_critical("cannot create named pipe %s (%d)", load_data_fifo_filename, errno);
             }
-            //load_data_child_pid = 
-            execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
+            // load_data_child_pid =
+            execute_file_per_thread(load_data_filename, load_data_fifo_filename, command);
             release_load_data_as_it_is_close(load_data_fifo_filename);
-//              g_free(fifo_name);
+            //              g_free(fifo_name);
           }
 
           assign_statement(ir, td, td->dbt, data->str, preline, FALSE, OTHER);
-          g_async_queue_push(cd->queue->restore,ir);
+          g_async_queue_push(cd->queue->restore, ir);
 
           /*
           // Issue #2075: Schedule background thread to unlink FIFO after MySQL connects
@@ -947,21 +1045,29 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
             schedule_load_data_fifo_unlink(load_data_fifo_filename, load_data_child_pid);
           }
           */
-          ir=NULL;
+          ir = NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
-          if (is_fifo){
-            if (stream && !no_delete) 
+          if (is_fifo)
+          {
+            if (stream && !no_delete)
               g_unlink(load_data_filename);
             m_remove0(NULL, load_data_fifo_filename);
-          }else
+          }
+          else
             m_remove(NULL, load_data_filename);
-        }else{
-          if (g_strrstr_len(data->str,3,"/*!")){
+        }
+        else
+        {
+          if (g_strrstr_len(data->str, 3, "/*!"))
+          {
             // Perf: Use data->len instead of strlen(data->str)
-            if (should_ignore_set_statement(data)){
+            if (should_ignore_set_statement(data))
+            {
               goto STMT_IGNORED;
-            }else{
-              g_string_append(header,data->str);
+            }
+            else
+            {
+              g_string_append(header, data->str);
             }
             /*
             gchar *from_equal=g_strstr_len(data->str, data->len, "=");
@@ -980,49 +1086,57 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
               g_string_append(header,data->str);
             }
             */
-          }else{
-            header=NULL;
+          }
+          else
+          {
+            header = NULL;
           }
           assign_statement(ir, td, td->dbt, data->str, preline, is_schema, OTHER);
-          g_async_queue_push(cd->queue->restore,ir);
-          ir=NULL;
+          g_async_queue_push(cd->queue->restore, ir);
+          ir = NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
         }
 
-        r|= ir->result;
-        if (ir->result>0) {
+        r |= ir->result;
+        if (ir->result > 0)
+        {
           emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "restore file processing failed",
-                                  "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
-                                  "failed", td, cd, filename, preline, line, ir->error_number);
-          g_critical("(1)Error occurs processing file %s",filename);
+              "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+              "failed", td, cd, filename, preline, line, ir->error_number);
+          g_critical("(1)Error occurs processing file %s", filename);
         }
 
-STMT_IGNORED:
+      STMT_IGNORED:
         g_string_set_size(data, 0);
-        preline=line+1;
+        preline = line + 1;
       }
-    } else {
+    }
+    else
+    {
       emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "error reading restore file",
-                              "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
-                              "failed", td, cd, filename, line, 0, errno);
+          "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+          "failed", td, cd, filename, line, 0, errno);
       g_critical("error reading file %s (%d)", filename, errno);
       errors++;
       return errno;
     }
   }
-  struct io_restore_result *queue= cd->queue;
-  g_async_queue_push(free_results_queue,ir);
-  if (results_added){
-    for(i=0;i<7;i++){
+  struct io_restore_result *queue = cd->queue;
+  g_async_queue_push(free_results_queue, ir);
+  if (results_added)
+  {
+    for (i = 0; i < 7; i++)
+    {
       process_result_statement(queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
-      g_assert(ir->kind_of_statement!=CLOSE);
-      g_async_queue_push(free_results_queue,ir);
+      g_assert(ir->kind_of_statement != CLOSE);
+      g_async_queue_push(free_results_queue, ir);
     }
   }
-  for(;td->granted_connections>0;td->granted_connections--){
-    g_async_queue_push(queue->restore,&release_connection_statement);
+  for (; td->granted_connections > 0; td->granted_connections--)
+  {
+    g_async_queue_push(queue->restore, &release_connection_statement);
     process_result_statement(queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
-    g_assert(ir->kind_of_statement==CLOSE);
+    g_assert(ir->kind_of_statement == CLOSE);
   }
   g_async_queue_push(restore_queues, queue);
 
@@ -1035,41 +1149,45 @@ STMT_IGNORED:
 }
 
 // return 0 means everything was ok
-int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database, void log_fun(const char *, ...) , const char *fmt, ...){
-  va_list    args;
+int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database, void log_fun(const char *, ...), const char *fmt, ...)
+{
+  va_list args;
   va_start(args, fmt);
-  struct connection_data *cd=wait_for_available_restore_thread(td, !is_schema && (commit_count > 1), use_database );
-  struct io_restore_result *queue= cd->queue;
-  cd=NULL;
-  struct statement *ir=g_async_queue_pop(free_results_queue);
-  int i=0;
-  int r=0;
-  if (data != NULL && data->len > 4){
-    gchar** line=g_strsplit(data->str, ";\n", -1);
-    for (i=0; i < (int)g_strv_length(line);i++){
-       if (strlen(line[i])>2){
-          assign_statement(ir, td, td->dbt, line[i], i, is_schema, OTHER);
-          if(ir->error)
-            g_free(ir->error);
-          ir->error=NULL;
-          g_async_queue_push(queue->restore,ir);
-          r+=process_result_vstatement(queue->result, &ir, log_fun, fmt, args);
-       }
+  struct connection_data   *cd = wait_for_available_restore_thread(td, !is_schema && (commit_count > 1), use_database);
+  struct io_restore_result *queue = cd->queue;
+  cd = NULL;
+  struct statement *ir = g_async_queue_pop(free_results_queue);
+  int               i = 0;
+  int               r = 0;
+  if (data != NULL && data->len > 4)
+  {
+    gchar **line = g_strsplit(data->str, ";\n", -1);
+    for (i = 0; i < (int)g_strv_length(line); i++)
+    {
+      if (strlen(line[i]) > 2)
+      {
+        assign_statement(ir, td, td->dbt, line[i], i, is_schema, OTHER);
+        if (ir->error)
+          g_free(ir->error);
+        ir->error = NULL;
+        g_async_queue_push(queue->restore, ir);
+        r += process_result_vstatement(queue->result, &ir, log_fun, fmt, args);
+      }
     }
     g_strfreev(line);
   }
-  g_async_queue_push(free_results_queue,ir);
-  g_async_queue_push(queue->restore,&release_connection_statement);
+  g_async_queue_push(free_results_queue, ir);
+  g_async_queue_push(queue->restore, &release_connection_statement);
   td->granted_connections--;
-  r+=process_result_vstatement(queue->result, &ir, log_fun, fmt, args);
-  g_assert(g_async_queue_length(queue->restore)<=0);
-  g_assert(g_async_queue_length(queue->result)<=0);
+  r += process_result_vstatement(queue->result, &ir, log_fun, fmt, args);
+  g_assert(g_async_queue_length(queue->restore) <= 0);
+  g_assert(g_async_queue_length(queue->result) <= 0);
   g_async_queue_push(restore_queues, queue);
   va_end(args);
   return r;
 }
 
-
-int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database){
+int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database)
+{
   return restore_data_in_gstring_extended(td, data, is_schema, use_database, m_warning, "Failed to execute statement", NULL);
 }

@@ -12,10 +12,15 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
+    Authors: David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_pmm_thread_h
+#define _src_pmm_thread_h
 
 void initialize_pmm();
 void start_pmm_thread(void *conf);
 void stop_pmm_thread();
 void print_pmm_help();
+
+#endif

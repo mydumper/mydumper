@@ -12,18 +12,27 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
+    Authors: David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_regex_h
+#define _src_regex_h
+
+#include <glib.h>
+
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
-gboolean check_filename_regex(char *word);
-gboolean eval_regex(char * a,char * b);
-GOptionGroup * load_regex_entries(GOptionContext *context);
-gboolean eval_partition_regex(char * word);
-void initialize_regex(gchar * partition_regex);
-void init_regex(pcre2_code **r, const char *str);
-gboolean eval_pcre_regex(pcre2_code * p, char * word);
-void free_regex();
-gboolean is_regex_being_used();
+
+gboolean      check_filename_regex(char *word);
+gboolean      eval_regex(char *a, char *b);
+GOptionGroup *load_regex_entries(GOptionContext *context);
+gboolean      eval_partition_regex(char *word);
+void          initialize_regex(gchar *partition_regex);
+void          init_regex(pcre2_code **r, const char *str);
+gboolean      eval_pcre_regex(pcre2_code *p, char *word);
+void          free_regex();
+gboolean      is_regex_being_used();
 
 extern GList *regex_list;
+
+#endif

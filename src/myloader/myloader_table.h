@@ -15,52 +15,59 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#ifndef _src_myloader_myloader_table_h
+#define _src_myloader_myloader_table_h
 
-#ifndef _src_myloader_table_h
-#define _src_myloader_table_h
+#include <glib.h>
 
-#include <stdio.h>
-#include "myloader.h"
+#include "checksum.h"
+#include "common.h"
+#include "myloader/myloader.h"
 
-struct db_table {
-  struct database * database;
-  gchar *source_table_name;
-  gchar *table_filename;
-  gchar *create_table_name;
-  struct object_scope object_to_import;
-  guint64 rows;
-  guint64 rows_inserted;
-  GList * restore_job_list;
-  gboolean restore_job_list_sorted;  // Perf: lazy sorting flag
-  guint current_threads;
-  guint max_threads;
-  guint max_connections_per_job;
-  guint retry_count;
-  GMutex *mutex;
-  GCond *schema_cond;   /* Condition variable for schema-wait synchronization */
-  GString *indexes;
-  GString *constraints;
-  guint count;
-  enum schema_status schema_state;
-  gboolean index_enqueued;
-  GDateTime * start_data_time;
-  GDateTime * finish_data_time;
-  GDateTime * start_index_time;
-  GDateTime * finish_time;
-  gint remaining_jobs;
+struct database;
+struct configuration;
+
+struct db_table
+{
+  struct database            *database;
+  gchar                      *source_table_name;
+  gchar                      *table_filename;
+  gchar                      *create_table_name;
+  struct object_scope         object_to_import;
+  guint64                     rows;
+  guint64                     rows_inserted;
+  GList                      *restore_job_list;
+  gboolean                    restore_job_list_sorted;  // Perf: lazy sorting flag
+  guint                       current_threads;
+  guint                       max_threads;
+  guint                       max_connections_per_job;
+  guint                       retry_count;
+  GMutex                     *mutex;
+  GCond                      *schema_cond; /* Condition variable for schema-wait synchronization */
+  GString                    *indexes;
+  GString                    *constraints;
+  guint                       count;
+  enum schema_status          schema_state;
+  gboolean                    index_enqueued;
+  GDateTime                  *start_data_time;
+  GDateTime                  *finish_data_time;
+  GDateTime                  *start_index_time;
+  GDateTime                  *finish_time;
+  gint                        remaining_jobs;
   struct table_level_checksum checksum;
-  gboolean is_view;
-  gboolean is_sequence;
+  gboolean                    is_view;
+  gboolean                    is_sequence;
   // O(1) ready queue flag: prevents duplicate enqueuing
   gboolean in_ready_queue;
 };
 
-struct db_table * get_table(gchar *database_name_in_filename , gchar * table_filename);
-void free_table_hash(GHashTable *table_hash);
-gboolean append_new_db_table( struct db_table **p_dbt, struct database *_database, gchar *source_table_name, gchar *table_filename, gboolean is_view);
-gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
-gint compare_dbt_short(gconstpointer a, gconstpointer b);
-void initialize_table(struct configuration *c);
-void table_lock(struct db_table *dbt);
-void table_unlock(struct db_table *dbt);
+struct db_table *get_table(gchar *database_name_in_filename, gchar *table_filename);
+void             free_table_hash(GHashTable *table_hash);
+gboolean         append_new_db_table(struct db_table **p_dbt, struct database *_database, gchar *source_table_name, gchar *table_filename, gboolean is_view);
+gint             compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
+gint             compare_dbt_short(gconstpointer a, gconstpointer b);
+void             initialize_table(struct configuration *c);
+void             table_lock(struct db_table *dbt);
+void             table_unlock(struct db_table *dbt);
+
 #endif

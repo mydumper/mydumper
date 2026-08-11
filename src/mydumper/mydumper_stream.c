@@ -15,133 +15,153 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#include <errno.h>
 #include <glib/gstdio.h>
 #include <sys/file.h>
-#include <errno.h>
 // We need header fcntl.h for open function to build on Alpine. More info in: https://github.com/mydumper/mydumper/issues/1721
 #include <fcntl.h>
 
-#include "mydumper.h"
-#include "mydumper_global.h"
-#include "mydumper_stream.h"
-#include "mydumper_file_handler.h"
-#include "mydumper_write.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_file_handler.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_stream.h"
+#include "mydumper/mydumper_write.h"
 
-GThread *stream_thread = NULL;
-GThread *metadata_partial_writer_thread = NULL;
-gboolean metadata_partial_writer_alive = TRUE;
+GThread     *stream_thread = NULL;
+GThread     *metadata_partial_writer_thread = NULL;
+gboolean     metadata_partial_writer_alive = TRUE;
 GAsyncQueue *metadata_partial_queue = NULL;
-GAsyncQueue * initial_metadata_lock_queue = NULL;
-GAsyncQueue * initial_metadata_queue = NULL;
+GAsyncQueue *initial_metadata_lock_queue = NULL;
+GAsyncQueue *initial_metadata_queue = NULL;
 
-void metadata_partial_queue_push (struct db_table *dbt){
+void metadata_partial_queue_push(struct db_table *dbt)
+{
   if (dbt)
     g_async_queue_push(metadata_partial_queue, dbt);
 }
 
-guint get_stream_queue_length(){
+guint get_stream_queue_length()
+{
   return g_async_queue_length(stream_queue);
 }
 
-void stream_queue_push(struct db_table *dbt,gchar *filename){
-  GAsyncQueue *done = no_sync?NULL:g_async_queue_new();
-  g_async_queue_push(stream_queue, new_filename_queue_element(dbt,filename,done));
-  if (done){
+void stream_queue_push(struct db_table *dbt, gchar *filename)
+{
+  GAsyncQueue *done = no_sync ? NULL : g_async_queue_new();
+  g_async_queue_push(stream_queue, new_filename_queue_element(dbt, filename, done));
+  if (done)
+  {
     g_async_queue_pop(done);
     g_async_queue_unref(done);
   }
   metadata_partial_queue_push(dbt);
 }
 
-void *process_stream(void *data){
+void *process_stream(void *data)
+{
   (void)data;
-  int f=0;
-  char *buf=g_new(gchar, STREAM_BUFFER_SIZE);
-  int buflen;
-  guint64 total_size=0;
+  int     f = 0;
+  char   *buf = g_new(gchar, STREAM_BUFFER_SIZE);
+  int     buflen;
+  guint64 total_size = 0;
   // Perf: Use g_get_monotonic_time() instead of GDateTime to eliminate allocations
-  gint64 total_start_time = g_get_monotonic_time();
-  GTimeSpan diff=0,total_diff=0;
-//  gboolean not_compressed = FALSE;
-//  guint sz=0;
-  ssize_t len=0;
+  gint64    total_start_time = g_get_monotonic_time();
+  GTimeSpan diff = 0, total_diff = 0;
+  //  gboolean not_compressed = FALSE;
+  //  guint sz=0;
+  ssize_t                        len = 0;
   struct filename_queue_element *sf = NULL;
-  for(;;){
+  for (;;)
+  {
     sf = g_async_queue_pop(stream_queue);
 
-    if (strlen(sf->filename) == 0){
+    if (strlen(sf->filename) == 0)
+    {
       if (sf->done)
         g_async_queue_push(sf->done, GINT_TO_POINTER(1));
       break;
     }
-    char *used_filemame=g_path_get_basename(sf->filename);
-    len=write(fileno(stdout), "\n-- ", 4);
-    len=write(fileno(stdout), used_filemame, strlen(used_filemame));
-    len=write(fileno(stdout), " ", 1);
-    total_size+=5;
-    total_size+=strlen(used_filemame);
+    char *used_filemame = g_path_get_basename(sf->filename);
+    len = write(fileno(stdout), "\n-- ", 4);
+    len = write(fileno(stdout), used_filemame, strlen(used_filemame));
+    len = write(fileno(stdout), " ", 1);
+    total_size += 5;
+    total_size += strlen(used_filemame);
     free(used_filemame);
-    if (no_stream){
-      f=write(fileno(stdout), "0\n", 2);
-    }else{
-//      g_message("Stream Opening: %s",sf->filename);
-      f=open(sf->filename,O_RDONLY);
-      if (f < 0){
+    if (no_stream)
+    {
+      f = write(fileno(stdout), "0\n", 2);
+    }
+    else
+    {
+      //      g_message("Stream Opening: %s",sf->filename);
+      f = open(sf->filename, O_RDONLY);
+      if (f < 0)
+      {
         m_error("File failed to open: %s (%s)", sf->filename, strerror(errno));
-      }else{
-/*
-      	      if (flock(fileno(f),LOCK_EX)){
-          g_async_queue_push(stream_queue,sf);
-	  g_message("File not possible to lock %s",sf->filename);
-	  continue;
-	}
-	flock(fileno(f),LOCK_UN);
-*/
-	if (f < 0){
+      }
+      else
+      {
+        /*
+                      if (flock(fileno(f),LOCK_EX)){
+                  g_async_queue_push(stream_queue,sf);
+                  g_message("File not possible to lock %s",sf->filename);
+                  continue;
+                }
+                flock(fileno(f),LOCK_UN);
+        */
+        if (f < 0)
+        {
           g_critical("File failed to open: %s (%s). Retrying", sf->filename, strerror(errno));
-          f=open(sf->filename,O_RDONLY);
-          if (f < 0){
-            m_error("File failed to open: %s (%s). Cancelling",sf->filename, strerror(errno));
+          f = open(sf->filename, O_RDONLY);
+          if (f < 0)
+          {
+            m_error("File failed to open: %s (%s). Cancelling", sf->filename, strerror(errno));
           }
         }
         trace("Streaming %s", sf->filename);
         struct stat st;
         fstat(f, &st);
         off_t size = st.st_size;
-        
-//        g_message("File size of %s is %"G_GINT64_FORMAT, sf->filename, size);
-//        g_message("Streaming file %s", sf->filename);
+
+        //        g_message("File size of %s is %"G_GINT64_FORMAT, sf->filename, size);
+        //        g_message("Streaming file %s", sf->filename);
         gchar *c = g_strdup_printf("%" G_GINT64_FORMAT, (gint64)size);
-        len=write(fileno(stdout), c, strlen(c));
-        len=write(fileno(stdout), "\n", 1);
-        total_size+=strlen(c) + 1;
+        len = write(fileno(stdout), c, strlen(c));
+        len = write(fileno(stdout), "\n", 1);
+        total_size += strlen(c) + 1;
         g_free(c);
 
-        guint total_len=0;
+        guint total_len = 0;
         // Perf: Use g_get_monotonic_time() - zero allocation timing
         gint64 start_time = g_get_monotonic_time();
         buflen = read(f, buf, STREAM_BUFFER_SIZE);
-        while(buflen > 0){
-          len=write(fileno(stdout), buf, buflen);
-          total_len=total_len + buflen;
+        while (buflen > 0)
+        {
+          len = write(fileno(stdout), buf, buflen);
+          total_len = total_len + buflen;
           if (len != buflen)
-            m_error("Stream failed during transmition of file: %s",sf->filename);
+            m_error("Stream failed during transmition of file: %s", sf->filename);
           buflen = read(f, buf, STREAM_BUFFER_SIZE);
         }
-//        g_message("Bytes readed of %s is %d", filename, total_len);
+        //        g_message("Bytes readed of %s is %d", filename, total_len);
         gint64 end_time = g_get_monotonic_time();
         diff = (end_time - start_time) / G_TIME_SPAN_SECOND;
         total_diff = (end_time - total_start_time) / G_TIME_SPAN_SECOND;
-        if (diff > 0){
-          g_message("File %s transferred in %" G_GINT64_FORMAT " seconds at %" G_GINT64_FORMAT " MB/s | Global: %" G_GINT64_FORMAT " MB/s",sf->filename,diff,total_len/1024/1024/diff,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
-        }else{
-          g_message("File %s transferred | Global: %" G_GINT64_FORMAT "MB/s",sf->filename,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
+        if (diff > 0)
+        {
+          g_message("File %s transferred in %" G_GINT64_FORMAT " seconds at %" G_GINT64_FORMAT " MB/s | Global: %" G_GINT64_FORMAT " MB/s", sf->filename, diff, total_len / 1024 / 1024 / diff, total_diff != 0 ? total_size / 1024 / 1024 / total_diff : total_size / 1024 / 1024);
         }
-        total_size+=total_len;
+        else
+        {
+          g_message("File %s transferred | Global: %" G_GINT64_FORMAT "MB/s", sf->filename, total_diff != 0 ? total_size / 1024 / 1024 / total_diff : total_size / 1024 / 1024);
+        }
+        total_size += total_len;
         close(f);
       }
     }
-    if (no_delete == FALSE){
+    if (no_delete == FALSE)
+    {
       trace("Deleting %s", sf->filename);
       remove(sf->filename);
     }
@@ -152,14 +172,13 @@ void *process_stream(void *data){
   }
   // Perf: Zero-allocation final timing
   total_diff = (g_get_monotonic_time() - total_start_time) / G_TIME_SPAN_SECOND;
-  g_message("All data transferred was %" G_GINT64_FORMAT " at a rate of %" G_GINT64_FORMAT " MB/s",total_size,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
+  g_message("All data transferred was %" G_GINT64_FORMAT " at a rate of %" G_GINT64_FORMAT " MB/s", total_size, total_diff != 0 ? total_size / 1024 / 1024 / total_diff : total_size / 1024 / 1024);
   return NULL;
 }
 
-
-
-void send_initial_metadata(){
-  g_async_queue_push(initial_metadata_queue, GINT_TO_POINTER(1) );
+void send_initial_metadata()
+{
+  g_async_queue_push(initial_metadata_queue, GINT_TO_POINTER(1));
   g_async_queue_pop(initial_metadata_lock_queue);
 }
 
@@ -168,73 +187,82 @@ static gchar *make_partial_filename(guint i)
   return g_strdup_printf("%s/metadata.partial.%d", dump_directory, i);
 }
 
-void *metadata_partial_writer(void *data){
-  (void) data;
-  struct db_table *dbt=NULL;
-  GList *dbt_list = NULL;
+void *metadata_partial_writer(void *data)
+{
+  (void)data;
+  struct db_table *dbt = NULL;
+  GList           *dbt_list = NULL;
   // Perf: Use GHashTable for O(1) deduplication instead of O(n) g_list_find
   GHashTable *dbt_set = g_hash_table_new(g_direct_hash, g_direct_equal);
-  GString *output=g_string_sized_new(256);
-  guint i=0;
-  gchar *filename = NULL;
-  GError* gerror = NULL;
-  for(i=0;i<num_threads;i++){
+  GString    *output = g_string_sized_new(256);
+  guint       i = 0;
+  gchar      *filename = NULL;
+  GError     *gerror = NULL;
+  for (i = 0; i < num_threads; i++)
+  {
     g_async_queue_pop(initial_metadata_queue);
   }
-  dbt=g_async_queue_try_pop(metadata_partial_queue);
-  while (dbt != NULL ){
-    dbt_list=g_list_prepend(dbt_list,dbt);
+  dbt = g_async_queue_try_pop(metadata_partial_queue);
+  while (dbt != NULL)
+  {
+    dbt_list = g_list_prepend(dbt_list, dbt);
     g_hash_table_add(dbt_set, dbt);
-    dbt=g_async_queue_try_pop(metadata_partial_queue);
+    dbt = g_async_queue_try_pop(metadata_partial_queue);
   }
-  g_string_set_size(output,0);
-  g_list_foreach(dbt_list,(GFunc)(&print_dbt_on_metadata_gstring),output);
-  filename= make_partial_filename(0);
-  g_file_set_contents(filename, output->str,output->len,&gerror);
+  g_string_set_size(output, 0);
+  g_list_foreach(dbt_list, (GFunc)(&print_dbt_on_metadata_gstring), output);
+  filename = make_partial_filename(0);
+  g_file_set_contents(filename, output->str, output->len, &gerror);
   stream_queue_push(NULL, filename);
-  for(i=0;i<num_threads;i++){
+  for (i = 0; i < num_threads; i++)
+  {
     g_async_queue_push(initial_metadata_lock_queue, GINT_TO_POINTER(1));
   }
 
-  i=1;
+  i = 1;
   // Perf: Use g_get_monotonic_time() instead of GDateTime
-  gint64 prev_time = g_get_monotonic_time();
-  GTimeSpan diff=0;
-  g_string_set_size(output,0);
-  filename=NULL;
-  dbt=g_async_queue_timeout_pop(metadata_partial_queue, METADATA_PARTIAL_INTERVAL * 1000000);
-  while (metadata_partial_writer_alive){
+  gint64    prev_time = g_get_monotonic_time();
+  GTimeSpan diff = 0;
+  g_string_set_size(output, 0);
+  filename = NULL;
+  dbt = g_async_queue_timeout_pop(metadata_partial_queue, METADATA_PARTIAL_INTERVAL * 1000000);
+  while (metadata_partial_writer_alive)
+  {
     // Perf: O(1) hash table lookup instead of O(n) g_list_find
-    if (dbt != NULL && !g_hash_table_contains(dbt_set, dbt)){
-      dbt_list=g_list_prepend(dbt_list,dbt);
+    if (dbt != NULL && !g_hash_table_contains(dbt_set, dbt))
+    {
+      dbt_list = g_list_prepend(dbt_list, dbt);
       g_hash_table_add(dbt_set, dbt);
     }
     // Perf: Zero-allocation time check
     gint64 current_time = g_get_monotonic_time();
     diff = (current_time - prev_time) / G_TIME_SPAN_SECOND;
-    if (diff > METADATA_PARTIAL_INTERVAL){
+    if (diff > METADATA_PARTIAL_INTERVAL)
+    {
       // Perf: O(1) hash table size instead of O(n) g_list_length
-      if (g_hash_table_size(dbt_set) > 0){
-        filename= make_partial_filename(i);
+      if (g_hash_table_size(dbt_set) > 0)
+      {
+        filename = make_partial_filename(i);
         i++;
         initialize_config_on_string(output);
-        g_list_foreach(dbt_list,(GFunc)(&print_dbt_on_metadata_gstring),output);
-        g_file_set_contents(filename,output->str,output->len,&gerror);
+        g_list_foreach(dbt_list, (GFunc)(&print_dbt_on_metadata_gstring), output);
+        g_file_set_contents(filename, output->str, output->len, &gerror);
         stream_queue_push(NULL, filename);
         filename = NULL;
-        g_string_set_size(output,0);
-        dbt_list=NULL;
+        g_string_set_size(output, 0);
+        dbt_list = NULL;
         g_hash_table_remove_all(dbt_set);  // Clear the set when list is cleared
       }
       prev_time = current_time;
     }
-    dbt=g_async_queue_timeout_pop(metadata_partial_queue, METADATA_PARTIAL_INTERVAL * 1000000);
+    dbt = g_async_queue_timeout_pop(metadata_partial_queue, METADATA_PARTIAL_INTERVAL * 1000000);
   }
   g_hash_table_destroy(dbt_set);
   return NULL;
 }
 
-void initialize_stream(){
+void initialize_stream()
+{
   initial_metadata_queue = g_async_queue_new();
   initial_metadata_lock_queue = g_async_queue_new();
   stream_queue = g_async_queue_new();
@@ -243,7 +271,8 @@ void initialize_stream(){
   metadata_partial_writer_thread = m_thread_new("metadata_writer", (GThreadFunc)metadata_partial_writer, NULL, "Metadata partial writer thread could not be created");
 }
 
-void wait_stream_to_finish(){
+void wait_stream_to_finish()
+{
   /*
    * Shutdown ordering matters:
    * - metadata_partial_writer may call stream_queue_push(), which (by default)
@@ -253,9 +282,11 @@ void wait_stream_to_finish(){
    *
    * So: stop + join metadata writer first, then stop + join stream thread.
    */
-  if (metadata_partial_writer_thread != NULL) {
+  if (metadata_partial_writer_thread != NULL)
+  {
     metadata_partial_writer_alive = FALSE;
-    if (metadata_partial_queue != NULL) {
+    if (metadata_partial_queue != NULL)
+    {
       /* Wake up g_async_queue_timeout_pop() */
       g_async_queue_push(metadata_partial_queue, GINT_TO_POINTER(1));
     }
@@ -263,7 +294,8 @@ void wait_stream_to_finish(){
     metadata_partial_writer_thread = NULL;
   }
 
-  if (stream_thread != NULL) {
+  if (stream_thread != NULL)
+  {
     /* Tell process_stream() to exit */
     stream_queue_push(NULL, g_strdup(""));
     g_thread_join(stream_thread);

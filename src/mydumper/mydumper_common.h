@@ -18,45 +18,49 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_mydumper_mydumper_common_h
+#define _src_mydumper_mydumper_common_h
+
 #include <stdio.h>
 #include <stdlib.h>
-#include "mydumper_table.h"
-#include "mydumper_start_dump.h"
+#include <glib.h>
+#include <mysql.h>
 
-void initialize_common();
-void initialize_headers();
-gchar *get_ref_table(gchar *k);
-char * determine_filename (char * table);
-char * escape_string(MYSQL *conn, char *str);
-gchar * build_schema_table_filename(char *database, char *table, const char *suffix);
-gchar * build_schema_filename(const char *database, const char *suffix);
-gchar * build_meta_filename(char *database, char *table, const char *suffix);
-void set_charset(GString *statement, char *character_set,
-                 char *collation_connection);
-void restore_charset(GString *statement);
-void clear_dump_directory(gchar *directory);
+void     initialize_common();
+void     initialize_headers();
+gchar   *get_ref_table(gchar *k);
+char    *determine_filename(char *table);
+char    *escape_string(MYSQL *conn, char *str);
+gchar   *build_schema_table_filename(char *database, char *table, const char *suffix);
+gchar   *build_schema_filename(const char *database, const char *suffix);
+gchar   *build_meta_filename(char *database, char *table, const char *suffix);
+void     set_charset(GString *statement, char *character_set, char *collation_connection);
+void     restore_charset(GString *statement);
+void     clear_dump_directory(gchar *directory);
 gboolean is_empty_dir(gchar *directory);
-void set_transaction_isolation_level_repeatable_read(MYSQL *conn);
-gchar * build_tablespace_filename();
-gchar * build_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, const gchar *second_extension);
-//gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension);
-gchar * build_sql_filename(char *database, char *table, guint64 part, guint sub_part);
-gchar * build_rows_filename(char *database, char *table, guint64 part, guint sub_part);
-void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol, guint *rowscol);
-void determine_explain_columns(MYSQL_RES *result, guint *rowscol);
-void determine_charset_and_coll_columns_from_show(MYSQL_RES *result, guint *charcol, guint *collcol);
-unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length);
-void m_replace_char_with_char(gchar needle, gchar replace, gchar *str, unsigned long length);
-void m_escape_char_with_char(gchar needle, gchar replace, gchar *str, unsigned long length);
-void free_common();
-void initialize_sql_statement(GString *statement);
-void set_tidb_snapshot(MYSQL *conn);
-void release_pid();
-void child_process_ended(int child_pid);
-guint64 my_pow_two_plus_prev(guint64 prev, guint max);
-guint parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max, const gchar* messsage);
-extern guint nroutines;
-extern guint server_version;
+void     set_transaction_isolation_level_repeatable_read(MYSQL *conn);
+gchar   *build_tablespace_filename();
+gchar   *build_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, const gchar *second_extension);
+gchar             *build_sql_filename(char *database, char *table, guint64 part, guint sub_part);
+gchar             *build_rows_filename(char *database, char *table, guint64 part, guint sub_part);
+void               determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol, guint *rowscol);
+gboolean           determine_explain_columns(MYSQL_RES *result, guint *rowscol);
+void               determine_charset_and_coll_columns_from_show(MYSQL_RES *result, guint *charcol, guint *collcol);
+unsigned long      m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length);
+void               m_replace_char_with_char(gchar needle, gchar replace, gchar *str, unsigned long length);
+void               m_escape_char_with_char(gchar needle, gchar replace, gchar *str, unsigned long length);
+void               free_common();
+void               initialize_sql_statement(GString *statement);
+void               set_tidb_snapshot(MYSQL *conn);
+void               release_pid();
+void               child_process_ended(int child_pid);
+guint64            my_pow_two_plus_prev(guint64 prev, guint max);
+guint              parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max, const gchar *messsage);
+extern guint       nroutines;
+extern guint       server_version;
 extern const char *routine_type[];
-void initialize_header_in_gstring(GString *statement, gchar *charset);
-gboolean m_pstrstr(char **str_list, const gchar* needle);
+void               initialize_header_in_gstring(GString *statement, gchar *charset);
+gboolean           m_pstrstr(char **str_list, const gchar *needle);
+
+#endif
