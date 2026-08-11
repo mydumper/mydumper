@@ -14,7 +14,6 @@
 
     Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
-
 #include <gio/gio.h>
 #include <glib.h>
 #include <glib/gstdio.h>

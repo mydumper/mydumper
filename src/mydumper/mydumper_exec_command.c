@@ -14,7 +14,6 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-
 #include <errno.h>
 #include <glib.h>
 #include <glib/gstdio.h>

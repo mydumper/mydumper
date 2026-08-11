@@ -32,6 +32,7 @@ enum server_type
   SERVER_TYPE_GOOGLE,
   SERVER_TYPE_DOLT
 };
+
 void         server_detect(MYSQL *conn);
 gboolean     server_support_tablespaces();
 int          get_product();
