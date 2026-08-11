@@ -421,17 +421,20 @@ void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *
   g_assert(*collcol > 0);
 }
 
-void determine_explain_columns(MYSQL_RES *result, guint *rowscol)
+gboolean determine_explain_columns(MYSQL_RES *result, guint *rowscol)
 {
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   guint        i = 0;
+  gboolean     rows_column_found = FALSE;
   for (i = 0; i < mysql_num_fields(result); i++)
   {
-    if (!strcasecmp(fields[i].name, "rows"))
+    if (!strcasecmp(fields[i].name, "rows") ||
+        !strcasecmp(fields[i].name, "estRows")){ // estRows is used by TiDB
       *rowscol = i;
-    if (!strcasecmp(fields[i].name, "estRows"))  // TiDB
-      *rowscol = i;
+      rows_column_found = TRUE;
+    }
   }
+  return rows_column_found;
 }
 
 void determine_charset_and_coll_columns_from_show(MYSQL_RES *result, guint *charcol, guint *collcol)
