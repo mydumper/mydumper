@@ -16,15 +16,16 @@
 #include <string.h>
 
 extern gchar *tables_skiplist_file;
-extern guint errors;
+extern guint  errors;
 
 GSequence *tables_skiplist = NULL;
-GMutex *tables_skiplist_mutex = NULL;
+GMutex    *tables_skiplist_mutex = NULL;
 
 extern gchar *pwd;
 /* Comparison function for skiplist sort and lookup */
 
-int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data) {
+int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data)
+{
   /* Not using user_data, but needed for function prototype, shutting up
    * compiler warnings about unused variable */
   (void)user_data;
@@ -35,34 +36,38 @@ int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data) {
 
 /* Read the list of tables to skip from the given filename, and prepares them
  * for future lookups. */
-static
-void read_tables_skiplist(const gchar *filename) {
-
+static void read_tables_skiplist(const gchar *filename)
+{
   GIOChannel *tables_skiplist_channel = NULL;
-  gchar *buf = NULL;
-  GError *error = NULL;
+  gchar      *buf = NULL;
+  GError     *error = NULL;
   /* Create skiplist if it does not exist */
-  if (!tables_skiplist) {
+  if (!tables_skiplist)
+  {
     tables_skiplist = g_sequence_new(NULL);
     tables_skiplist_mutex = g_mutex_new();
   };
-  const gchar *_filename=filename;
-  if (filename[0] != '/'){
-    _filename=g_strdup_printf("%s/%s", pwd, filename);
+  const gchar *_filename = filename;
+  if (filename[0] != '/')
+  {
+    _filename = g_strdup_printf("%s/%s", pwd, filename);
   }
   tables_skiplist_channel = g_io_channel_new_file(_filename, "r", &error);
 
   /* Error opening/reading the file? bail out. */
-  if (!tables_skiplist_channel) {
+  if (!tables_skiplist_channel)
+  {
     g_critical("cannot read/open file %s, %s\n", filename, error->message);
     errors++;
     return;
   };
 
   /* Read lines, push them to the list */
-  do {
+  do
+  {
     g_io_channel_read_line(tables_skiplist_channel, &buf, NULL, NULL, NULL);
-    if (buf) {
+    if (buf)
+    {
       g_strchomp(buf);
       g_sequence_append(tables_skiplist, buf);
     };
@@ -71,36 +76,37 @@ void read_tables_skiplist(const gchar *filename) {
   /* Sort the list, so that lookups work */
   g_sequence_sort(tables_skiplist, tables_skiplist_cmp, NULL);
   g_message("Omit list file contains %d tables to skip\n",
-            g_sequence_get_length(tables_skiplist));
+      g_sequence_get_length(tables_skiplist));
   return;
 }
 
 /* Check database.table string against skip list; returns TRUE if found */
 
-gboolean check_skiplist(char *database, char *table) {
+gboolean check_skiplist(char *database, char *table)
+{
   if (!tables_skiplist_file)
     return FALSE;
 
   g_mutex_lock(tables_skiplist_mutex);
   gboolean b = g_sequence_lookup(tables_skiplist,
-                        database,
-                        tables_skiplist_cmp, NULL) != NULL;
-  if (!table || b){
+                   database,
+                   tables_skiplist_cmp, NULL) != NULL;
+  if (!table || b)
+  {
     g_mutex_unlock(tables_skiplist_mutex);
     return b;
   }
-  gchar * k=g_strdup_printf("%s.%s", database, table);
+  gchar *k = g_strdup_printf("%s.%s", database, table);
   b = g_sequence_lookup(tables_skiplist,
-                        k,
-                        tables_skiplist_cmp, NULL) != NULL;
+          k,
+          tables_skiplist_cmp, NULL) != NULL;
   g_mutex_unlock(tables_skiplist_mutex);
   g_free(k);
   return b;
 }
 
-void load_omit_tables(){
+void load_omit_tables()
+{
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file);
 }
-
-

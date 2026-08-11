@@ -19,83 +19,88 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <mysql.h>
 #include <errno.h>
-#include <glib/gstdio.h>
 #include <gio/gio.h>
 #include <glib-unix.h>
+#include <glib/gstdio.h>
+#include <mysql.h>
 
-#include "mydumper.h"
-#include "mydumper_start_dump.h"
-#include "mydumper_common.h"
-#include "mydumper_global.h"
+#include "mydumper/mydumper.h"
+#include "mydumper/mydumper_common.h"
+#include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_start_dump.h"
 
-guint snapshot_interval = 60;
-guint snapshot_count= 2;
-GMainLoop *m1;
+guint        snapshot_interval = 60;
+guint        snapshot_count = 2;
+GMainLoop   *m1;
 GAsyncQueue *start_scheduled_dump;
-guint dump_number=0;
+guint        dump_number = 0;
 
-void initialize_daemon_thread(){
-    pid_t pid, sid;
+void initialize_daemon_thread()
+{
+  pid_t pid, sid;
 
-    pid = fork();
-    if (pid < 0)
-      exit(EXIT_FAILURE);
-    else if (pid > 0)
-      exit(EXIT_SUCCESS);
+  pid = fork();
+  if (pid < 0)
+    exit(EXIT_FAILURE);
+  else if (pid > 0)
+    exit(EXIT_SUCCESS);
 
-    umask(0037);
-    sid = setsid();
+  umask(0037);
+  sid = setsid();
 
-    if (sid < 0)
-      exit(EXIT_FAILURE);
+  if (sid < 0)
+    exit(EXIT_FAILURE);
 
-    char *d_d;
-    for (dump_number = 0; dump_number < snapshot_count; dump_number++) {
-        d_d= g_strdup_printf("%s/%d", output_directory, dump_number);
-        create_dir(d_d);
-        g_free(d_d);
-    }
+  char *d_d;
+  for (dump_number = 0; dump_number < snapshot_count; dump_number++)
+  {
+    d_d = g_strdup_printf("%s/%d", output_directory, dump_number);
+    create_dir(d_d);
+    g_free(d_d);
+  }
 
-    GFile *last_dump = g_file_new_for_path(
-        g_strdup_printf("%s/last_dump", output_directory)
-    );
-    GFileInfo *last_dump_i = g_file_query_info(
-        last_dump,
-        G_FILE_ATTRIBUTE_STANDARD_TYPE ","
-        G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
-        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-        NULL, NULL
-    );
-    if (last_dump_i != NULL &&
-        g_file_info_get_file_type(last_dump_i) == G_FILE_TYPE_SYMBOLIC_LINK) {
-        dump_number = atoi(g_file_info_get_symlink_target(last_dump_i));
-        if (dump_number >= snapshot_count-1) dump_number = 0;
-        else dump_number++;
-        g_object_unref(last_dump_i);
-    } else {
-        dump_number = 0;
-    }
-    g_object_unref(last_dump);
+  GFile *last_dump = g_file_new_for_path(
+      g_strdup_printf("%s/last_dump", output_directory));
+  GFileInfo *last_dump_i = g_file_query_info(
+      last_dump,
+      G_FILE_ATTRIBUTE_STANDARD_TYPE "," G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
+      G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+      NULL, NULL);
+  if (last_dump_i != NULL &&
+      g_file_info_get_file_type(last_dump_i) == G_FILE_TYPE_SYMBOLIC_LINK)
+  {
+    dump_number = atoi(g_file_info_get_symlink_target(last_dump_i));
+    if (dump_number >= snapshot_count - 1)
+      dump_number = 0;
+    else
+      dump_number++;
+    g_object_unref(last_dump_i);
+  }
+  else
+  {
+    dump_number = 0;
+  }
+  g_object_unref(last_dump);
 }
 
-gboolean run_snapshot(gpointer *data) {
-    (void)data;
+gboolean run_snapshot(gpointer *data)
+{
+  (void)data;
 
-      g_async_queue_push(start_scheduled_dump, GINT_TO_POINTER(1));
+  g_async_queue_push(start_scheduled_dump, GINT_TO_POINTER(1));
 
-        return !shutdown_triggered;
+  return !shutdown_triggered;
 }
 
-
-void *exec_thread(GOptionContext *context) {
-
+void *exec_thread(GOptionContext *context)
+{
   struct configuration conf;
   start_pmm_thread((void *)&conf);
-  while (1) {
+  while (1)
+  {
     g_async_queue_pop(start_scheduled_dump);
-    char *dump_number_str=g_strdup_printf("%d",dump_number);
+    char *dump_number_str = g_strdup_printf("%d", dump_number);
     dump_directory = g_build_path("/", output_directory, dump_number_str, NULL);
     g_free(dump_number_str);
     g_assert(clear_dumpdir);
@@ -104,43 +109,47 @@ void *exec_thread(GOptionContext *context) {
 
     // Don't switch the symlink on shutdown because the dump is probably
     // incomplete.
-    if (!shutdown_triggered) {
-      char *dump_symlink_source= g_strdup_printf("%d", dump_number);
+    if (!shutdown_triggered)
+    {
+      char *dump_symlink_source = g_strdup_printf("%d", dump_number);
       char *dump_symlink_dest =
           g_strdup_printf("%s/last_dump", output_directory);
 
       // We don't care if this fails
       g_unlink(dump_symlink_dest);
 
-      if (symlink(dump_symlink_source, dump_symlink_dest) == -1) {
+      if (symlink(dump_symlink_source, dump_symlink_dest) == -1)
+      {
         g_critical("error setting last good dump symlink %s, %d",
-                   dump_symlink_dest, errno);
+            dump_symlink_dest, errno);
       }
       g_free(dump_symlink_dest);
 
-      if (dump_number >= snapshot_count-1) dump_number = 0;
-      else dump_number++;
+      if (dump_number >= snapshot_count - 1)
+        dump_number = 0;
+      else
+        dump_number++;
     }
   }
   return NULL;
 }
 
-
-void run_daemon(){
-    start_scheduled_dump = g_async_queue_new();
-    m_thread_new("daemon", (GThreadFunc)exec_thread, NULL, "Daemon thread could not be created");
-    // Run initial snapshot
-    run_snapshot(NULL);
+void run_daemon()
+{
+  start_scheduled_dump = g_async_queue_new();
+  m_thread_new("daemon", (GThreadFunc)exec_thread, NULL, "Daemon thread could not be created");
+  // Run initial snapshot
+  run_snapshot(NULL);
 #if GLIB_MINOR_VERSION < 14
-    g_timeout_add(snapshot_interval * 60 * 1000, (GSourceFunc)run_snapshot,
-                  NULL);
+  g_timeout_add(snapshot_interval * 60 * 1000, (GSourceFunc)run_snapshot,
+      NULL);
 #else
-    g_timeout_add_seconds(snapshot_interval * 60 , (GSourceFunc)run_snapshot,
-                          NULL);
+  g_timeout_add_seconds(snapshot_interval * 60, (GSourceFunc)run_snapshot,
+      NULL);
 #endif
-    guint sigsource = g_unix_signal_add(SIGINT, sig_triggered_int, NULL);
-    sigsource = g_unix_signal_add(SIGTERM, sig_triggered_term, NULL);
-    m1 = g_main_loop_new(NULL, TRUE);
-    g_main_loop_run(m1);
-    g_source_remove(sigsource);
+  guint sigsource = g_unix_signal_add(SIGINT, sig_triggered_int, NULL);
+  sigsource = g_unix_signal_add(SIGTERM, sig_triggered_term, NULL);
+  m1 = g_main_loop_new(NULL, TRUE);
+  g_main_loop_run(m1);
+  g_source_remove(sigsource);
 }

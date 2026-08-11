@@ -14,16 +14,22 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include "myloader.h"
 
+#ifndef _src_myloader_myloader_process_file_type_h
+#define _src_myloader_myloader_process_file_type_h
 
-struct filetype_item{
-  gchar * filename;
+#include "myloader/myloader.h"
+
+struct filetype_item
+{
+  gchar         *filename;
   enum file_type file_type;
 };
 
-void initialize_process_file_type(struct configuration *c);
-void file_type_push( enum file_type ft, gchar *filename);
-void wait_file_type_to_complete();
-guint myloader_summary_get_files(void);
+void    initialize_process_file_type(struct configuration *c);
+void    file_type_push(enum file_type ft, gchar *filename);
+void    wait_file_type_to_complete();
+guint   myloader_summary_get_files(void);
 guint64 myloader_summary_get_bytes(void);
+
+#endif
