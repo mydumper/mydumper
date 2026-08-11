@@ -14,39 +14,40 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 #include <glib.h>
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "myloader_control_job.h"
-#include "myloader_restore_job.h"
-#include "myloader_common.h"
-#include "myloader_restore.h"
-#include "myloader_worker_loader_main.h"
-#include "myloader_global.h"
-#include "myloader_worker_loader.h"
-#include "myloader_worker_index.h"
-#include "myloader_worker_schema.h"
-#include "myloader_database.h"
-#include "myloader_process.h"
+#include "myloader/myloader_worker_loader_main.h"
 
-gboolean control_job_ended=FALSE;
-gboolean all_jobs_are_enqueued=FALSE;
+#include "myloader/myloader_common.h"
+#include "myloader/myloader_control_job.h"
+#include "myloader/myloader_database.h"
+#include "myloader/myloader_global.h"
+#include "myloader/myloader_process.h"
+#include "myloader/myloader_restore.h"
+#include "myloader/myloader_restore_job.h"
+#include "myloader/myloader_worker_index.h"
+#include "myloader/myloader_worker_loader.h"
+#include "myloader/myloader_worker_schema.h"
+
+gboolean control_job_ended = FALSE;
+gboolean all_jobs_are_enqueued = FALSE;
+
 /* data_control_queue is for data loads */
-GAsyncQueue *data_control_queue = NULL; //, *data_queue=NULL;
+GAsyncQueue    *data_control_queue = NULL;
 static GThread *_worker_loader_main = NULL;
-guint threads_waiting = 0;
-static GMutex *threads_waiting_mutex= NULL;
-
+guint           threads_waiting = 0;
+static GMutex  *threads_waiting_mutex = NULL;
 
 void *worker_loader_main_thread(struct configuration *conf);
 
-void initialize_worker_loader_main (struct configuration *conf){
+void initialize_worker_loader_main(struct configuration *conf)
+{
   data_control_queue = g_async_queue_new();
-//  data_job_queue = g_async_queue_new();
-//  data_queue = g_async_queue_new();
-  threads_waiting_mutex=g_mutex_new();
-  _worker_loader_main = m_thread_new("myloader_ctr",(GThreadFunc)worker_loader_main_thread, conf, "Control job thread could not be created");
+  threads_waiting_mutex = g_mutex_new();
+  _worker_loader_main = m_thread_new("myloader_ctr", (GThreadFunc)worker_loader_main_thread, conf, "Control job thread could not be created");
 }
 
 void wait_worker_loader_main()
@@ -56,15 +57,18 @@ void wait_worker_loader_main()
   trace("Control job to finished");
 }
 
-void data_control_queue_push(enum data_control_type current_ft){
+void data_control_queue_push(enum data_control_type current_ft)
+{
   trace("data_control_queue <- %s", data_control_type2str(current_ft));
   g_async_queue_push(data_control_queue, GINT_TO_POINTER(current_ft));
 }
 
 // Perf: Lazy sort restore_job_list if needed (O(n log n) once vs O(n²) insert_sorted)
 // Must be called with dbt->mutex held
-static void ensure_restore_job_list_sorted(struct db_table *dbt) {
-  if (!dbt->restore_job_list_sorted && dbt->restore_job_list != NULL) {
+static void ensure_restore_job_list_sorted(struct db_table *dbt)
+{
+  if (!dbt->restore_job_list_sorted && dbt->restore_job_list != NULL)
+  {
     dbt->restore_job_list = g_list_sort(dbt->restore_job_list, cmp_restore_job);
     dbt->restore_job_list_sorted = TRUE;
   }
@@ -72,32 +76,37 @@ static void ensure_restore_job_list_sorted(struct db_table *dbt) {
 
 // O(1) ready table queue: enqueue table if it has pending jobs and is ready
 // Must be called with dbt->mutex held
-static void enqueue_table_if_ready_locked(struct configuration *conf, struct db_table *dbt){
+static void enqueue_table_if_ready_locked(struct configuration *conf, struct db_table *dbt)
+{
   if (dbt->schema_state == CREATED &&
       dbt->count > 0 &&  // Perf: Use cached count instead of O(n) g_list_length()
       dbt->current_threads < dbt->max_threads &&
       !dbt->in_ready_queue &&
       !dbt->object_to_import.no_data &&
       !dbt->is_view &&
-      !dbt->is_sequence) {
+      !dbt->is_sequence)
+  {
     dbt->in_ready_queue = TRUE;
     g_async_queue_push(conf->ready_table_queue, dbt);
   }
 }
 
-void enqueue_table_if_ready(struct configuration *conf, struct db_table *dbt){
+void enqueue_table_if_ready(struct configuration *conf, struct db_table *dbt)
+{
   table_lock(dbt);
   enqueue_table_if_ready_locked(conf, dbt);
   table_unlock(dbt);
 }
 
-gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_job ** rj){
-  gboolean giveup = TRUE;
+gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_job **rj)
+{
+  gboolean            giveup = TRUE;
   struct restore_job *job = NULL;
-  struct db_table * dbt;
+  struct db_table    *dbt;
 
   // O(1) dispatch: try ready_table_queue first
-  while ((dbt = g_async_queue_try_pop(conf->ready_table_queue)) != NULL) {
+  while ((dbt = g_async_queue_try_pop(conf->ready_table_queue)) != NULL)
+  {
     table_lock(dbt);
     dbt->in_ready_queue = FALSE;  // Mark as removed from queue
 
@@ -107,7 +116,8 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
         dbt->current_threads < dbt->max_threads &&
         !dbt->object_to_import.no_data &&
         !dbt->is_view &&
-        !dbt->is_sequence) {
+        !dbt->is_sequence)
+    {
       // Perf: Lazy sort before first access (O(n log n) once vs O(n²) insert_sorted)
       ensure_restore_job_list_sorted(dbt);
       // Dispatch job from this table
@@ -127,23 +137,26 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
     table_unlock(dbt);
   }
 
-  if (!all_jobs_are_enqueued){
+  if (!all_jobs_are_enqueued)
+  {
     *rj = NULL;
     return FALSE;
   }
 
   // Fallback: O(n) scan of table list
   g_mutex_lock(conf->table_list_mutex);
-  GList * iter=conf->loading_table_list;
-//  g_mutex_lock(conf->table_list_mutex);
-//  trace("Elements in table_list: %d",g_list_length(conf->table_list));
-//  g_mutex_unlock(conf->table_list_mutex);
-//  We are going to check every table and see if there is any missing job
-  while (iter != NULL){
+  GList *iter = conf->loading_table_list;
+  //  g_mutex_lock(conf->table_list_mutex);
+  //  trace("Elements in table_list: %d",g_list_length(conf->table_list));
+  //  g_mutex_unlock(conf->table_list_mutex);
+  //  We are going to check every table and see if there is any missing job
+  while (iter != NULL)
+  {
     dbt = iter->data;
-    trace("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->target_database,dbt->source_table_name, dbt->schema_state, dbt->remaining_jobs);
-    if (dbt->database->schema_state == NOT_FOUND){
-      iter=iter->next;
+    trace("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->target_database, dbt->source_table_name, dbt->schema_state, dbt->remaining_jobs);
+    if (dbt->database->schema_state == NOT_FOUND)
+    {
+      iter = iter->next;
       /*
         TODO: make all "voting for finish" messages another debug level
 
@@ -157,45 +170,53 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
     }
     table_lock(dbt);
     if (dbt->schema_state >= DATA_DONE ||
-        (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence))){
+        (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence)))
+    {
       trace("%s.%s done: %s, voting for finish", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
-      iter=iter->next;
+      iter = iter->next;
       table_unlock(dbt);
       continue;
     }
     // I could do some job in here, do we have some for me?
-    if (!resume && dbt->schema_state<CREATED ){
-      giveup=FALSE;
+    if (!resume && dbt->schema_state < CREATED)
+    {
+      giveup = FALSE;
       trace("%s.%s not yet created: %s, waiting", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
-      iter=iter->next;
+      iter = iter->next;
       table_unlock(dbt);
       continue;
     }
 
-      // TODO: can we do without double check (not under and under dbt->mutex)?
+    // TODO: can we do without double check (not under and under dbt->mutex)?
     if (dbt->schema_state >= DATA_DONE ||
-        (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence))){
+        (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence)))
+    {
       trace("%s.%s done just now: %s, voting for finish", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
-      iter=iter->next;
+      iter = iter->next;
       table_unlock(dbt);
       continue;
     }
 
-    if (dbt->schema_state == CREATED && dbt->count > 0){  // Perf: Use cached count
-      if (dbt->object_to_import.no_data){
-        GList * current = dbt->restore_job_list;
-        while (current){
+    if (dbt->schema_state == CREATED && dbt->count > 0)
+    {  // Perf: Use cached count
+      if (dbt->object_to_import.no_data)
+      {
+        GList *current = dbt->restore_job_list;
+        while (current)
+        {
           g_free(((struct restore_job *)current->data)->data.drj);
-          current=current->next;
+          current = current->next;
         }
         dbt->schema_state = ALL_DONE;
         trace("Setting on %s.%s ALL_DONE", dbt->database->target_database, dbt->source_table_name);
-
-      }else{
-        if (dbt->current_threads >= dbt->max_threads ){
-          giveup=FALSE;
+      }
+      else
+      {
+        if (dbt->current_threads >= dbt->max_threads)
+        {
+          giveup = FALSE;
           trace("%s.%s Reached max thread %s", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
-          iter=iter->next;
+          iter = iter->next;
           table_unlock(dbt);
           continue;
         }
@@ -203,7 +224,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
         ensure_restore_job_list_sorted(dbt);
         // We found a job that we can process!
         job = dbt->restore_job_list->data;
-        GList * current = dbt->restore_job_list;
+        GList *current = dbt->restore_job_list;
         dbt->restore_job_list = g_list_remove_link(dbt->restore_job_list, current);
         g_list_free_1(current);
         dbt->count--;  // Perf: Maintain cached count
@@ -211,24 +232,28 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
         // Re-enqueue if more jobs remain (O(1) optimization)
         enqueue_table_if_ready_locked(conf, dbt);
         table_unlock(dbt);
-        giveup=FALSE;
+        giveup = FALSE;
         trace("%s.%s sending %s: %s, threads: %u, prohibiting finish", dbt->database->target_database, dbt->source_table_name,
             rjtype2str(job->type), job->filename, dbt->current_threads);
         break;
       }
-    }else{
-// AND CURRENT THREADS IS 0... if not we are seting DATA_DONE to unfinished tables
-      trace("No remaining jobs on %s.%s and %d %d %d", dbt->database->target_database, dbt->source_table_name, all_jobs_are_enqueued, dbt->current_threads, dbt->remaining_jobs); 
-      if (all_jobs_are_enqueued && dbt->current_threads == 0 && (g_atomic_int_get(&(dbt->remaining_jobs))==0 )){
+    }
+    else
+    {
+      // AND CURRENT THREADS IS 0... if not we are seting DATA_DONE to unfinished tables
+      trace("No remaining jobs on %s.%s and %d %d %d", dbt->database->target_database, dbt->source_table_name, all_jobs_are_enqueued, dbt->current_threads, dbt->remaining_jobs);
+      if (all_jobs_are_enqueued && dbt->current_threads == 0 && (g_atomic_int_get(&(dbt->remaining_jobs)) == 0))
+      {
         dbt->schema_state = DATA_DONE;
         enqueue_index_for_dbt_if_possible(dbt);
         trace("%s.%s queuing indexes, voting for finish", dbt->database->target_database, dbt->source_table_name);
-      }else
-        giveup=FALSE;
+      }
+      else
+        giveup = FALSE;
     }
-    
+
     table_unlock(dbt);
-    iter=iter->next;
+    iter = iter->next;
   }
   trace("No more tables to check %d", giveup);
   g_mutex_unlock(conf->table_list_mutex);
@@ -236,100 +261,114 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
   return giveup;
 }
 
-static
-void wake_threads_waiting(){
+static void wake_threads_waiting()
+{
   g_mutex_lock(threads_waiting_mutex);
-  while(threads_waiting>0){
+  while (threads_waiting > 0)
+  {
     trace("Waking up threads");
     data_control_queue_push(REQUEST_DATA_JOB);
-    threads_waiting=threads_waiting - 1;
+    threads_waiting = threads_waiting - 1;
   }
   g_mutex_unlock(threads_waiting_mutex);
 }
 
-void wake_data_threads(){
+void wake_data_threads()
+{
   g_mutex_lock(threads_waiting_mutex);
-  if (threads_waiting>0){
+  if (threads_waiting > 0)
+  {
     data_control_queue_push(WAKE_DATA_THREAD);
-  }else 
+  }
+  else
     trace("No threads sleeping");
   g_mutex_unlock(threads_waiting_mutex);
 }
 
-void *worker_loader_main_thread(struct configuration *conf){
+void *worker_loader_main_thread(struct configuration *conf)
+{
   enum data_control_type ft;
-  struct restore_job *rj=NULL;
-  guint _num_threads = num_threads;
-//  guint threads_waiting = 0; //num_threads;
+  struct restore_job    *rj = NULL;
+  guint                  _num_threads = num_threads;
+  //  guint threads_waiting = 0; //num_threads;
   gboolean giveup;
-  gboolean cont=TRUE;
+  gboolean cont = TRUE;
   set_thread_name("CJT");
-  
+
   trace("Thread worker_loader_main_thread started");
-  while(cont){
-    ft=(enum data_control_type)GPOINTER_TO_INT(g_async_queue_pop(data_control_queue));
+  while (cont)
+  {
+    ft = (enum data_control_type)GPOINTER_TO_INT(g_async_queue_pop(data_control_queue));
     g_mutex_lock(threads_waiting_mutex);
     trace("data_control_queue -> %s (%u loaders waiting)", data_control_type2str(ft), threads_waiting);
     g_mutex_unlock(threads_waiting_mutex);
-    switch (ft){
-    case WAKE_DATA_THREAD:
-      wake_threads_waiting();
-      break;
-    case REQUEST_DATA_JOB:
-      trace("Thread is asking for job");
-      giveup = give_me_next_data_job_conf(conf, &rj);
-      if (rj != NULL){
-        trace("job available in give_me_next_data_job_conf");
-        data_job_push(DATA_JOB, rj);
-      }else{
-        trace("No job available");
-        if (all_jobs_are_enqueued && giveup){
-          trace("Giving up...");
-          control_job_ended = TRUE;
-          data_ended();
-          cont=FALSE;
-/*          guint i;
-
-          for (i=0;i<num_threads;i++){
-            trace("data_job_queue <- %s", ft2str(SHUTDOWN));
-            g_async_queue_push(data_job_queue, GINT_TO_POINTER(SHUTDOWN));
-          }
-          */
-        }else{
-          if (all_jobs_are_enqueued) {
-            release_idle_connection_if_possible();
-          }
-          trace("Thread will be waiting | all_jobs_are_enqueued: %d | giveup: %d", all_jobs_are_enqueued, giveup);
-          g_mutex_lock(threads_waiting_mutex);
-          if (threads_waiting<_num_threads)
-            threads_waiting++;
-          g_mutex_unlock(threads_waiting_mutex);
+    switch (ft)
+    {
+      case WAKE_DATA_THREAD:
+        wake_threads_waiting();
+        break;
+      case REQUEST_DATA_JOB:
+        trace("Thread is asking for job");
+        giveup = give_me_next_data_job_conf(conf, &rj);
+        if (rj != NULL)
+        {
+          trace("job available in give_me_next_data_job_conf");
+          data_job_push(DATA_JOB, rj);
         }
-      }
-      break;
-    case FILE_TYPE_ENDED:
-      enqueue_indexes_if_possible(conf);
-      all_jobs_are_enqueued = TRUE;
-//      data_ended();
-      data_control_queue_push(REQUEST_DATA_JOB);
-//      wake_threads_waiting();
-//      wait_loader_threads_to_finish();
-      break;
-    case SHUTDOWN:
-      cont=FALSE;
-      trace("SHUTDOWN");
-      break;
-    case FILE_TYPE_SCHEMA_ENDED:
-      wake_threads_waiting();
-//      data_control_queue_push(REQUEST_DATA_JOB);
-      break;
-//    case SCHEMA_TABLE_JOB:
-//    case SCHEMA_CREATE_JOB:
-      trace("Thread control_job_thread received:  %d", ft);
-      break;
+        else
+        {
+          trace("No job available");
+          if (all_jobs_are_enqueued && giveup)
+          {
+            trace("Giving up...");
+            control_job_ended = TRUE;
+            data_ended();
+            cont = FALSE;
+            /*          guint i;
+
+                      for (i=0;i<num_threads;i++){
+                        trace("data_job_queue <- %s", ft2str(SHUTDOWN));
+                        g_async_queue_push(data_job_queue, GINT_TO_POINTER(SHUTDOWN));
+                      }
+                      */
+          }
+          else
+          {
+            if (all_jobs_are_enqueued)
+            {
+              release_idle_connection_if_possible();
+            }
+            trace("Thread will be waiting | all_jobs_are_enqueued: %d | giveup: %d", all_jobs_are_enqueued, giveup);
+            g_mutex_lock(threads_waiting_mutex);
+            if (threads_waiting < _num_threads)
+              threads_waiting++;
+            g_mutex_unlock(threads_waiting_mutex);
+          }
+        }
+        break;
+      case FILE_TYPE_ENDED:
+        enqueue_indexes_if_possible(conf);
+        all_jobs_are_enqueued = TRUE;
+        //      data_ended();
+        data_control_queue_push(REQUEST_DATA_JOB);
+        //      wake_threads_waiting();
+        //      wait_loader_threads_to_finish();
+        break;
+      case SHUTDOWN:
+        cont = FALSE;
+        trace("SHUTDOWN");
+        break;
+      case FILE_TYPE_SCHEMA_ENDED:
+        wake_threads_waiting();
+        //      data_control_queue_push(REQUEST_DATA_JOB);
+        break;
+        //    case SCHEMA_TABLE_JOB:
+        //    case SCHEMA_CREATE_JOB:
+        trace("Thread control_job_thread received:  %d", ft);
+        break;
     }
   }
-//  data_ended();
+  //  data_ended();
   wait_loader_threads_to_finish();
   start_optimize_keys_all_tables();
 

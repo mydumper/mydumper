@@ -15,73 +15,84 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#ifndef _src_mydumper_mydumper_table_h
+#define _src_mydumper_mydumper_table_h
 
-#ifndef _src_mydumper_table_h
-#define _src_mydumper_table_h
-#include "mydumper_start_dump.h"
-enum db_table_states{
+#include <stdio.h>
+#include <glib.h>
+#include <mysql.h>
+
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+
+#include "checksum.h"
+#include "common.h"
+
+struct database;
+struct configuration;
+
+enum db_table_states
+{
   UNDEFINED,
   DEFINING,
   READY
 };
 
-
-struct db_table {
-  gchar *key;
-  struct database *database;
-  char *table;
-  char *table_filename;
-  char *escaped_table;
-  char *min;
-  char *max;
+struct db_table
+{
+  gchar              *key;
+  struct database    *database;
+  char               *table;
+  char               *table_filename;
+  char               *escaped_table;
+  char               *min;
+  char               *max;
   struct object_scope object_to_export;
-  GString *select_fields;
-  gboolean complete_insert;
-  GString *insert_statement;
-  GString *load_data_header;
-  GString *load_data_suffix;
-  gboolean is_transactional;
-  gboolean is_sequence;
-  gboolean is_view;
-  gboolean has_json_fields;
-  char *character_set;
-  guint64 rows_total;
-  guint64 rows;
-  guint64 estimated_remaining_steps;
-  GMutex *rows_lock;
-//  struct function_pointer ** anonymized_function;
-  GHashTable *anonymized_function; 
-  gchar *where;
-  gchar *limit;
-  gchar *columns_on_insert;
-  pcre2_code *partition_regex;
-  guint num_threads;
-  GList *chunks;
-  GMutex *chunks_mutex;
-  GMutex *write_mutex;
-  GAsyncQueue *chunks_queue;
-  GList *primary_key;
-  gchar *primary_key_separated_by_comma;
-  gboolean multicolumn;
-  gint * chunks_completed;
+  GString            *select_fields;
+  gboolean            complete_insert;
+  GString            *insert_statement;
+  GString            *load_data_header;
+  GString            *load_data_suffix;
+  gboolean            is_transactional;
+  gboolean            is_sequence;
+  gboolean            is_view;
+  gboolean            has_json_fields;
+  char               *character_set;
+  guint64             rows_total;
+  guint64             rows;
+  guint64             estimated_remaining_steps;
+  GMutex             *rows_lock;
+  //  struct function_pointer ** anonymized_function;
+  GHashTable                 *anonymized_function;
+  gchar                      *where;
+  gchar                      *limit;
+  gchar                      *columns_on_insert;
+  pcre2_code                 *partition_regex;
+  guint                       num_threads;
+  GList                      *chunks;
+  GMutex                     *chunks_mutex;
+  GMutex                     *write_mutex;
+  GAsyncQueue                *chunks_queue;
+  GList                      *primary_key;
+  gchar                      *primary_key_separated_by_comma;
+  gboolean                    multicolumn;
+  gint                       *chunks_completed;
   struct table_level_checksum checksum;
-  guint chunk_filesize;
-  gboolean split_integer_tables;
-  guint64 min_chunk_step_size;
-  guint64 starting_chunk_step_size;
-  guint64 max_chunk_step_size;
-  gboolean is_fixed_length;
-  enum db_table_states status;
-  guint max_threads_per_table;
-  guint current_threads_running;
+  guint                       chunk_filesize;
+  gboolean                    split_integer_tables;
+  guint64                     min_chunk_step_size;
+  guint64                     starting_chunk_step_size;
+  guint64                     max_chunk_step_size;
+  gboolean                    is_fixed_length;
+  enum db_table_states        status;
+  guint                       max_threads_per_table;
+  guint                       current_threads_running;
 };
 
-#endif
-void initialize_table();
-void finalize_table();
-void prefetch_table_metadata(MYSQL *conn);
-void free_db_table(struct db_table * dbt);
-gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
-                      struct database *database, char *table, char *table_collation,
-                      gboolean is_sequence, gboolean is_view);
+void     initialize_table();
+void     finalize_table();
+void     prefetch_table_metadata(MYSQL *conn);
+void     free_db_table(struct db_table *dbt);
+gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf, struct database *database, char *table, char *table_collation, gboolean is_sequence, gboolean is_view);
 
+#endif

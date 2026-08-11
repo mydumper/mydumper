@@ -115,3 +115,11 @@ jobs:
           tags: mydumper/mydumper-builder-noble:latest
           labels: mydumper/mydumper-builder-noble:latest
 
+      - name: Build and push Docker image resolute
+        uses: docker/build-push-action@v4
+        with:
+          context: docker/resolute
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: mydumper/mydumper-builder-resolute:latest
+          labels: mydumper/mydumper-builder-resolute:latest

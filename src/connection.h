@@ -12,22 +12,25 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        Aaron Brady, Shopify (insom)
+    Authors: Aaron Brady, Shopify (insom)
 */
-#ifndef _connection_h
-#define _connection_h
+
+#ifndef _src_connection_h
+#define _src_connection_h
+
 #include <mysql.h>
 
 #define INFORMATION_SCHEMA "INFORMATION_SCHEMA"
 
-void initialize_connection_socket_dir(gchar *current_dir);
-void initialize_connection(const gchar *app);
-void set_connection_defaults_file_and_group(gchar *cdf, const gchar *group);
-void m_connect(MYSQL *conn);
-void hide_password(int argc, char *argv[]);
-void ask_password();
-void print_connection_help();
-GOptionGroup * load_connection_entries(GOptionContext *context);
-void print_connection_details_once();
-extern char *hostname;
+void          initialize_connection_socket_dir(gchar *current_dir);
+void          initialize_connection(const gchar *app);
+void          set_connection_defaults_file_and_group(gchar *cdf, const gchar *group);
+void          m_connect(MYSQL *conn);
+void          hide_password(int argc, char *argv[]);
+void          ask_password();
+void          print_connection_help();
+GOptionGroup *load_connection_entries(GOptionContext *context);
+void          print_connection_details_once();
+extern char  *hostname;
+
 #endif

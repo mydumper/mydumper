@@ -11,11 +11,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
     Authors:        David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include "mydumper.h"
+
+#ifndef _src_mydumper_mydumper_masquerade_h
+#define _src_mydumper_mydumper_masquerade_h
+
+#include "mydumper/mydumper.h"
 
 #define REGEX_MAX_LEN 2048
 
-enum format_item_type {
+enum format_item_type
+{
   FORMAT_ITEM_FILE,
   FORMAT_ITEM_CONFIG_FILE,
   FORMAT_ITEM_STRING,
@@ -25,37 +30,37 @@ enum format_item_type {
   FORMAT_ITEM_REGEX
 };
 
-struct format_item_delimiter{
-  
-
+struct format_item_delimiter
+{
 };
 
-
-struct format_item_file{
-  GHashTable * data;
-  guint min;
-  guint max;
-
+struct format_item_file
+{
+  GHashTable *data;
+  guint       min;
+  guint       max;
 };
 
-struct format_item{
+struct format_item
+{
   enum format_item_type type;
-  guint len;
-  void * data;  // if type is FORMAT_ITEM_FILE then it is format_item_file
-                // if type is FORMAT_ITEM_STRING then it is gchar* 
-                // if type is FORMAT_ITEM_DELIMITER the string to match
-                // if type is FORMAT_ITEM_REGEX is the next format_item
+  guint                 len;
+  void                 *data;  // if type is FORMAT_ITEM_FILE then it is format_item_file
+                               // if type is FORMAT_ITEM_STRING then it is gchar*
+                               // if type is FORMAT_ITEM_DELIMITER the string to match
+                               // if type is FORMAT_ITEM_REGEX is the next format_item
 };
 
-
-
-struct regex_item{
-  pcre2_code **re;
-  struct format_item *fi;  
+struct regex_item
+{
+  pcre2_code        **re;
+  struct format_item *fi;
 };
 
-void initialize_masquerade();
-gboolean identity_function(GString *str, gchar *row, gulong* length, struct function_pointer *fp);
-//fun_ptr get_function_pointer_for (gchar *function_char);
-void finalize_masquerade();
-struct function_pointer * init_function_pointer(gchar *value);
+void     initialize_masquerade();
+gboolean identity_function(GString *str, gchar *row, gulong *length, struct function_pointer *fp);
+// fun_ptr get_function_pointer_for (gchar *function_char);
+void                     finalize_masquerade();
+struct function_pointer *init_function_pointer(gchar *value);
+
+#endif

@@ -18,17 +18,23 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+
+#ifndef _src_myloader_myloader_arguments_h
+#define _src_myloader_myloader_arguments_h
+
+#include "myloader/myloader.h"
+
 #define AFTER_IMPORT_PER_TABLE "AFTER_IMPORT_PER_TABLE"
 #define AFTER_IMPORT_ALL_TABLES "AFTER_IMPORT_ALL_TABLES"
 #define SKIP "SKIP"
 
-GOptionContext * load_contex_entries();
-gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
+GOptionContext *load_contex_entries();
+gboolean        arguments_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error);
 
-static inline
-const char * purgemode2str(enum purge_mode pm)
+static inline const char *purgemode2str(enum purge_mode pm)
 {
-  switch (pm) {
+  switch (pm)
+  {
     case FAIL:
       return "FAIL";
     case NONE:
@@ -45,3 +51,5 @@ const char * purgemode2str(enum purge_mode pm)
   g_assert(0);
   return 0;
 }
+
+#endif
