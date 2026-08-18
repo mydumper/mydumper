@@ -47,7 +47,7 @@ gchar *where_option = NULL;
 extern gchar *load_data_character_set;
 
 const gchar *insert_statement = INSERT;
-guint        statement_size = 1000000;
+guint        statement_size = STATEMENT_BUFFER_INITIAL_SIZE;
 guint64      max_statement_size = 0;
 GMutex      *max_statement_size_mutex = NULL;
 guint        complete_insert = 0;

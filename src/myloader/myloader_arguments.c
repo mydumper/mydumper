@@ -39,6 +39,7 @@ extern gboolean local_infile;
 extern guint64  max_transaction_size;
 extern guint    optimize_keys_batchsize;
 guint64         max_statement_size = 0;
+guint           statement_buffer_shrink_threshold_mb = 2;
 
 gboolean arguments_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
 {
@@ -258,6 +259,8 @@ static GOptionEntry execution_entries[] = {
         "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
     {"num-sequences", 0, 0, G_OPTION_ARG_INT, &num_sequences,
         "Amount of sequences in the backup. It is read from [config] in the metadata file. Default: 0 ", NULL},
+    {"statement-buffer-shrink-threshold-mb", 0, 0, G_OPTION_ARG_INT, &statement_buffer_shrink_threshold_mb,
+        "Buffer size threshold in megabytes that, when reached, triggers a shrink back to its original size. Default: 2", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry filter_entries[] = {
