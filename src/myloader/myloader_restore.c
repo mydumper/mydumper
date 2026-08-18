@@ -759,7 +759,7 @@ struct statement *initialize_statement(struct statement *ir)
   ir->error = NULL;
   if (ir->buffer->allocated_len > statement_buffer_shrink_threshold){
     g_string_free(ir->buffer, TRUE);
-    ir->buffer = g_string_new_len("", STATEMENT_BUFFER_INITIAL_SIZE);
+    ir->buffer = g_string_sized_new(STATEMENT_BUFFER_INITIAL_SIZE);
   }
   return ir;
 }
@@ -767,7 +767,7 @@ struct statement *initialize_statement(struct statement *ir)
 struct statement *new_statement()
 {
   struct statement *stmt = g_new0(struct statement, 1);
-  stmt->buffer = g_string_new_len("", STATEMENT_BUFFER_INITIAL_SIZE);
+  stmt->buffer = g_string_sized_new(STATEMENT_BUFFER_INITIAL_SIZE);
   initialize_statement(stmt);
   stmt->filename = NULL;
   return stmt;
