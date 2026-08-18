@@ -767,9 +767,9 @@ struct statement *initialize_statement(struct statement *ir)
 struct statement *new_statement()
 {
   struct statement *stmt = g_new0(struct statement, 1);
+  stmt->buffer = g_string_new_len("", STATEMENT_BUFFER_INITIAL_SIZE);
   initialize_statement(stmt);
   stmt->filename = NULL;
-  stmt->buffer = g_string_new_len("", STATEMENT_BUFFER_INITIAL_SIZE);
   return stmt;
 }
 
