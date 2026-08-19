@@ -108,7 +108,7 @@ INSTALL(TARGETS mydumper myloader
   RUNTIME DESTINATION bin
 )
 
-INSTALL(FILES mydumper.cnf myloader.cnf
+INSTALL(FILES mydumper.cnf
   DESTINATION /etc
   COMPONENT config
 )
