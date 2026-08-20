@@ -31,10 +31,13 @@ struct database
   gchar                         *database_name_in_filename;
   struct database_level_checksum checksum;
   gboolean                       dump_triggers;
+  gboolean                       schema_create_job_created;
+  gboolean                       regex_mismatch_warned;
 };
 
 void             initialize_database();
 struct database *get_database(MYSQL *conn, char *database_name, gboolean create_job);
+void             warn_if_schema_create_excluded(struct database *database);
 void             free_databases();
 void             write_database_on_disk(FILE *mdfile);
 // OPTIMIZATION: Unsorted version for faster finalization

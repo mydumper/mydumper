@@ -1,0 +1,7 @@
+DROP DATABASE IF EXISTS specific_40;
+CREATE DATABASE specific_40;
+
+USE specific_40;
+
+CREATE TABLE t1 (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, val VARCHAR(32));
+INSERT INTO t1 (val) VALUES ('a'), ('b'), ('c');

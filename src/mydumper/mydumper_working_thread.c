@@ -389,6 +389,8 @@ static void get_table_info_to_process_from_list(MYSQL *conn, struct configuratio
       if (!eval_regex(database->source_database, row[0]))
         continue;
 
+      warn_if_schema_create_excluded(database);
+
       create_job_to_dump_table(is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
     }
     mysql_free_result(result);
@@ -1422,6 +1424,8 @@ static void dump_database_thread(MYSQL *conn, struct database *database)
       dump_summary_note_skipped();
       continue;
     }
+
+    warn_if_schema_create_excluded(database);
 
     /* Check if the table was recently updated */
     if (no_updated_tables && !is_view && !is_sequence)
