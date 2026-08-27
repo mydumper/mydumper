@@ -689,10 +689,13 @@ static gboolean write_statement(int load_data_file, float *filessize, GString *s
     g_critical("Could not write out data for %s.%s", dbt->database->source_database, dbt->table);
     return FALSE;
   }
-  g_mutex_lock(max_statement_size_mutex);
-  if (statement->len > max_statement_size)
-    max_statement_size = statement->len;
-  g_mutex_unlock(max_statement_size_mutex);
+  // Perf: lock-free running maximum; this runs on every statement flush in
+  // every dump thread, and a global mutex here serializes them for the sake
+  // of a metadata statistic
+  guint64 seen = __atomic_load_n(&max_statement_size, __ATOMIC_RELAXED);
+  while (statement->len > seen &&
+         !__atomic_compare_exchange_n(&max_statement_size, &seen, statement->len, FALSE, __ATOMIC_RELAXED, __ATOMIC_RELAXED))
+    ;
   g_string_set_size(statement, 0);
   return TRUE;
 }
@@ -753,21 +756,27 @@ static void write_load_data_column_into_string(MYSQL *conn, gchar *column, MYSQL
   }
   else if (is_hex_blob(field))
   {
-    g_string_set_size(buffers.escaped, length * 2 + 1);
-    mysql_hex_string(buffers.escaped->str, column, length);
-    g_string_append(buffers.target_column, buffers.escaped->str);
+    // Perf: hex-encode directly into the target buffer tail
+    gsize used = buffers.target_column->len;
+    g_string_set_size(buffers.target_column, used + length * 2 + 1);
+    unsigned long hex_len = mysql_hex_string(buffers.target_column->str + used, column, length);
+    g_string_set_size(buffers.target_column, used + hex_len);
   }
   else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG && field.type != MYSQL_TYPE_INT24 && field.type != MYSQL_TYPE_SHORT)
   {
     g_string_append(buffers.target_column, fields_enclosed_by);
-    // this will reserve the memory needed if the current size is not enough.
-    g_string_set_size(buffers.escaped, length * 2 + 1);
-    unsigned long new_length = mysql_real_escape_string(conn, buffers.escaped->str, column, length);
+    // Perf: escape directly into the target buffer tail and run the LOAD DATA
+    // fixups in place there, avoiding the intermediate escaped buffer and one
+    // full copy of every byte. The escape pass can grow the tail by up to one
+    // byte per terminator occurrence, so reserve for the worst case.
+    gsize used = buffers.target_column->len;
+    g_string_set_size(buffers.target_column, used + length * 4 + 2);
+    gchar *tail = buffers.target_column->str + used;
+    unsigned long new_length = mysql_real_escape_string(conn, tail, column, length);
     new_length++;
-    // g_string_set_size(escaped, new_length);
-    m_replace_char_with_char('\\', *fields_escaped_by, buffers.escaped->str, new_length);
-    m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, buffers.escaped->str, new_length);
-    g_string_append(buffers.target_column, buffers.escaped->str);
+    m_replace_char_with_char('\\', *fields_escaped_by, tail, new_length);
+    m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, tail, new_length);
+    g_string_set_size(buffers.target_column, used + strlen(tail));
     g_string_append(buffers.target_column, fields_enclosed_by);
   }
   else
@@ -791,25 +800,27 @@ static void write_sql_column_into_string(MYSQL *conn, gchar *column, MYSQL_FIELD
   }
   else if (is_hex_blob(field))
   {
-    g_string_set_size(buffers.escaped, length * 2 + 1);
     g_string_append(buffers.target_column, "0x");
-    // Perf: Use mysql_hex_string return value to avoid strlen()
-    unsigned long hex_len = mysql_hex_string(buffers.escaped->str, column, length);
-    g_string_append_len(buffers.target_column, buffers.escaped->str, hex_len);
+    // Perf: hex-encode directly into the target buffer tail, avoiding the
+    // intermediate escaped buffer and one full copy of every byte
+    gsize used = buffers.target_column->len;
+    g_string_set_size(buffers.target_column, used + length * 2 + 1);
+    unsigned long hex_len = mysql_hex_string(buffers.target_column->str + used, column, length);
+    g_string_set_size(buffers.target_column, used + hex_len);
   }
   else
   {
-    /* We reuse buffers for string escaping, growing is expensive just at
-     *        * the beginning */
-    g_string_set_size(buffers.escaped, length * 2 + 1);
-    // Perf: Use mysql_real_escape_string return value to avoid strlen()
-    unsigned long escaped_len = mysql_real_escape_string(conn, buffers.escaped->str, column, length);
     if (field.type == MYSQL_TYPE_JSON)
       g_string_append(buffers.target_column, "CONVERT(");
     else if ((field.flags & BINARY_FLAG) && !is_mariadb_uuid_field(&field))
       g_string_append(buffers.target_column, "_binary ");
     g_string_append_c(buffers.target_column, *fields_enclosed_by);
-    g_string_append_len(buffers.target_column, buffers.escaped->str, escaped_len);
+    // Perf: escape directly into the target buffer tail, avoiding the
+    // intermediate escaped buffer and one full copy of every byte
+    gsize used = buffers.target_column->len;
+    g_string_set_size(buffers.target_column, used + length * 2 + 1);
+    unsigned long escaped_len = mysql_real_escape_string(conn, buffers.target_column->str + used, column, length);
+    g_string_set_size(buffers.target_column, used + escaped_len);
     g_string_append_c(buffers.target_column, *fields_enclosed_by);
     if (field.type == MYSQL_TYPE_JSON)
       g_string_append(buffers.target_column, " USING UTF8MB4)");
@@ -821,12 +832,23 @@ static void write_column_into_string_with_terminated_by(MYSQL *conn, gchar *colu
   struct function_pointer *f = anonymized_function_list ? anonymized_function_list->data : NULL;
   gchar                   *column = column_i;
   gulong                   rlength = length;
+
+  if (!f)
+  {
+    // Perf: without masking functions the column goes straight into the row
+    // buffer, skipping the intermediate column buffer and one full copy of
+    // every byte
+    struct thread_data_buffers direct = buffers;
+    direct.target_column = buffers.row;
+    write_column_into_string(conn, column_i, field, rlength, direct);
+    g_string_append(buffers.row, terminated_by);
+    return;
+  }
   g_string_set_size(buffers.column, 0);
   g_string_set_size(buffers.column_mask, 0);
 
   //  if (row)
   //    column=row;
-  if (f)
   {
     if (f->is_pre)
     {
@@ -878,10 +900,6 @@ static void write_column_into_string_with_terminated_by(MYSQL *conn, gchar *colu
       f = anonymized_function_list ? anonymized_function_list->data : NULL;
       column = buffers.column->str;
     }
-  }
-  else
-  {
-    write_column_into_string(conn, column_i, field, rlength, buffers);
   }
   // Perf: Use g_string_append_len with known length to avoid strlen()
   g_string_append_len(buffers.row, buffers.column->str, buffers.column->len);
