@@ -24,6 +24,7 @@
 #include <math.h>
 
 #include "mydumper/mydumper_write.h"
+#include "mydumper/mydumper_escape.h"
 
 #include "mydumper/mydumper.h"
 #include "mydumper/mydumper_arguments.h"
@@ -765,18 +766,29 @@ static void write_load_data_column_into_string(MYSQL *conn, gchar *column, MYSQL
   else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG && field.type != MYSQL_TYPE_INT24 && field.type != MYSQL_TYPE_SHORT)
   {
     g_string_append(buffers.target_column, fields_enclosed_by);
-    // Perf: escape directly into the target buffer tail and run the LOAD DATA
-    // fixups in place there, avoiding the intermediate escaped buffer and one
-    // full copy of every byte. The escape pass can grow the tail by up to one
-    // byte per terminator occurrence, so reserve for the worst case.
+    // Perf: escape directly into the target buffer tail, avoiding the
+    // intermediate escaped buffer and one full copy of every byte. The
+    // escaping can at worst quadruple the input, so reserve for that.
     gsize used = buffers.target_column->len;
     g_string_set_size(buffers.target_column, used + length * 4 + 2);
     gchar *tail = buffers.target_column->str + used;
-    unsigned long new_length = mysql_real_escape_string(conn, tail, column, length);
-    new_length++;
-    m_replace_char_with_char('\\', *fields_escaped_by, tail, new_length);
-    m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, tail, new_length);
-    g_string_set_size(buffers.target_column, used + strlen(tail));
+    gsize final_len;
+    const char *conn_charset = mysql_character_set_name(conn);
+    if (charset_is_single_byte(conn_charset) || (charset_is_utf8(conn_charset) && field.charsetnr != 63))
+    {
+      // Perf: single fused pass producing the same bytes as the escape call
+      // plus the two fixup passes of the fallback branch
+      final_len = fused_load_data_escape(column, length, tail, *fields_escaped_by, *fields_terminated_by);
+    }
+    else
+    {
+      unsigned long new_length = mysql_real_escape_string(conn, tail, column, length);
+      new_length++;
+      m_replace_char_with_char('\\', *fields_escaped_by, tail, new_length);
+      m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, tail, new_length);
+      final_len = strlen(tail);
+    }
+    g_string_set_size(buffers.target_column, used + final_len);
     g_string_append(buffers.target_column, fields_enclosed_by);
   }
   else
@@ -819,7 +831,12 @@ static void write_sql_column_into_string(MYSQL *conn, gchar *column, MYSQL_FIELD
     // intermediate escaped buffer and one full copy of every byte
     gsize used = buffers.target_column->len;
     g_string_set_size(buffers.target_column, used + length * 2 + 1);
-    unsigned long escaped_len = mysql_real_escape_string(conn, buffers.target_column->str + used, column, length);
+    gsize escaped_len;
+    const char *conn_charset = mysql_character_set_name(conn);
+    if (charset_is_single_byte(conn_charset) || (charset_is_utf8(conn_charset) && field.charsetnr != 63))
+      escaped_len = fused_sql_escape(column, length, buffers.target_column->str + used);
+    else
+      escaped_len = mysql_real_escape_string(conn, buffers.target_column->str + used, column, length);
     g_string_set_size(buffers.target_column, used + escaped_len);
     g_string_append_c(buffers.target_column, *fields_enclosed_by);
     if (field.type == MYSQL_TYPE_JSON)
