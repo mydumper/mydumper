@@ -56,6 +56,8 @@ static struct database *new_database(MYSQL *conn, char *database_name)
   _database->source_database_escaped = escape_string(conn, _database->source_database);
   //  _database->already_dumped = already_dumped;
   //  _database->ad_mutex=g_mutex_new();
+  _database->schema_create_job_created = FALSE;
+  _database->regex_mismatch_warned = FALSE;
   _database->checksum.schema = NULL;
   _database->checksum.routine = NULL;
   _database->checksum.trigger = NULL;
@@ -136,13 +138,14 @@ void warn_if_schema_create_excluded(struct database *database)
   if (!database->regex_mismatch_warned)
   {
     database->regex_mismatch_warned = TRUE;
-    g_warning("--regex matched tables in `%s` but not the database object itself: "
-              "%s-schema-create.sql will not be dumped, and this backup will not be "
-              "restorable unless the database already exists on the target. Database "
-              "objects are matched against the bare database name, not `database.table` "
-              "- use for instance '^(%s)(\\.|$)'.",
-              database->source_database, database->database_name_in_filename,
-              database->source_database);
+    g_warning(
+        "--regex matched tables in `%s` but not the database object itself: "
+        "%s-schema-create.sql will not be dumped, and this backup will not be "
+        "restorable unless the database already exists on the target. Database "
+        "objects are matched against the bare database name, not `database.table` "
+        "- use for instance '^(%s)(\\.|$)'.",
+        database->source_database, database->database_name_in_filename,
+        database->source_database);
   }
   g_mutex_unlock(database_hash_mutex);
 }

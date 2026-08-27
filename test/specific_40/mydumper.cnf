@@ -4,9 +4,11 @@
 # instead of exiting successfully with a backup that cannot be restored.
 # See issue #2329.
 #
+# No `database=` on purpose: with -B the schema-create job is created without
+# consulting --regex, so the mismatch covered here can only be reached on the
+# all-databases path.
+#
 
 [mydumper]
 regex=^specific_40\.
 outputdir=/tmp/data
-logfile=/tmp/data/specific_40.log
-verbose=3
