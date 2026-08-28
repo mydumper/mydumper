@@ -27,6 +27,7 @@
 #include "mydumper/mydumper.h"
 #include "mydumper/mydumper_common.h"
 #include "mydumper/mydumper_global.h"
+#include "mydumper/mydumper_string_planner_utils.h"
 
 extern guint64             min_integer_chunk_step_size;
 extern guint64             max_integer_chunk_step_size;
