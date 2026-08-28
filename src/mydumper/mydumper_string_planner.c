@@ -25,6 +25,7 @@
 #include "mydumper.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_database.h"
+#include "mydumper_table.h"
 #include "mydumper_global.h"
 #include "mydumper_chunks.h"
 #include "mydumper_common.h"
