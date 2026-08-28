@@ -125,7 +125,6 @@ gboolean append_new_db_table(struct db_table **p_dbt, struct database *_database
 
       dbt->current_threads = 0;
       dbt->max_threads = max_threads_per_table > num_threads ? num_threads : max_threads_per_table;
-      dbt->max_connections_per_job = 0;
       dbt->retry_count = retry_count;
       dbt->mutex = g_mutex_new();
       dbt->schema_cond = g_cond_new();
