@@ -24,7 +24,7 @@ Both tools use multithreading capabilities.
 
 ## Dependencies for building MyDumper
 
-[This sections has been migrated](https://mydumper.github.io/mydumper/docs/html/compiling.html) 
+[This sections has been migrated](https://mydumper.github.io/mydumper/docs/html/installing.html#compilation-requirements) 
 
 ### Build Docker image
 You can download the [official docker image](https://hub.docker.com/r/mydumper/mydumper) or you can build the Docker image either from local sources or directly from Github sources with [the provided Dockerfile](./docker/Dockerfile).
