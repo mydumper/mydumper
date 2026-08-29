@@ -142,6 +142,22 @@ add_executable(test_stream_carryover test/unit/test_stream_carryover.c src/myloa
 target_link_libraries(test_stream_carryover ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 add_test(NAME stream_carryover COMMAND test_stream_carryover)
 
+# Lock-discipline checker (test/glibguard): an LD_PRELOAD library that reports
+# misuse of GLib mutexes, which ThreadSanitizer and Helgrind cannot see because
+# GLib uses raw futexes. The self-test commits one deliberate error per run and
+# checks each is reported. Linux-only; skipped elsewhere.
+IF(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_library(glibguard SHARED test/glibguard/glibguard.c)
+  target_include_directories(glibguard PRIVATE ${GLIB2_INCLUDE_DIR})
+  target_link_libraries(glibguard ${GLIB2_LIBRARIES} ${CMAKE_DL_LIBS})
+  add_executable(test_glibguard test/glibguard/test_glibguard.c)
+  target_include_directories(test_glibguard PRIVATE ${GLIB2_INCLUDE_DIR})
+  target_link_libraries(test_glibguard ${GLIB2_LIBRARIES})
+  add_test(NAME glibguard_selftest
+      COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test/glibguard/run_selftest.sh
+              $<TARGET_FILE:glibguard> $<TARGET_FILE:test_glibguard>)
+ENDIF()
+
 IF(RUN_CPPCHECK)
   include(CppcheckTargets)
   add_cppcheck(mydumper)
