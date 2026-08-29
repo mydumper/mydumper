@@ -25,12 +25,10 @@
 GThread           **post_threads = NULL;
 struct thread_data *post_td = NULL;
 void               *worker_post_thread(struct thread_data *td);
-GMutex             *sync_mutex;
-GMutex             *sync_mutex1;
-GMutex             *sync_mutex2;
-guint               sync_threads_remaining;
-guint               sync_threads_remaining1;
-guint               sync_threads_remaining2;
+/* Barrier the post workers meet at before moving on to the view queue. */
+static GMutex sync_mutex2;
+static GCond  sync_cond2;
+static guint  sync_threads_remaining2;
 
 void initialize_post_loding_threads(struct configuration *conf)
 {
@@ -38,15 +36,9 @@ void initialize_post_loding_threads(struct configuration *conf)
   //  post_mutex = g_mutex_new();
   post_threads = g_new(GThread *, max_threads_for_post_creation);
   post_td = g_new(struct thread_data, max_threads_for_post_creation);
-  sync_threads_remaining = max_threads_for_post_creation;
-  sync_threads_remaining1 = max_threads_for_post_creation;
   sync_threads_remaining2 = max_threads_for_post_creation;
-  sync_mutex = g_mutex_new();
-  sync_mutex1 = g_mutex_new();
-  sync_mutex2 = g_mutex_new();
-  g_mutex_lock(sync_mutex);
-  g_mutex_lock(sync_mutex1);
-  g_mutex_lock(sync_mutex2);
+  g_mutex_init(&sync_mutex2);
+  g_cond_init(&sync_cond2);
 
   for (n = 0; n < max_threads_for_post_creation; n++)
   {
@@ -56,17 +48,18 @@ void initialize_post_loding_threads(struct configuration *conf)
   }
 }
 
-void sync_threads(guint *counter, GMutex *mutex)
+/* Wait until every post worker has arrived. Previously this was a mutex locked
+   by the thread that started the workers and unlocked by whichever worker
+   arrived last, which is an unlock from a thread that does not hold the lock. */
+static void sync_threads(guint *counter, GMutex *mutex, GCond *cond)
 {
-  if (g_atomic_int_dec_and_test(counter))
-  {
-    g_mutex_unlock(mutex);
-  }
+  g_mutex_lock(mutex);
+  if (--(*counter) == 0)
+    g_cond_broadcast(cond);
   else
-  {
-    g_mutex_lock(mutex);
-    g_mutex_unlock(mutex);
-  }
+    while (*counter > 0)
+      g_cond_wait(cond, mutex);
+  g_mutex_unlock(mutex);
 }
 
 void *worker_post_thread(struct thread_data *td)
@@ -107,7 +100,7 @@ void *worker_post_thread(struct thread_data *td)
     job = (struct control_job *)g_async_queue_pop(conf->post_queue);
     cont = process_job(td, job, NULL);
   }
-  sync_threads(&sync_threads_remaining2, sync_mutex2);
+  sync_threads(&sync_threads_remaining2, &sync_mutex2, &sync_cond2);
   cont = TRUE;
   while (cont)
   {
