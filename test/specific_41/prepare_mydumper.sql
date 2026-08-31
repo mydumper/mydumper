@@ -1,0 +1,11 @@
+DROP DATABASE IF EXISTS specific_41;
+CREATE DATABASE specific_41;
+
+USE specific_41;
+
+CREATE TABLE t1 (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  val VARCHAR(100)
+);
+
+INSERT INTO t1 (val) VALUES ('a'), ('b'), ('c');
