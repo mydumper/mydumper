@@ -361,7 +361,7 @@ void *process_stream(struct configuration *stream_conf)
                   // this means that the content of the file has the header tag
                   // we need to flush and continue
                   flush(buffer, line_from, line_end - 1, file, &total_size);
-                  g_message("Different file size in %s. Should be: %d | Written: %d. But continuing", filename, file_size_from_stream, total_size);
+                  trace("Different file size in %s. Should be: %d | Written: %d. But continuing", filename, file_size_from_stream, total_size);
                   continue;
                 }
                 else if (total_size > file_size_from_stream)
