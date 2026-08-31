@@ -1,0 +1,10 @@
+#
+# Passed to the myloader run that check_mydumper.sh drives.
+#
+# It is deliberately NOT named myloader.cnf: that name would make the harness
+# run its own myloader stage as well. It only has to exist -- myloader emits a
+# GLib-CRITICAL from load_per_table_info_from_key_file() when no defaults file
+# was given, and the harness runs with G_DEBUG=fatal-criticals.
+#
+
+[myloader]

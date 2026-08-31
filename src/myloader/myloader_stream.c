@@ -17,6 +17,7 @@
 
 #include <mysql.h>
 #include <glib/gstdio.h>
+#include <string.h>
 
 #include "myloader.h"
 #include "myloader_common.h"
@@ -209,8 +210,8 @@ read_more:
             // this is not a line, which means pos == buffer_len, so we are at the end of the buffer
             // we need to copy the first 20 chars to the begining of the buffer to get relevant info
             g_message("Copying");
-            diff=line_end-line_from ;
-            g_strlcpy(buffer,&(buffer[line_from]), line_end-line_from + 1);
+            diff = line_end - line_from;
+            memmove(buffer, &(buffer[line_from]), diff);
             continue;
           }
           // Can we get relevant info?
@@ -245,10 +246,12 @@ read_more:
               if (!g_str_has_prefix(&(buffer[line_from]),"--") && initial_pos!=line_end){
                 g_string_append_len(set_buffer,&(buffer[initial_pos]),line_end-initial_pos+1);
               }
-              pos++;        
-            }else{
-              diff=buffer_len-initial_pos ;
-              g_strlcpy(buffer,&(buffer[initial_pos]), diff + 1);
+              pos++;
+            }
+            else
+            {
+              diff = buffer_len - initial_pos;
+              memmove(buffer, &(buffer[initial_pos]), diff);
               goto read_more;
             }
           }else{
@@ -303,9 +306,9 @@ read_more:
                 if (total_size < file_size_from_stream){
                   // The file size reported in the header is not the same that the amount of data written
                   // this means that the content of the file has the header tag
-                  // we need to flush and continue 
-                  flush(buffer,line_from,line_end-1,file, &total_size);
-                  g_message("Different file size in %s. Should be: %d | Written: %d. But continuing", filename, file_size_from_stream, total_size);
+                  // we need to flush and continue
+                  flush(buffer, line_from, line_end - 1, file, &total_size);
+                  trace("Different file size in %s. Should be: %d | Written: %d. But continuing", filename, file_size_from_stream, total_size);
                   continue;
                 }else if (total_size > file_size_from_stream) {
                   // we wrote on the file more data than the file size reported in the header
@@ -371,8 +374,8 @@ read_more:
             // In the buffer remains more than 4 chars
             if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
               // It could be a header, so we copied to the begining of the buffer
-              diff=buffer_len-initial_pos ;
-              g_strlcpy(buffer,&(buffer[initial_pos]), diff + 1);
+              diff = buffer_len - initial_pos;
+              memmove(buffer, &(buffer[initial_pos]), diff);
               // diff remains set to do not overwrite the buffer
             }else{
               // it is safe to flush it all the content of the buffer
@@ -380,19 +383,23 @@ read_more:
               diff=0;
               // the buffer will start empty
             }
-          }else{
-  
-            gchar *tmp=g_strndup(&(buffer[line_from]),line_end-line_from >= 4 ? 4:line_end-line_from);
-//          g_message("TMP: |%s| %c", tmp, tmp[0]);
-            if  (strlen(tmp)>=1 && g_strstr_len("\n-- ", -1 ,tmp) != NULL ){
-              // we need to move to the begining of the buffer and reprocess 
-//              g_message("Coping data %d %d: %s", initial_pos,  buffer_len, &(buffer[initial_pos])  );
-              diff=buffer_len-initial_pos ;
-              g_strlcpy(buffer,&(buffer[initial_pos]), diff + 1);
-//              g_message("After copy data: %s | new len should be: %d", buffer , diff);
-            }else{
-              flush(buffer,initial_pos,line_end-1,file, &total_size);
-              diff=0;
+          }
+          else
+          {
+            gchar *tmp = g_strndup(&(buffer[line_from]), line_end - line_from >= 4 ? 4 : line_end - line_from);
+            //          g_message("TMP: |%s| %c", tmp, tmp[0]);
+            if (strlen(tmp) >= 1 && g_strstr_len("\n-- ", -1, tmp) != NULL)
+            {
+              // we need to move to the begining of the buffer and reprocess
+              //              g_message("Coping data %d %d: %s", initial_pos,  buffer_len, &(buffer[initial_pos])  );
+              diff = buffer_len - initial_pos;
+              memmove(buffer, &(buffer[initial_pos]), diff);
+              //              g_message("After copy data: %s | new len should be: %d", buffer , diff);
+            }
+            else
+            {
+              flush(buffer, initial_pos, line_end - 1, file, &total_size);
+              diff = 0;
             }
             g_free(tmp);
           }
