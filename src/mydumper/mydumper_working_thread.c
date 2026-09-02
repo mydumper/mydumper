@@ -1423,6 +1423,8 @@ static void dump_database_thread(MYSQL *conn, struct database *database)
       continue;
     }
 
+    warn_if_schema_create_excluded(database);
+
     /* Check if the table was recently updated */
     if (no_updated_tables && !is_view && !is_sequence)
     {

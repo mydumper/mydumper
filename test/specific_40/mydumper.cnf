@@ -1,0 +1,14 @@
+#
+# A --regex that only matches `database.table` excludes the database object
+# itself, so <db>-schema-create.sql is not dumped. mydumper must warn about it
+# instead of exiting successfully with a backup that cannot be restored.
+# See issue #2329.
+#
+# No `database=` on purpose: with -B the schema-create job is created without
+# consulting --regex, so the mismatch covered here can only be reached on the
+# all-databases path.
+#
+
+[mydumper]
+regex=^specific_40\.
+outputdir=/tmp/data

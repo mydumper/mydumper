@@ -56,6 +56,8 @@ static struct database *new_database(MYSQL *conn, char *database_name)
   _database->source_database_escaped = escape_string(conn, _database->source_database);
   //  _database->already_dumped = already_dumped;
   //  _database->ad_mutex=g_mutex_new();
+  _database->schema_create_job_created = FALSE;
+  _database->regex_mismatch_warned = FALSE;
   _database->checksum.schema = NULL;
   _database->checksum.routine = NULL;
   _database->checksum.trigger = NULL;
@@ -109,10 +111,43 @@ struct database *get_database(MYSQL *conn, char *database_name, gboolean create_
   {
     database = new_database(conn, database_name);
     if (create_job)
+    {
       create_job_to_dump_schema(database);
+      database->schema_create_job_created = TRUE;
+    }
   }
   g_mutex_unlock(database_hash_mutex);
   return database;
+}
+
+/* Called when a table of `database` has been elected to be dumped.
+
+   --regex is evaluated against `database.table` for tables but against the bare
+   database name for the database object, so a pattern such as '^mydb\.' selects
+   every table while silently excluding the database itself.  The resulting
+   backup has no <db>-schema-create.sql and cannot be restored into a server
+   where the database does not already exist; in --stream mode myloader also
+   holds every schema job until EOF.  mydumper exits 0 either way, so warn once
+   per database instead of failing silently.  See issue #2329. */
+void warn_if_schema_create_excluded(struct database *database)
+{
+  if (no_schemas || !is_regex_being_used() || database->schema_create_job_created)
+    return;
+
+  g_mutex_lock(database_hash_mutex);
+  if (!database->regex_mismatch_warned)
+  {
+    database->regex_mismatch_warned = TRUE;
+    g_warning(
+        "--regex matched tables in `%s` but not the database object itself: "
+        "%s-schema-create.sql will not be dumped, and this backup will not be "
+        "restorable unless the database already exists on the target. Database "
+        "objects are matched against the bare database name, not `database.table` "
+        "- use for instance '^(%s)(\\.|$)'.",
+        database->source_database, database->database_name_in_filename,
+        database->source_database);
+  }
+  g_mutex_unlock(database_hash_mutex);
 }
 
 // see print_dbt_on_metadata_gstring() for table write to metadata
