@@ -17,6 +17,7 @@
 
 #include <glib/gstdio.h>
 #include <mysql.h>
+#include <string.h>
 
 #include "myloader/myloader.h"
 #include "myloader/myloader_common.h"
@@ -237,7 +238,7 @@ void *process_stream(struct configuration *stream_conf)
             // we need to copy the first 20 chars to the begining of the buffer to get relevant info
             g_message("Copying");
             diff = line_end - line_from;
-            g_strlcpy(buffer, &(buffer[line_from]), line_end - line_from + 1);
+            memmove(buffer, &(buffer[line_from]), diff);
             continue;
           }
           // Can we get relevant info?
@@ -288,7 +289,7 @@ void *process_stream(struct configuration *stream_conf)
             else
             {
               diff = buffer_len - initial_pos;
-              g_strlcpy(buffer, &(buffer[initial_pos]), diff + 1);
+              memmove(buffer, &(buffer[initial_pos]), diff);
               goto read_more;
             }
           }
@@ -360,7 +361,7 @@ void *process_stream(struct configuration *stream_conf)
                   // this means that the content of the file has the header tag
                   // we need to flush and continue
                   flush(buffer, line_from, line_end - 1, file, &total_size);
-                  g_message("Different file size in %s. Should be: %d | Written: %d. But continuing", filename, file_size_from_stream, total_size);
+                  trace("Different file size in %s. Should be: %d | Written: %d. But continuing", filename, file_size_from_stream, total_size);
                   continue;
                 }
                 else if (total_size > file_size_from_stream)
@@ -446,7 +447,7 @@ void *process_stream(struct configuration *stream_conf)
             {
               // It could be a header, so we copied to the begining of the buffer
               diff = buffer_len - initial_pos;
-              g_strlcpy(buffer, &(buffer[initial_pos]), diff + 1);
+              memmove(buffer, &(buffer[initial_pos]), diff);
               // diff remains set to do not overwrite the buffer
             }
             else
@@ -466,7 +467,7 @@ void *process_stream(struct configuration *stream_conf)
               // we need to move to the begining of the buffer and reprocess
               //              g_message("Coping data %d %d: %s", initial_pos,  buffer_len, &(buffer[initial_pos])  );
               diff = buffer_len - initial_pos;
-              g_strlcpy(buffer, &(buffer[initial_pos]), diff + 1);
+              memmove(buffer, &(buffer[initial_pos]), diff);
               //              g_message("After copy data: %s | new len should be: %d", buffer , diff);
             }
             else

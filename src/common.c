@@ -569,7 +569,7 @@ void execute_gstring(MYSQL *conn, GString *ss)
     {
       if (strlen(line[i]) > 3)
         if (!m_query_warning(conn, line[i], "Set session failed: %s", line[i]))
-          m_query_warning(conn, line[i], "Set session failed: %s", line[i]);
+          discard_mysql_output(conn);
     }
     g_strfreev(line);
   }

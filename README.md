@@ -132,7 +132,7 @@ aws-session-command = CALL mysql.rds_disable_session_binlog()
 
 `aws-session-command` is executed on every myloader connection after the normal session setup. You can repeat the option on multiple lines in the config file, or pass multiple statements separated by `;\n`.
 When `--source-control-command=AWS` is set, `--enable-binlog` is ignored and myloader uses the AWS session binlog call instead.
-See [`myloader.cnf`](/Users/daniel/gitRepos/mydumper/myloader.cnf) for a complete sample.
+See [`myloader.cnf`](https://github.com/mydumper/mydumper/blob/master/mydumper.cnf) for a complete sample.
 
 Examples:
 

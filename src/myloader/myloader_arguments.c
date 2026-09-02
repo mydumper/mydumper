@@ -39,17 +39,21 @@ extern gboolean local_infile;
 extern guint64  max_transaction_size;
 extern guint    optimize_keys_batchsize;
 guint64         max_statement_size = 0;
+guint           statement_buffer_shrink_threshold_mb = 2;
 
-static void append_normalized_sql(GString *buffer, const gchar *command){
+static void append_normalized_sql(GString *buffer, const gchar *command)
+{
   gchar *normalized = g_strdup(command);
   g_strstrip(normalized);
 
-  while (normalized[0] != '\0' && normalized[strlen(normalized) - 1] == ';') {
+  while (normalized[0] != '\0' && normalized[strlen(normalized) - 1] == ';')
+  {
     normalized[strlen(normalized) - 1] = '\0';
     g_strstrip(normalized);
   }
 
-  if (normalized[0] == '\0') {
+  if (normalized[0] == '\0')
+  {
     g_free(normalized);
     return;
   }
@@ -59,7 +63,8 @@ static void append_normalized_sql(GString *buffer, const gchar *command){
   g_free(normalized);
 }
 
-void aws_session_command_append(const gchar *command){
+void aws_session_command_append(const gchar *command)
+{
   if (command == NULL)
     return;
   if (aws_session_commands == NULL)
@@ -67,13 +72,13 @@ void aws_session_command_append(const gchar *command){
   append_normalized_sql(aws_session_commands, command);
 }
 
-gboolean arguments_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
+gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error)
 {
-  *error = NULL;
+  *error=NULL;
   if (!g_strcmp0(option_name, "--optimize-keys"))
   {
-    optimize_keys_str = g_strdup(value);
-    if (value == NULL || !g_strcmp0(value, "1"))
+    optimize_keys_str=g_strdup(value);
+    if (value==NULL || !g_strcmp0(value,"1"))
     {
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
@@ -247,7 +252,7 @@ static GOptionEntry threads_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry execution_entries[] = {
-    {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
+    {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
         "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
     {"aws-session-command", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "Raw SQL executed on every myloader connection after the normal session setup. "
@@ -255,8 +260,7 @@ static GOptionEntry execution_entries[] = {
     {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "Creates the table without the indexes unless SKIP is selected. "
         "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
-        "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE",
-        NULL},
+        "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
     {"optimize-keys-batchsize", 0, 0, G_OPTION_ARG_INT, &optimize_keys_batchsize,
         "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimited)", NULL},
     {"no-schemas", 0, 0, G_OPTION_ARG_NONE, &no_schemas,
@@ -291,6 +295,8 @@ static GOptionEntry execution_entries[] = {
         "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
     {"num-sequences", 0, 0, G_OPTION_ARG_INT, &num_sequences,
         "Amount of sequences in the backup. It is read from [config] in the metadata file. Default: 0 ", NULL},
+    {"statement-buffer-shrink-threshold-mb", 0, 0, G_OPTION_ARG_INT, &statement_buffer_shrink_threshold_mb,
+        "Buffer size threshold in megabytes that, when reached, triggers a shrink back to its original size. Default: 2", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry filter_entries[] = {
