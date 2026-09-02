@@ -30,6 +30,9 @@
 #include "mydumper/mydumper_global.h"
 #include "mydumper/mydumper_stream.h"
 #include "mydumper/mydumper_table.h"
+#include "mydumper_exec_command.h"
+#include "mydumper_global.h"
+#include "mydumper_stream.h"
 
 // Shared variables
 int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct db_table *dbt) = NULL;
@@ -314,7 +317,7 @@ int m_open_pipe(gchar **filename, const char *type)
 
   g_mutex_lock(fifo_table_mutex);
   f = g_hash_table_lookup(fifo_hash, *filename);
-  g_mutex_unlock(fifo_table_mutex);
+//  g_mutex_unlock(fifo_table_mutex);
   if (f)
   {
     g_error("file already open: %s", *filename);
@@ -343,7 +346,7 @@ int m_open_pipe(gchar **filename, const char *type)
   f->child_pid = execute_file_per_thread(f->pipe, f->fdout);
 
   g_mutex_unlock(pipe_creation);
-  g_mutex_lock(fifo_table_mutex);
+//  g_mutex_lock(fifo_table_mutex);
   g_hash_table_insert(fifo_hash, f->filename, f);
   g_mutex_unlock(fifo_table_mutex);
   return f->pipe[1];

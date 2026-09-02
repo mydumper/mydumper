@@ -1,0 +1,14 @@
+#
+# Testing that myloader --stream carries a partial buffer over without
+# truncating it at the first NUL byte. Compressed file content is binary, so
+# the carry-over must be a plain memory move, not a string copy.
+#
+# The dump itself only has to be small: check_mydumper.sh appends a synthetic
+# file to the stream so that the byte pattern that triggers the carry-over
+# lands exactly on the STREAM_BUFFER_SIZE boundary.
+#
+
+[mydumper]
+database=specific_41
+outputdir=/tmp/data
+stream=NO_DELETE

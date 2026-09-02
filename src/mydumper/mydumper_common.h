@@ -45,7 +45,7 @@ gchar   *build_filename(char *database, char *table, guint64 part, guint sub_par
 gchar             *build_sql_filename(char *database, char *table, guint64 part, guint sub_part);
 gchar             *build_rows_filename(char *database, char *table, guint64 part, guint sub_part);
 void               determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol, guint *rowscol);
-void               determine_explain_columns(MYSQL_RES *result, guint *rowscol);
+gboolean           determine_explain_columns(MYSQL_RES *result, guint *rowscol);
 void               determine_charset_and_coll_columns_from_show(MYSQL_RES *result, guint *charcol, guint *collcol);
 unsigned long      m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length);
 void               m_replace_char_with_char(gchar needle, gchar replace, gchar *str, unsigned long length);

@@ -95,7 +95,6 @@ extern const gchar                *show_binary_log_status;
 extern const gchar                *change_replication_source;
 extern enum source_control_command source_control_command;
 extern guint                       throttle_max_usleep_limit;
-
 void initialize_zstd_cmd();
 void initialize_gzip_cmd();
 

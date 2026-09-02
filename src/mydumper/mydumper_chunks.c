@@ -272,17 +272,42 @@ cleanup:
   return csi;
 }
 
-guint64 get_rows_from_explain(MYSQL *conn, struct db_table *dbt, GString *where, gchar *field)
+
+// Only the MySQL family supports the explain_format system variable (added in
+// MySQL 8.3), which can change the output of a plain EXPLAIN to TREE or JSON,
+// and accepts forcing the format back with EXPLAIN FORMAT=TRADITIONAL
+static
+gboolean explain_format_can_be_forced(){
+  switch (get_product()){
+    case SERVER_TYPE_MYSQL:
+    case SERVER_TYPE_PERCONA:
+    case SERVER_TYPE_RDS:
+    case SERVER_TYPE_GOOGLE:
+    case SERVER_TYPE_UNKNOWN:
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+
+guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where, gchar *field)
 {
-  gchar *query = g_strdup_printf(
-      "EXPLAIN SELECT %s %s%s%s FROM %s%s%s.%s%s%s%s%s",
-      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */" : "",
-      field ? identifier_quote_character_str : "", field ? field : "*", field ? identifier_quote_character_str : "",
+  const gchar *explain_statement = "EXPLAIN";
+  gchar *query = NULL;
+  struct M_ROW *mr = NULL;
+  guint row_col = 0;
+
+execute_explain:
+  query = g_strdup_printf(
+      "%s SELECT %s %s%s%s FROM %s%s%s.%s%s%s%s%s",
+      explain_statement,
+      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+      field?identifier_quote_character_str:"", field?field:"*", field?identifier_quote_character_str:"",
       identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-      where ? " WHERE " : "", where ? where->str : "");
+      where?" WHERE ":"",where?where->str:"");
   /* Get minimum/maximum */
   trace("EXPLAIN: %s", query);
-  struct M_ROW *mr = m_store_result_row(conn, query,
+  mr = m_store_result_row(conn, query,
       m_critical, m_warning, "Failed to execute EXPLAIN: %s", query);
 
   g_free(query);
@@ -292,8 +317,17 @@ guint64 get_rows_from_explain(MYSQL *conn, struct db_table *dbt, GString *where,
     return 0;
   }
 
-  guint row_col = -1;
-  determine_explain_columns(mr->res, &row_col);
+  if (!determine_explain_columns(mr->res, &row_col)){
+    m_store_result_row_free(mr);
+    // The EXPLAIN output has no rows column when explain_format is set to
+    // TREE or JSON: retry once forcing the TRADITIONAL format
+    if (!g_strcmp0(explain_statement, "EXPLAIN") && explain_format_can_be_forced()){
+      explain_statement = "EXPLAIN FORMAT=TRADITIONAL";
+      goto execute_explain;
+    }
+    g_warning("Unable to determine the estimated amount of rows of `%s`.`%s`: EXPLAIN output has no rows column", dbt->database->source_database, dbt->table);
+    return 0;
+  }
 
   if (mr->row[row_col] == NULL)
   {

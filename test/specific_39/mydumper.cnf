@@ -1,0 +1,7 @@
+#
+# Testing MariaDB UUID columns are dumped without _binary introducers
+#
+
+[mydumper]
+database=specific_39
+outputdir=/tmp/data
