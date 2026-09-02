@@ -40,7 +40,6 @@ struct db_table
   gboolean                    restore_job_list_sorted;  // Perf: lazy sorting flag
   guint                       current_threads;
   guint                       max_threads;
-  guint                       max_connections_per_job;
   guint                       retry_count;
   GMutex                     *mutex;
   GCond                      *schema_cond; /* Condition variable for schema-wait synchronization */
