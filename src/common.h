@@ -72,6 +72,7 @@
 #define COLUMNS_ON_SELECT_REPLACE "columns_on_select_replace"
 #define COLUMNS_ON_INSERT "columns_on_insert"
 #define PARTITION_REGEX "partition_regex"
+#define STATEMENT_BUFFER_INITIAL_SIZE 1000000
 
 #define SKIP_INDEX_CHECKSUMS "skip-index-checksums"
 #define SKIP_TABLE_CHECKSUMS "skip-table-checksums"

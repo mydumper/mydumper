@@ -36,6 +36,8 @@
 #include "myloader/myloader_process_filename.h"
 #include "logging.h"
 
+extern guint statement_buffer_shrink_threshold_mb;
+guint statement_buffer_shrink_threshold = 0;
 extern gboolean dry_run;
 
 struct statement *new_statement();
@@ -158,6 +160,7 @@ static void schedule_load_data_fifo_unlink(const gchar *fifo_filename, int child
 
 void initialize_restore()
 {
+  statement_buffer_shrink_threshold = statement_buffer_shrink_threshold_mb * 1024 * 1024;
   load_data_list_mutex = g_mutex_new();
   load_data_list = g_hash_table_new(g_str_hash, g_str_equal);
   if (replace_definer)
@@ -754,15 +757,19 @@ struct statement *initialize_statement(struct statement *ir)
   ir->result = 0;
   ir->error_number = 0;
   ir->error = NULL;
+  if (ir->buffer->allocated_len > statement_buffer_shrink_threshold){
+    g_string_free(ir->buffer, TRUE);
+    ir->buffer = g_string_sized_new(STATEMENT_BUFFER_INITIAL_SIZE);
+  }
   return ir;
 }
 
 struct statement *new_statement()
 {
   struct statement *stmt = g_new0(struct statement, 1);
+  stmt->buffer = g_string_sized_new(STATEMENT_BUFFER_INITIAL_SIZE);
   initialize_statement(stmt);
   stmt->filename = NULL;
-  stmt->buffer = g_string_new_len("", 30);
   return stmt;
 }
 
