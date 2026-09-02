@@ -98,6 +98,14 @@ extern guint refresh_table_list_interval;
 extern GHashTable *database_hash;
 extern GHashTable *tbl_hash;
 extern GHashTable *conf_per_table;
+extern struct replication_settings replica_data;
+extern struct replication_settings source_data;
+extern gboolean set_gtid_purge;
+extern gboolean show_warnings;
+extern gboolean enable_binlog;
+extern GString *aws_session_commands;
+void execute_aws_session_setup(MYSQL *conn);
+extern guint refresh_table_list_interval;
 extern GHashTable *set_session_hash;
 
 extern GKeyFile *key_file;

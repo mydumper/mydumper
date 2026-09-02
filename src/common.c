@@ -568,7 +568,8 @@ void execute_gstring(MYSQL *conn, GString *ss)
     for (i = 0; i < (int)g_strv_length(line); i++)
     {
       if (strlen(line[i]) > 3)
-        m_query_warning(conn, line[i], "Set session failed: %s", line[i]);
+        if (!m_query_warning(conn, line[i], "Set session failed: %s", line[i]))
+          discard_mysql_output(conn);
     }
     g_strfreev(line);
   }
@@ -1827,18 +1828,34 @@ gchar *build_config_file_dbt_key(const gchar *a, const gchar *b)
 void discard_mysql_output(MYSQL *conn)
 {
   MYSQL_RES *result = NULL;
-  MYSQL_ROW  row = NULL;
-  while (mysql_next_result(conn))
-  {
-    result = mysql_use_result(conn);
-    if (!result)
+  MYSQL_ROW row = NULL;
+
+  if (mysql_field_count(conn) > 0) {
+    result = mysql_store_result(conn);
+    if (result != NULL) {
+      while ((row = mysql_fetch_row(result))) {
+        (void)row;
+      }
+      mysql_free_result(result);
+    } else if (mysql_errno(conn) != 0) {
       return;
-    row = mysql_fetch_row(result);
-    while (row)
-    {
-      row = mysql_fetch_row(result);
     }
-    mysql_free_result(result);
+  }
+
+  while (mysql_more_results(conn)) {
+    if (mysql_next_result(conn) != 0)
+      return;
+    if (mysql_field_count(conn) > 0) {
+      result = mysql_store_result(conn);
+      if (result != NULL) {
+        while ((row = mysql_fetch_row(result))) {
+          (void)row;
+        }
+        mysql_free_result(result);
+      } else if (mysql_errno(conn) != 0) {
+        return;
+      }
+    }
   }
 }
 

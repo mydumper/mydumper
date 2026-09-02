@@ -132,6 +132,9 @@ target_link_libraries(test_use_defer_livelock ${GLIB2_LIBRARIES})
 target_compile_definitions(test_use_defer_livelock PRIVATE USE_DEFER_FIX)
 add_test(NAME use_defer_livelock COMMAND test_use_defer_livelock)
 
+add_test(NAME myloader_aws_session
+  COMMAND ${CMAKE_SOURCE_DIR}/test/test_myloader_aws_session.sh $<TARGET_FILE:myloader>)
+
 # Unit test: myloader --stream buffer carry-over (issue #1687)
 # Links the real process_stream() and drives it over hand-built streams, so it
 # reaches all four carry-over sites, including the two on the --mysqldump path
@@ -176,6 +179,4 @@ MESSAGE(STATUS)
 #foreach (_variableName ${_variableNames})
 #    message(STATUS "${_variableName}=${${_variableName}}")
 #endforeach()
-
-
 

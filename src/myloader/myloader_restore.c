@@ -184,6 +184,9 @@ struct connection_data *new_connection_data(MYSQL *thrconn)
   cd->in_use = g_mutex_new();
   trace("Executing set session");
   execute_gstring(cd->thrconn, set_session);
+  execute_aws_session_setup(cd->thrconn);
+  if (aws_session_commands != NULL && aws_session_commands->len > 0)
+    execute_gstring(cd->thrconn, aws_session_commands);
   g_async_queue_push(connection_pool, cd);
   return cd;
 }
@@ -252,6 +255,9 @@ void reconnect_connection_data(struct connection_data *cd)
   cd->connection_id = mysql_thread_id(cd->thrconn);
   execute_use(cd);
   execute_gstring(cd->thrconn, set_session);
+  execute_aws_session_setup(cd->thrconn);
+  if (aws_session_commands != NULL && aws_session_commands->len > 0)
+    execute_gstring(cd->thrconn, aws_session_commands);
 }
 
 gboolean release_idle_connection_if_possible()
@@ -394,6 +400,9 @@ void setup_connection(struct connection_data *cd, struct thread_data *td, struct
     cd->connection_id = mysql_thread_id(cd->thrconn);
     cd->current_database = NULL;
     execute_gstring(cd->thrconn, set_session);
+    execute_aws_session_setup(cd->thrconn);
+    if (aws_session_commands != NULL && aws_session_commands->len > 0)
+      execute_gstring(cd->thrconn, aws_session_commands);
   }
   trace("Thread %d: Connection %ld granted", td->thread_id, cd->connection_id);
   if (mysql_ping(cd->thrconn))

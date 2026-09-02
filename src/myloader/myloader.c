@@ -109,24 +109,44 @@ extern gchar *tables_includelist_file;
 
 const char DIRECTORY[] = "import";
 
-// struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 GHashTable *conf_per_table = NULL;
 GHashTable *set_session_hash = NULL;
+GString *aws_session_commands = NULL;
 
 GHashTable *myloader_initialize_hash_of_session_variables()
 {
   GHashTable *_set_session_hash = initialize_hash_of_session_variables();
   if (commit_count > 1)
     set_session_hash_insert(_set_session_hash, "AUTOCOMMIT", g_strdup("0"));
-  if (!enable_binlog)
-    set_session_hash_insert(_set_session_hash, "SQL_LOG_BIN", g_strdup("0"));
+  if (!enable_binlog) {
+    if (source_control_command != AWS) {
+      set_session_hash_insert(_set_session_hash, "SQL_LOG_BIN", g_strdup("0"));
+    }
+  }
   return _set_session_hash;
 }
 
-static void detect_group_replication_transaction_size_limit(MYSQL *conn)
+void execute_aws_session_setup(MYSQL *conn){
+  if (source_control_command == AWS && !enable_binlog) {
+    if (!m_query_critical(conn, "CALL mysql.rds_disable_session_binlog()",
+                          "Failed to disable session binlog", NULL)) {
+      discard_mysql_output(conn);
+    }
+  }
+}
+
+static void normalize_aws_binlog_mode(void){
+  if (source_control_command == AWS && enable_binlog) {
+    m_warning("Ignoring --enable-binlog because --source-control-command=AWS requires AWS session binlog control");
+    enable_binlog = FALSE;
+  }
+}
+
+static void detect_group_replication_transaction_size_limit(MYSQL * conn)
 {
   guint64       _max_transaction_size = 0;
   struct M_ROW *mr = m_store_result_row(conn, "SHOW GLOBAL VARIABLES LIKE 'group_replication_transaction_size_limit'", m_message, m_message, "Using default transaction limit", NULL);
+
   if (mr->row)
     _max_transaction_size = strtoll(mr->row[0], NULL, 10) / 1024 / 1024;
   max_transaction_size = _max_transaction_size > max_transaction_size ? _max_transaction_size : max_transaction_size;
@@ -252,6 +272,7 @@ void print_help()
 
   if (enable_binlog)
     print_bool("enable-binlog", enable_binlog);
+  print_string("aws-session-command", aws_session_commands != NULL && aws_session_commands->len > 0 ? aws_session_commands->str : NULL);
   if (!optimize_keys)
   {
     print_string("optimize-keys", SKIP);
@@ -403,6 +424,7 @@ int main(int argc, char *argv[])
 
   // Loading the defaults file:
   initialize_common_options(context, "myloader");
+  normalize_aws_binlog_mode();
 
   g_strfreev(tmpargv);
 
@@ -561,15 +583,19 @@ int main(int argc, char *argv[])
   server_detect(conn);
   void print_connection_details_once();
   set_session_hash = myloader_initialize_hash_of_session_variables();
-  GHashTable *set_global_hash = g_hash_table_new(g_str_hash, g_str_equal);
-  if (key_file != NULL)
+  GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
+  if (key_file != NULL )
   {
-    load_hash_of_all_variables_perproduct_from_key_file(key_file, set_global_hash, "myloader_global_variables");
-    load_hash_of_all_variables_perproduct_from_key_file(key_file, set_session_hash, "myloader_session_variables");
+    load_hash_of_all_variables_perproduct_from_key_file(key_file,set_global_hash,"myloader_global_variables");
+    load_hash_of_all_variables_perproduct_from_key_file(key_file,set_session_hash,"myloader_session_variables");
+    if (source_control_command == AWS && !enable_binlog)
+    {
+      g_hash_table_remove(set_session_hash, "SQL_LOG_BIN");
+    }
   }
-  //	initialize_conf_per_table(&conf_per_table);
-  //  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-  load_per_table_info_from_key_file(key_file, conf_per_table, NULL);
+//	initialize_conf_per_table(&conf_per_table);
+//  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  load_per_table_info_from_key_file(key_file, conf_per_table, NULL );
   if (max_transaction_size == DEFAULT_MAX_TRANSACTION_SIZE)
     detect_group_replication_transaction_size_limit(conn);
 
@@ -645,6 +671,9 @@ int main(int argc, char *argv[])
   refresh_set_session_from_hash(set_session, set_session_hash);
   refresh_set_global_from_hash(set_global, set_global_back, set_global_hash);
   execute_gstring(conn, set_session);
+  execute_aws_session_setup(conn);
+  if (aws_session_commands != NULL && aws_session_commands->len > 0)
+    execute_gstring(conn, aws_session_commands);
   execute_gstring(conn, set_global);
 
   if (replication_statements->start_replica_until)
@@ -935,6 +964,8 @@ int main(int argc, char *argv[])
   g_hash_table_remove_all(set_session_hash);
   g_hash_table_unref(set_session_hash);
   execute_gstring(conn, set_global_back);
+  if (aws_session_commands != NULL)
+    g_string_free(aws_session_commands, TRUE);
   mysql_close(conn);
   mysql_thread_end();
   mysql_library_end();
