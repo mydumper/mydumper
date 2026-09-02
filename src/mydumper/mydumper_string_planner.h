@@ -14,43 +14,23 @@
 
         Authors:    Domas Mituzas, Facebook ( domas at fb dot com )
                     Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
-                    Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
+                    Andrew Hutchings, MariaDB Foundation (andrew dot mariadb dot org)
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+#if !defined(mydumper_mydumper_string_planner)
+#define mydumper_mydumper_string_planner
 
-#ifndef _src_myloader_myloader_arguments_h
-#define _src_myloader_myloader_arguments_h
+#include <glib.h>
+#include <mysql.h>
+#include "mydumper_string_planner_utils.h"
 
-#include "myloader/myloader.h"
+struct db_table;
 
-#define AFTER_IMPORT_PER_TABLE "AFTER_IMPORT_PER_TABLE"
-#define AFTER_IMPORT_ALL_TABLES "AFTER_IMPORT_ALL_TABLES"
-#define SKIP "SKIP"
-
-GOptionContext *load_contex_entries();
-gboolean        arguments_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error);
-void            aws_session_command_append(const gchar *command);
-
-static inline const char *purgemode2str(enum purge_mode pm)
-{
-  switch (pm)
-  {
-    case FAIL:
-      return "FAIL";
-    case NONE:
-      return "NONE";
-    case DROP:
-      return "DROP";
-    case TRUNCATE:
-      return "TRUNCATE";
-    case DELETE:
-      return "DELETE";
-    case PM_SKIP:
-      return "SKIP";
-  }
-  g_assert(0);
-  return 0;
-}
+gboolean string_pk_planner_enabled_for_table(guint64 rows);
+void string_pk_planner_reset_for_table(struct db_table *dbt, guint64 rows);
+gboolean string_pk_planner_budget_exhausted(struct db_table *dbt);
+gboolean string_pk_planner_note_probe(struct db_table *dbt);
+gboolean string_pk_plan_prefix_chunks(MYSQL *conn, struct db_table *dbt, guint64 rows);
 
 #endif

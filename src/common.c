@@ -1830,14 +1830,19 @@ void discard_mysql_output(MYSQL *conn)
   MYSQL_RES *result = NULL;
   MYSQL_ROW row = NULL;
 
-  if (mysql_field_count(conn) > 0) {
+  if (mysql_field_count(conn) > 0)
+  {
     result = mysql_store_result(conn);
-    if (result != NULL) {
-      while ((row = mysql_fetch_row(result))) {
+    if (result != NULL)
+    {
+      while ((row = mysql_fetch_row(result)))
+      {
         (void)row;
       }
       mysql_free_result(result);
-    } else if (mysql_errno(conn) != 0) {
+    }
+    else if (mysql_errno(conn) != 0)
+    {
       return;
     }
   }

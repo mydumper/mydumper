@@ -207,6 +207,7 @@ static void get_primary_key(MYSQL *conn, struct db_table *dbt, struct configurat
   MYSQL_RES *indexes = NULL;
   MYSQL_ROW  row;
   dbt->primary_key = NULL;
+  GPtrArray *pk_columns = g_ptr_array_new_with_free_func(g_free);
   // first have to pick index, in future should be able to preset in
   //    * configuration too
   gchar *query = g_strdup_printf("SHOW INDEX FROM %s%s%s.%s%s%s",
@@ -218,10 +219,27 @@ static void get_primary_key(MYSQL *conn, struct db_table *dbt, struct configurat
   {
     while ((row = mysql_fetch_row(indexes)))
     {
-      if (!strcmp(row[2], "PRIMARY"))
+      if (!strcmp(row[2], "PRIMARY") )
       {
-        // Pick first column in PK, cardinality doesn't matter
-        dbt->primary_key = g_list_append(dbt->primary_key, g_strdup(row[4]));
+        guint seq_in_index = row[3] ? (guint)strtoul(row[3], NULL, 10) : 0;
+        if (seq_in_index == 0)
+        {
+          seq_in_index = 1;
+        }
+        while (pk_columns->len < seq_in_index)
+        {
+          g_ptr_array_add(pk_columns, NULL);
+        }
+        g_ptr_array_index(pk_columns, seq_in_index - 1) = g_strdup(row[4]);
+      }
+    }
+    for (guint i = 0; i < pk_columns->len; i++)
+    {
+      gchar *field = g_ptr_array_index(pk_columns, i);
+      if (field)
+      {
+        dbt->primary_key = g_list_append(dbt->primary_key, field);
+        g_ptr_array_index(pk_columns, i) = NULL;
       }
     }
     if (dbt->primary_key)
@@ -233,8 +251,26 @@ static void get_primary_key(MYSQL *conn, struct db_table *dbt, struct configurat
     {
       if (!strcmp(row[1], "0"))
       {
-        // Again, first column of any unique index
-        dbt->primary_key = g_list_append(dbt->primary_key, g_strdup(row[4]));
+        guint seq_in_index = row[3] ? (guint)strtoul(row[3], NULL, 10) : 0;
+        if (seq_in_index == 0)
+        {
+          seq_in_index = 1;
+        }
+        while (pk_columns->len < seq_in_index)
+        {
+          g_ptr_array_add(pk_columns, NULL);
+        }
+        g_ptr_array_index(pk_columns, seq_in_index - 1) = g_strdup(row[4]);
+      }
+    }
+
+    for (guint i = 0; i < pk_columns->len; i++)
+    {
+      gchar *field = g_ptr_array_index(pk_columns, i);
+      if (field)
+      {
+        dbt->primary_key = g_list_append(dbt->primary_key, field);
+        g_ptr_array_index(pk_columns, i) = NULL;
       }
     }
 
@@ -267,6 +303,8 @@ static void get_primary_key(MYSQL *conn, struct db_table *dbt, struct configurat
   }
 
 cleanup:
+  if (pk_columns)
+    g_ptr_array_free(pk_columns, TRUE);
   if (indexes)
     mysql_free_result(indexes);
 }

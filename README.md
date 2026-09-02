@@ -77,6 +77,12 @@ user = root
 password = p455w0rd
 database = db
 rows = 10000
+string-pk-planner = auto
+string-pk-planner-timeout = 30
+string-pk-planner-max-probes = 64
+string-pk-planner-max-prefixes = 256
+string-pk-planner-min-rows = 1000000
+string-pk-planner-target-rows-per-prefix = 0
 
 [myloader]
 host = 127.0.0.1
@@ -145,6 +151,70 @@ myloader \
   --aws-session-command='SET SESSION some_aws_setting = 1' \
   --aws-session-command='CALL mysql.some_other_aws_proc()'
 ```
+
+For very large tables with string primary keys, `mydumper` has a bounded
+metadata-assisted planner that seeds prefix-based root chunks before falling
+back to the existing recursive splitter. The defaults keep the current
+behavior as a safe fallback, but you can tune the planner with:
+
+* `--string-pk-planner=auto|metadata|recursive`
+* `--string-pk-planner-timeout=<seconds>`
+* `--string-pk-planner-max-probes=<n>`
+* `--string-pk-planner-max-prefixes=<n>`
+* `--string-pk-planner-min-rows=<n>`
+* `--string-pk-planner-target-rows-per-prefix=<n>`
+
+The planner works with three orthogonal bounds:
+
+* `--string-pk-planner-target-rows-per-prefix` sets the desired chunk size, in
+  rows. When `0` (the default) the target is derived as
+  `table_rows / --string-pk-planner-max-prefixes`; a positive value is used
+  directly. The planner deepens prefixes (uses more leading characters) until
+  each prefix's estimated row count is at or under this target.
+* `--max-char-size` (default 2) caps how many leading characters a prefix may
+  use, i.e. the maximum planning depth. A larger value allows finer chunks on
+  skewed key distributions at the cost of more `EXPLAIN` probes before export.
+* `--string-pk-planner-max-prefixes` caps the total number of prefix chunks.
+
+The planner starts from the single-character cover and then deepens greedily:
+it repeatedly takes the single hottest prefix that is still over target and
+lengthens it by one character (replacing it with its non-empty children),
+leaving prefixes that are already at or under target untouched. Because it
+drills only into hot regions instead of expanding every prefix uniformly, the
+number of `EXPLAIN` probes scales with the number of chunks produced rather
+than with `alphabet_size ^ depth` — deep chunking on a skewed key stays cheap.
+
+A prefix stops growing when it reaches the target, hits the `--max-char-size`
+length ceiling, or can no longer be split without exceeding
+`--string-pk-planner-max-prefixes`; in the last two cases it remains a root as
+is. The single-character seed is always retained, so coverage stays complete
+and the table is never collapsed to a single chunk. The row targeting is
+best-effort because depth is chosen from `EXPLAIN` estimates; skewed data or a
+single dominant primary-key value may leave some chunks above the target.
+
+The effective target is also used as the per-chunk row target at dump time: any
+root the planner had to leave over target (because of the length ceiling or the
+prefix budget) is subdivided further by the runtime string splitter while
+dumping, so chunks approach the target even when the planner alone could not
+reach it.
+
+The `String PK planner selected metadata-assisted prefix chunks ...` log line
+reports the achieved root count, deepest prefix length, and effective target so
+you can confirm the planner produced the parallelism you expect.
+
+Tuning for a very large (e.g. 30TB) table: set
+`--string-pk-planner=metadata`, pick a `--string-pk-planner-target-rows-per-prefix`
+that matches your desired per-chunk size (or leave it `0` and size via
+`--string-pk-planner-max-prefixes`), and set `--string-pk-planner-max-prefixes`
+high enough to hold the number of chunks that target implies (roughly
+`table_rows / target`). With greedy deepening, `--max-char-size` can be raised
+comfortably (e.g. `4`–`8`) to give hot prefixes room to reach the target; the
+probe cost is governed by the number of chunks, not the depth ceiling, so a
+larger ceiling is cheap as long as `--string-pk-planner-max-prefixes` is the
+real bound. If you leave `--string-pk-planner-timeout` and
+`--string-pk-planner-max-probes` at `0` (no planning-cost bounds), the planner
+runs to completion using `EXPLAIN`-only probes and never falls back to the
+`SELECT`-based recursive splitter.
 
 - Per table sections:
 ```bash

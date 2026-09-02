@@ -9,6 +9,37 @@
 [mydumper]
 ignore-engines=tokudb
 load-data-character-set=binary
+# String primary key planning defaults
+# string-pk-planner=auto
+# string-pk-planner-timeout=30
+# string-pk-planner-max-probes=64
+# string-pk-planner-max-prefixes=256
+# string-pk-planner-min-rows=1000000
+# 0 derives the per-prefix row target from rows/max-prefixes; a positive value is used directly
+# string-pk-planner-target-rows-per-prefix=0
+
+# Example large-string-PK dump profile
+# bulk-metadata-prefetch
+# split-partitions
+# split-string-pk
+# string-pk-planner=metadata
+# string-pk-planner-timeout=0
+# string-pk-planner-max-probes=0
+# string-pk-planner-max-prefixes=256
+# string-pk-planner-target-rows-per-prefix=0
+# max-char-size=2
+# max-items-per-string-chunk=1
+# compress=zstd
+# sync-thread-lock-mode=NO_LOCK
+# trx-tables=1
+
+[myloader]
+# Example large-stream import profile
+# max-threads-per-table=32
+# checksum=skip
+# optimize-keys=AFTER_IMPORT_PER_TABLE
+# drop-table=DROP
+# stream=NO_STREAM
 
 [mydumper_global_variables]
 # The global variables changed in this section are rolled back after execution unless QUIT signal is sent.

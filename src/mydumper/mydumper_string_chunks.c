@@ -158,19 +158,27 @@ void free_string_step_item(struct chunk_step_item *csi)
   // g_free(csi);
 }
 
-struct chunk_step_item *split_string_chunk_step(struct chunk_step_item *csi)
+struct chunk_step_item * split_string_chunk_step(struct chunk_step_item * csi)
 {
   struct chunk_step_item *new_csi = NULL;
   guint64                 part = csi->part;
   part += pow(2, csi->deep);
-  new_csi = new_string_step_item(FALSE, NULL, csi->field, csi->deep + 1, csi->chunk_step->string_step.is_step_fixed_length, csi->chunk_step->string_step.left_length,
-      csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max,
+  new_csi = new_string_step_item(FALSE, csi->prefix, g_strdup(csi->field), csi->deep + 1, csi->chunk_step->string_step.is_step_fixed_length, csi->chunk_step->string_step.left_length,
+      g_strdup(csi->chunk_step->string_step.str_min), g_strdup(csi->chunk_step->string_step.str_max),
       csi->chunk_step->string_step.step, part, FALSE, FALSE, NULL, csi->position, csi->multicolumn, 0);
   new_csi->status = UNASSIGNED;
-  new_csi->chunk_step->string_step.str_max = csi->chunk_step->string_step.str_max;
-  new_csi->chunk_step->string_step.str_min = csi->chunk_step->string_step.str_cur;
+  g_free(new_csi->chunk_step->string_step.str_max);
+  new_csi->chunk_step->string_step.str_max=g_strdup(csi->chunk_step->string_step.str_max);
+  g_free(new_csi->chunk_step->string_step.str_min);
+  new_csi->chunk_step->string_step.str_min=g_strdup(csi->chunk_step->string_step.str_cur);
 
-  csi->chunk_step->string_step.str_max = csi->chunk_step->string_step.str_prev_cur;
+  g_free(csi->chunk_step->string_step.str_max);
+  csi->chunk_step->string_step.str_max=g_strdup(csi->chunk_step->string_step.str_prev_cur);
+
+  g_free(csi->chunk_step->string_step.str_cur);
+  csi->chunk_step->string_step.str_cur=g_strdup(csi->chunk_step->string_step.str_max);
+  g_free(new_csi->chunk_step->string_step.str_cur);
+  new_csi->chunk_step->string_step.str_cur=g_strdup(new_csi->chunk_step->string_step.str_max);
 
   csi->chunk_step->string_step.str_cur = csi->chunk_step->string_step.str_max;
   new_csi->chunk_step->string_step.str_cur = new_csi->chunk_step->string_step.str_max;
@@ -269,10 +277,10 @@ void update_where_on_string_step(struct chunk_step_item *csi);
 struct chunk_step_item *clone_string_chunk_step_item(struct chunk_step_item *csi)
 {
   return new_string_step_item(
-      csi->include_null, csi->prefix, csi->field, csi->deep, csi->chunk_step->string_step.is_step_fixed_length,
-      csi->chunk_step->string_step.left_length,
-      csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, csi->chunk_step->string_step.step,
-      csi->part,
+      csi->include_null, csi->prefix, g_strdup(csi->field), csi->deep, csi->chunk_step->string_step.is_step_fixed_length,
+      csi->chunk_step->string_step.left_length, 
+      g_strdup(csi->chunk_step->string_step.str_min), g_strdup(csi->chunk_step->string_step.str_max), csi->chunk_step->string_step.step,
+      csi->part, 
       csi->chunk_step->string_step.check_min, csi->chunk_step->string_step.check_max, NULL, csi->position, csi->multicolumn, 0);
 }
 
@@ -562,12 +570,52 @@ cleanup:
 static gboolean is_last(struct chunk_step_item *csi)
 {
   g_mutex_lock(csi->mutex);
-  gboolean r = TRUE;
-  //    csi->chunk_step->string_step.is_unsigned ?
-  //    csi->chunk_step->string_step.type.unsign.cursor == csi->chunk_step->string_step.type.unsign.max :
-  //    csi->chunk_step->string_step.type.sign.cursor   == csi->chunk_step->string_step.type.sign.max;
+  gboolean r = g_strcmp0(csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max) == 0;
   g_mutex_unlock(csi->mutex);
   return r;
+}
+
+static gchar *string_lexicographic_successor(const gchar *value){
+  if (value == NULL) {
+    return NULL;
+  }
+
+  gsize len = strlen(value);
+  if (len == 0) {
+    return NULL;
+  }
+
+  gchar *next = g_strdup(value);
+  for (gssize i = (gssize)len - 1; i >= 0; i--) {
+    guchar byte = (guchar) next[i];
+    if (byte < 255) {
+      next[i] = (gchar)(byte + 1);
+      next[i + 1] = '\0';
+      return next;
+    }
+  }
+
+  g_free(next);
+  return NULL;
+}
+
+static gchar *escape_string_value(const gchar *value, gboolean like_pattern){
+  GString *escaped = g_string_new("");
+  for (const gchar *character = value; character != NULL && *character != '\0'; character++) {
+    if (*character == '\\') {
+      /* Preserve a literal backslash when MySQL parses the SQL string. */
+      g_string_append(escaped, "\\\\\\\\");
+    } else if (like_pattern && (*character == '%' || *character == '_')) {
+      /* Escape LIKE wildcards so a key prefix is a literal prefix. */
+      g_string_append(escaped, "\\\\");
+      g_string_append_c(escaped, *character);
+    } else if (*character == '\'') {
+      g_string_append(escaped, "''");
+    } else {
+      g_string_append_c(escaped, *character);
+    }
+  }
+  return g_string_free(escaped, FALSE);
 }
 
 guint process_string_chunk_step(struct table_job *tj, struct chunk_step_item *csi)
@@ -867,7 +915,6 @@ execute_string_chunk:
         csi->next = initialize_chunk_step_item(td->thrconn, tj->dbt, csi->position + 1, rows, csi->where);
         if (csi->next)
         {
-          csi->next->multicolumn = FALSE;
           trace("Thread %d: I-Chunk 2: New next with where %s | rows: %lld", td->thread_id, csi->where->str, rows);
         }
       }
@@ -1081,13 +1128,17 @@ void process_string_chunk(struct table_job *tj, struct chunk_step_item *csi)
   g_mutex_unlock(csi->mutex);
 }
 
-void update_string_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar *field, gchar *str_min, gchar *str_max)
-{
-  if (prefix && prefix->len > 0)
+void update_string_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field, gchar *str_min, gchar *str_max, gboolean is_last_range){
+  gboolean is_single_prefix = !g_strcmp0(str_min, str_max);
+  gchar *upper_bound = NULL;
+  gchar *escaped_min = escape_string_value(str_min, is_single_prefix);
+  gchar *escaped_max = escape_string_value(str_max, FALSE);
+  gchar *escaped_upper_bound = NULL;
+  if (prefix && prefix->len>0)
   {
-    //    g_message("update_string_where_on_gstring:: Prefix: %s", prefix->str);
-    g_string_append_printf(where, "(%s AND ",
-        prefix->str);
+//    g_message("update_string_where_on_gstring:: Prefix: %s", prefix->str);
+    g_string_append_printf(where,"(%s AND ",
+                          prefix->str);
   }
   if (include_null)
   {
@@ -1096,47 +1147,49 @@ void update_string_where_on_gstring(GString *where, gboolean include_null, GStri
   }
   g_string_append(where, "(");
 
-  if (!g_strcmp0(str_min, str_max))
-    g_string_append_printf(where, "%s%s%s LIKE '%s%%'", identifier_quote_character_str, field, identifier_quote_character_str, str_min);
-  else
-    g_string_append_printf(where, "(%s%s%s >= '%s' AND %s%s%s <= '%s') OR %s%s%s LIKE '%s%%'",
-        identifier_quote_character_str, field, identifier_quote_character_str, str_min,
-        identifier_quote_character_str, field, identifier_quote_character_str, str_max,
-        identifier_quote_character_str, field, identifier_quote_character_str, str_max);
-  if (include_null)
-    g_string_append(where, ")");
-  g_string_append(where, ")");
-  if (prefix && prefix->len > 0)
-    g_string_append(where, ")");
-  //  g_message("update_string_where_on_gstring:: where = |%s|", where->str);
-}
-
-void update_where_on_string_step(struct chunk_step_item *csi)
-{
-  g_string_set_size(csi->where, 0);
-  update_string_where_on_gstring(csi->where, csi->include_null, csi->prefix, csi->field, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_cur);
-}
-
-void determine_if_we_can_go_deeper_in_string_chunk_step_item(struct chunk_step_item *csi, guint64 rows)
-{
-  (void)rows;
-  if (csi->multicolumn && csi->position == 0)
-  {
-    //    trace("is_unsigned: %d | rows: %lld | max - min: %lld", csi->chunk_step->string_step.is_unsigned, rows, csi->chunk_step->string_step.is_unsigned?(csi->chunk_step->string_step.type.unsign.max - csi->chunk_step->string_step.type.unsign.min):gint64_abs(csi->chunk_step->string_step.type.sign.max -   csi->chunk_step->string_step.type.sign.min));
-
-    /*
-    if (
-        // In a multi column table, we will use the first column to split the table.
-        // This calculation will let us know how many rows are we getting on average per first column value
-        // we need to have have at least 1 chunk size per first column to perform multi column spliting
-        ( csi->chunk_step->string_step.is_unsigned && (rows /         (csi->chunk_step->string_step.type.unsign.max - csi->chunk_step->string_step.type.unsign.min) > 1))||
-        (!csi->chunk_step->string_step.is_unsigned && (rows / gint64_abs(csi->chunk_step->string_step.type.sign.max -   csi->chunk_step->string_step.type.sign.min) > 1))
-       ){
-      csi->chunk_step->string_step.min_chunk_step_size=1;
-      csi->chunk_step->string_step.is_step_fixed_length=TRUE;
-      csi->chunk_step->string_step.max_chunk_step_size=1;
-      csi->chunk_step->string_step.step=1;
-    }else */
-    csi->multicolumn = FALSE;
+  if (is_single_prefix)
+    g_string_append_printf(where, "%s%s%s LIKE '%s%%' ESCAPE '\\\\'",identifier_quote_character_str, field, identifier_quote_character_str, escaped_min);
+  else{
+    upper_bound = string_lexicographic_successor(str_max);
+    escaped_upper_bound = upper_bound != NULL ? escape_string_value(upper_bound, FALSE) : NULL;
+    if (upper_bound != NULL) {
+      g_string_append_printf(where, "%s%s%s >= '%s' AND %s%s%s < '%s'",
+          identifier_quote_character_str, field, identifier_quote_character_str, escaped_min,
+          identifier_quote_character_str, field, identifier_quote_character_str, escaped_upper_bound);
+    } else if (is_last_range) {
+      g_string_append_printf(where, "%s%s%s >= '%s'",
+          identifier_quote_character_str, field, identifier_quote_character_str, escaped_min);
+    } else {
+      g_string_append_printf(where, "%s%s%s >= '%s' AND %s%s%s < '%s'",
+          identifier_quote_character_str, field, identifier_quote_character_str, escaped_min,
+          identifier_quote_character_str, field, identifier_quote_character_str, escaped_max);
+    }
   }
+  if (include_null)
+    g_string_append(where,")");
+  g_string_append(where,")");
+  if (prefix && prefix->len>0)
+    g_string_append(where,")");
+  g_free(upper_bound);
+  g_free(escaped_min);
+  g_free(escaped_max);
+  g_free(escaped_upper_bound);
+//  g_message("update_string_where_on_gstring:: where = |%s|", where->str);
+}
+
+void update_where_on_string_step(struct chunk_step_item * csi){
+  g_string_set_size(csi->where,0);
+  update_string_where_on_gstring(
+      csi->where,
+      csi->include_null,
+      csi->prefix,
+      csi->field,
+      csi->chunk_step->string_step.str_min,
+      csi->chunk_step->string_step.str_cur,
+      g_strcmp0(csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max) == 0);
+}
+
+void determine_if_we_can_go_deeper_in_string_chunk_step_item( struct chunk_step_item * csi, guint64 rows){
+  (void) rows;
+  (void) csi;
 }

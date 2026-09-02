@@ -257,7 +257,7 @@ static GOptionEntry execution_entries[] = {
     {"aws-session-command", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "Raw SQL executed on every myloader connection after the normal session setup. "
         "Useful for Aurora-specific calls such as CALL mysql.rds_disable_session_binlog().", NULL},
-    {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+    {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "Creates the table without the indexes unless SKIP is selected. "
         "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
         "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},

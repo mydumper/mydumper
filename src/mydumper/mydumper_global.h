@@ -163,5 +163,14 @@ extern guint                      isms;
 extern guint64 max_statement_size;
 extern gchar  *set_names_in_conn_for_sct, *set_names_in_file_for_sct, *set_names_in_file_by_default;
 extern guint   num_sequences;
-
+enum string_pk_planner_strategy;
+extern gchar  *string_pk_planner_strategy_str;
+extern gboolean  string_pk_planner_metadata_enabled;
+extern guint     string_pk_planner_timeout_seconds;
+extern guint     string_pk_planner_max_probes;
+extern guint     string_pk_planner_max_prefixes;
+extern guint64    string_pk_planner_min_rows;
+extern guint64    string_pk_planner_target_rows_per_prefix;
+extern enum string_pk_planner_strategy   string_pk_planner_strategy;
 #endif
+
