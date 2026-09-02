@@ -41,7 +41,6 @@ gchar      **exec_per_thread_cmd = NULL;
 
 GHashTable           *exec_process_id = NULL;
 GMutex               *exec_process_id_mutex = NULL;
-GMutex               *start_process_filename_thread = NULL;
 struct configuration *process_filename_conf = NULL;
 guint                 process_filename_num_threads = 4;
 GThread             **process_filename_threads = NULL;
@@ -55,10 +54,6 @@ void initialize_process_filename(struct configuration *c)
   process_filename_queue = g_async_queue_new();
   exec_process_id = g_hash_table_new(g_str_hash, g_str_equal);
   exec_process_id_mutex = g_mutex_new();
-  start_process_filename_thread = g_mutex_new();
-  g_mutex_lock(start_process_filename_thread);
-  if (stream)
-    g_mutex_unlock(start_process_filename_thread);
   process_filename_queue_ended = FALSE;
   if (stream)
   {
@@ -93,8 +88,6 @@ void process_filename_push(const gchar *filename)
 
 void process_filename_queue_end()
 {
-  if (!stream)
-    g_mutex_unlock(start_process_filename_thread);
   guint n = 0;
   for (n = 0; n < process_filename_num_threads; n++)
   {
