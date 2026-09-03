@@ -153,29 +153,14 @@ FILE *myl_open(char *filename, const char *type)
         m_remove(directory,tmpbasename);
         g_free(tmpbasename);
     */
+    struct fifo *f = g_new0(struct fifo, 1);
+    f->pid = child_proc;
+    f->filename = g_strdup(filename);
+    f->stdout_filename = fifoname;
+    f->uses_decompressor = TRUE;
     g_mutex_lock(fifo_table_mutex);
-    struct fifo *f = g_hash_table_lookup(fifo_hash, file);
-    if (f != NULL)
-    {
-      g_mutex_lock(f->mutex);
-      g_mutex_unlock(fifo_table_mutex);
-      f->pid = child_proc;
-      f->filename = g_strdup(filename);
-      f->stdout_filename = fifoname;
-      f->uses_decompressor = TRUE;
-    }
-    else
-    {
-      f = g_new0(struct fifo, 1);
-      f->mutex = g_mutex_new();
-      g_mutex_lock(f->mutex);
-      f->pid = child_proc;
-      f->filename = g_strdup(filename);
-      f->stdout_filename = fifoname;
-      f->uses_decompressor = TRUE;
-      g_hash_table_insert(fifo_hash, file, f);
-      g_mutex_unlock(fifo_table_mutex);
-    }
+    g_hash_table_insert(fifo_hash, file, f);
+    g_mutex_unlock(fifo_table_mutex);
   }
   else
   {
@@ -198,8 +183,13 @@ FILE *myl_open(char *filename, const char *type)
 void myl_close(const char *filename, FILE *file, gboolean rm)
 {
   trace("myl_close %s", filename);
+  // Remove the entry before closing: fclose() frees the FILE, and a later
+  // fopen() can hand out the same address, so a stale entry would be found
+  // by the next myl_close() on an unrelated (possibly uncompressed) file.
   g_mutex_lock(fifo_table_mutex);
   struct fifo *f = g_hash_table_lookup(fifo_hash, file);
+  if (f != NULL)
+    g_hash_table_remove(fifo_hash, file);
   g_mutex_unlock(fifo_table_mutex);
   fclose(file);
 
@@ -207,9 +197,6 @@ void myl_close(const char *filename, FILE *file, gboolean rm)
   {
     int status = 0;
     waitpid(f->pid, &status, 0);
-    g_mutex_lock(fifo_table_mutex);
-    g_mutex_unlock(f->mutex);
-    g_mutex_unlock(fifo_table_mutex);
 
     // Issue #2075: FIFO is already unlinked in myl_open() after both ends connect.
     // No need to remove here - the FIFO name no longer exists on filesystem.
@@ -219,6 +206,9 @@ void myl_close(const char *filename, FILE *file, gboolean rm)
     {
       release_decompressor_slot();
     }
+    g_free(f->filename);
+    g_free(f->stdout_filename);
+    g_free(f);
   }
   (void)rm;
   (void)filename;
