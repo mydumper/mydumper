@@ -30,7 +30,6 @@ struct fifo
   int      pid;
   gchar   *filename;
   gchar   *stdout_filename;
-  GMutex  *mutex;
   gboolean uses_decompressor;  // Track if this file uses a decompression slot
 };
 
