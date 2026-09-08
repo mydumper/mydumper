@@ -17,11 +17,12 @@
 #define CONFIG "config"
 #include <stdio.h>
 #include "myloader_restore_job.h"
-struct fifo{
-  int pid;
-  gchar *filename;
-  gchar *stdout_filename;
-  GMutex *mutex;
+
+struct fifo
+{
+  int      pid;
+  gchar   *filename;
+  gchar   *stdout_filename;
   gboolean uses_decompressor;  // Track if this file uses a decompression slot
 };
 
