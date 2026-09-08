@@ -437,8 +437,8 @@ do
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
-    - run: sudo apt-get update
     - prepare_apt
+    - run: sudo apt-get update
     - prepare_apt_percona57
 "
     # For Percona and MySQL will be the standar apt preparation
@@ -447,8 +447,8 @@ do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
-    - run: sudo apt-get update
     - prepare_apt
+    - run: sudo apt-get update
     - prepare_apt_${all_vendors[${vendor}_0]}
 "
     done
@@ -459,8 +459,8 @@ echo "
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
-    - run: sudo apt-get update
     - prepare_apt
+    - run: sudo apt-get update
     - prepare_${all_vendors[${vendor}_0]}
     - prepare_apt_${all_vendors[${vendor}_0]}
 "
