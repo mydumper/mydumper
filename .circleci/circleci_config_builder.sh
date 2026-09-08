@@ -281,6 +281,10 @@ cat <<EOF
 
 commands:
 
+  prepare_apt:
+    steps:
+    - run: echo 'Acquire::Check-Valid-Until "false";' | sudo tee /etc/apt/apt.conf.d/99ignore-valid-until
+
   prepare_mariadb1006:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.6"
@@ -434,6 +438,7 @@ do
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 "
     # For Percona and MySQL will be the standar apt preparation
@@ -443,6 +448,7 @@ echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_${all_vendors[${vendor}_0]}
 "
     done
@@ -454,6 +460,7 @@ echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_${all_vendors[${vendor}_0]}
     - prepare_apt_${all_vendors[${vendor}_0]}
 "

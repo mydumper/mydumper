@@ -1916,6 +1916,10 @@ executors:
 
 commands:
 
+  prepare_apt:
+    steps:
+    - run: echo 'Acquire::Check-Valid-Until "false";' | sudo tee /etc/apt/apt.conf.d/99ignore-valid-until
+
   prepare_mariadb1006:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.6"
@@ -2196,54 +2200,63 @@ commands:
   prepare_bionic_tidb:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_bionic_percona57:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_bionic_percona80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona80
 
 
   prepare_bionic_percona84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona84
 
 
   prepare_bionic_mysql80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql80
 
 
   prepare_bionic_mysql84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql84
 
 
   prepare_bionic_debian_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_debian_default
 
 
   prepare_bionic_ubuntu_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_ubuntu_default
 
 
   prepare_bionic_mariadb1011:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
@@ -2251,6 +2264,7 @@ commands:
   prepare_bionic_mariadb1006:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
@@ -2258,54 +2272,63 @@ commands:
   prepare_focal_tidb:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_focal_percona57:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_focal_percona80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona80
 
 
   prepare_focal_percona84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona84
 
 
   prepare_focal_mysql80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql80
 
 
   prepare_focal_mysql84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql84
 
 
   prepare_focal_debian_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_debian_default
 
 
   prepare_focal_ubuntu_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_ubuntu_default
 
 
   prepare_focal_mariadb1011:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
@@ -2313,6 +2336,7 @@ commands:
   prepare_focal_mariadb1006:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
@@ -2320,54 +2344,63 @@ commands:
   prepare_jammy_tidb:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_jammy_percona57:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_jammy_percona80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona80
 
 
   prepare_jammy_percona84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona84
 
 
   prepare_jammy_mysql80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql80
 
 
   prepare_jammy_mysql84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql84
 
 
   prepare_jammy_debian_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_debian_default
 
 
   prepare_jammy_ubuntu_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_ubuntu_default
 
 
   prepare_jammy_mariadb1011:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
@@ -2375,6 +2408,7 @@ commands:
   prepare_jammy_mariadb1006:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
@@ -2382,54 +2416,63 @@ commands:
   prepare_noble_tidb:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_noble_percona57:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_noble_percona80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona80
 
 
   prepare_noble_percona84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona84
 
 
   prepare_noble_mysql80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql80
 
 
   prepare_noble_mysql84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql84
 
 
   prepare_noble_debian_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_debian_default
 
 
   prepare_noble_ubuntu_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_ubuntu_default
 
 
   prepare_noble_mariadb1011:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
@@ -2437,6 +2480,7 @@ commands:
   prepare_noble_mariadb1006:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
@@ -2444,54 +2488,63 @@ commands:
   prepare_resolute_tidb:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_resolute_percona57:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_resolute_percona80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona80
 
 
   prepare_resolute_percona84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona84
 
 
   prepare_resolute_mysql80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql80
 
 
   prepare_resolute_mysql84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql84
 
 
   prepare_resolute_debian_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_debian_default
 
 
   prepare_resolute_ubuntu_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_ubuntu_default
 
 
   prepare_resolute_mariadb1011:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
@@ -2499,6 +2552,7 @@ commands:
   prepare_resolute_mariadb1006:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
@@ -2506,54 +2560,63 @@ commands:
   prepare_bullseye_tidb:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_bullseye_percona57:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_bullseye_percona80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona80
 
 
   prepare_bullseye_percona84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona84
 
 
   prepare_bullseye_mysql80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql80
 
 
   prepare_bullseye_mysql84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql84
 
 
   prepare_bullseye_debian_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_debian_default
 
 
   prepare_bullseye_ubuntu_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_ubuntu_default
 
 
   prepare_bullseye_mariadb1011:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
@@ -2561,6 +2624,7 @@ commands:
   prepare_bullseye_mariadb1006:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
@@ -2568,54 +2632,63 @@ commands:
   prepare_bookworm_tidb:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_bookworm_percona57:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_bookworm_percona80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona80
 
 
   prepare_bookworm_percona84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona84
 
 
   prepare_bookworm_mysql80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql80
 
 
   prepare_bookworm_mysql84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql84
 
 
   prepare_bookworm_debian_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_debian_default
 
 
   prepare_bookworm_ubuntu_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_ubuntu_default
 
 
   prepare_bookworm_mariadb1011:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
@@ -2623,6 +2696,7 @@ commands:
   prepare_bookworm_mariadb1006:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
@@ -2630,54 +2704,63 @@ commands:
   prepare_trixie_tidb:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_trixie_percona57:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona57
 
 
   prepare_trixie_percona80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona80
 
 
   prepare_trixie_percona84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_percona84
 
 
   prepare_trixie_mysql80:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql80
 
 
   prepare_trixie_mysql84:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_mysql84
 
 
   prepare_trixie_debian_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_debian_default
 
 
   prepare_trixie_ubuntu_default:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_apt_ubuntu_default
 
 
   prepare_trixie_mariadb1011:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
@@ -2685,6 +2768,7 @@ commands:
   prepare_trixie_mariadb1006:
     steps:
     - run: sudo apt-get update
+    - prepare_apt
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
