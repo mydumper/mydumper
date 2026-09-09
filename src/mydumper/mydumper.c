@@ -60,6 +60,9 @@ gboolean skip_metadata_sorting = FALSE;
 //  For daemon mode
 gboolean shutdown_triggered = FALSE;
 
+extern gboolean help;
+extern gboolean print_defaults;
+extern gboolean show_config;
 extern gboolean split_string_pk;
 extern gboolean use_single_column;
 extern guint    max_time_per_select;
@@ -91,7 +94,7 @@ void parse_disk_limits()
   set_disk_limits(atoi(strsplit[0]), atoi(strsplit[1]));
 }
 
-void print_help()
+void print_defaults_arguments()
 {
   print_connection_help();
 
@@ -365,8 +368,11 @@ int main(int argc, char *argv[])
     printf("\n");
   }
 
+  if (print_defaults)
+    print_defaults_arguments();
+
   if (help)
-    print_help();
+    exit(EXIT_SUCCESS);
 
   set_verbose(verbose);
 
@@ -411,9 +417,10 @@ int main(int argc, char *argv[])
 
   initialize_pmm();
 
-  create_dir(output_directory);
+  if ( !show_config )
+    create_dir(output_directory);
 
-  if (daemon_mode)
+  if ( daemon_mode && !show_config )
   {
     clear_dumpdir = TRUE;
     initialize_daemon_thread();

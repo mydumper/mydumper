@@ -271,7 +271,6 @@ gboolean arguments_callback(const gchar *option_name, const gchar *value, gpoint
 }
 
 static GOptionEntry entries[] = {
-    {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
     {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_str,
         "Directory to output files to", NULL},
     {"clear", 0, 0, G_OPTION_ARG_NONE, &clear_dumpdir,
@@ -539,6 +538,7 @@ GOptionContext *load_contex_entries()
 
   GOptionGroup *main_group =
       g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
+  g_option_group_add_entries(main_group, first_common_entries);
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
 
