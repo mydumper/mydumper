@@ -1,0 +1,19 @@
+name: Code Formatting Check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Run clang-format check
+      uses: Mixedads/clang-format-action@v2
+      with:
+        style: 'file'
