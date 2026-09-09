@@ -62,7 +62,7 @@ gchar       identifier_quote_character = BACKTICK;
 const char *identifier_quote_character_str = "`";
 
 gboolean schema_sequence_fix = FALSE;
-guint    max_threads_per_table = 4;
+guint    max_threads_per_table = 0; // Initialized in check_num_threads()
 
 enum source_control_command source_control_command = TRADITIONAL;
 
