@@ -294,7 +294,7 @@ void configure_connection(MYSQL *conn)
   m_options(conn, MYSQL_ENABLE_CLEARTEXT_PLUGIN, enable_cleartext_plugin, &enable_cleartext);
 }
 
-void print_connection_details_once()
+void g_message_connection_details_once()
 {
   if (!g_atomic_int_dec_and_test(&print_connection_details))
   {

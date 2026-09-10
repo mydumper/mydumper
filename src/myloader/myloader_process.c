@@ -54,8 +54,11 @@ static GMutex *decompress_mutex = NULL;
 static guint   active_decompressors = 0;
 static guint   max_decompressors = 0;
 
-void initialize_process(struct configuration *c)
+GHashTable    *local_set_session_hash = NULL;
+
+void initialize_process(struct configuration *c, GHashTable *set_session_hash )
 {
+  local_set_session_hash = set_session_hash;
   partial_metadata_queue = g_async_queue_new();
   metadata_process_mutex = g_new0(GRecMutex, 1);
   g_rec_mutex_init(metadata_process_mutex);
@@ -775,8 +778,8 @@ void process_metadata_global_filename(gchar *file, GOptionContext *local_context
   if (g_key_file_has_group(kf, "myloader_session_variables"))
   {
     g_message("myloader_session_variables found on metadata");
-    load_hash_of_all_variables_perproduct_from_key_file(kf, set_session_hash, "myloader_session_variables");
-    refresh_set_session_from_hash(set_session, set_session_hash);
+    load_hash_of_all_variables_perproduct_from_key_file(kf, local_set_session_hash, "myloader_session_variables");
+    refresh_set_session_from_hash(set_session, local_set_session_hash);
   }
 
   for (j = 0; j < length; j++)

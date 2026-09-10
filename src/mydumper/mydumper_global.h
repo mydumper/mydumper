@@ -63,7 +63,7 @@ extern int          long_query_retries;
 extern gboolean     skip_ddl_locks;
 extern gboolean     no_backup_locks;
 extern gchar       *logfile;
-extern gboolean     help;
+//extern gboolean     help;
 extern GKeyFile    *key_file;
 extern char       **tables;
 extern int (*m_open)(char **filename, const char *);

@@ -271,7 +271,6 @@ gboolean arguments_callback(const gchar *option_name, const gchar *value, gpoint
 }
 
 static GOptionEntry entries[] = {
-    {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
     {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_str,
         "Directory to output files to", NULL},
     {"clear", 0, 0, G_OPTION_ARG_NONE, &clear_dumpdir,
@@ -388,7 +387,7 @@ static GOptionEntry chunks_entries[] = {
     {"max-time-per-select", 0, 0, G_OPTION_ARG_INT, &max_time_per_select,
         "Maximum amount of seconds that a select should take. Default: 2", NULL},
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
-        "Maximum number of threads per table to use", NULL},
+        "Maximum number of threads per table to use, defaults to --threads", NULL},
     {"use-single-column", 0, 0, G_OPTION_ARG_NONE, &use_single_column,
         "It will ignore if the table has multiple columns and use only the first column to split the table", NULL},
     {"split-string-pk", 0, 0, G_OPTION_ARG_NONE, &split_string_pk,
@@ -539,6 +538,7 @@ GOptionContext *load_contex_entries()
 
   GOptionGroup *main_group =
       g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
+  g_option_group_add_entries(main_group, first_common_entries);
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
 
