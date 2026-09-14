@@ -6,6 +6,13 @@ FROM debian:bullseye as builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+# bullseye's LTS ended 2026-08-31; deb.debian.org no longer serves it.
+RUN sed -i \
+      -e 's|deb.debian.org/debian-security|archive.debian.org/debian-security|g' \
+      -e 's|deb.debian.org/debian|archive.debian.org/debian|g' \
+      /etc/apt/sources.list && \
+    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+
 # Package 'lsb-release' is required by 'percona-release' package.
 RUN \
   apt-get update && \
