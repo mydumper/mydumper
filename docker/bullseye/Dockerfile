@@ -6,11 +6,12 @@ FROM debian:bullseye as builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-# bullseye's LTS ended 2026-08-31; deb.debian.org no longer serves it.
-RUN sed -i \
-      -e 's|deb.debian.org/debian-security|archive.debian.org/debian-security|g' \
-      -e 's|deb.debian.org/debian|archive.debian.org/debian|g' \
-      /etc/apt/sources.list && \
+# bullseye's LTS ended 2026-08-31. deb.debian.org no longer serves it, and
+# archive.debian.org has no bullseye-security tree (only up through buster
+# as of now) — so point the main suites at the archive and drop the
+# security suite line rather than try to repoint it.
+RUN sed -i 's|deb.debian.org/debian|archive.debian.org/debian|g' /etc/apt/sources.list && \
+    sed -i '/bullseye-security/d' /etc/apt/sources.list && \
     echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
 
 # Package 'lsb-release' is required by 'percona-release' package.
