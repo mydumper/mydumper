@@ -10,13 +10,15 @@ ARG DEBIAN_FRONTEND=noninteractive
 # archive.debian.org has no bullseye-security tree (only up through buster
 # as of now) — so point the main suites at the archive and drop the
 # security suite line rather than try to repoint it.
-RUN sed -i 's|deb.debian.org/debian|archive.debian.org/debian|g' /etc/apt/sources.list && \
-    sed -i '/bullseye-security/d' /etc/apt/sources.list && \
+RUN rm /etc/apt/sources.list && \
+    echo 'deb http://deb.debian.org/debian bullseye main' > /etc/apt/sources.list && \
+    echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20260831T235959Z/ bullseye-security main' >> /etc/apt/sources.list && \
+    echo 'deb http://deb.debian.org/debian bullseye-updates main' >> /etc/apt/sources.list && \
     echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
 
 # Package 'lsb-release' is required by 'percona-release' package.
 RUN \
-  apt-get update && \
+  apt-get update -o Acquire::http::No-Cache=true && \
   apt-get install -y sudo lsb-release cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget gnupg curl && \
   apt-get clean
 
