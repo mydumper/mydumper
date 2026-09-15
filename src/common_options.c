@@ -29,6 +29,8 @@ char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
 
 gboolean  help = FALSE;
+gboolean  print_defaults = FALSE;
+gboolean  show_config = FALSE;
 GString  *set_session = NULL;
 GString  *set_global = NULL;
 GString  *set_global_back = NULL;
@@ -62,7 +64,7 @@ gchar       identifier_quote_character = BACKTICK;
 const char *identifier_quote_character_str = "`";
 
 gboolean schema_sequence_fix = FALSE;
-guint    max_threads_per_table = 4;
+guint    max_threads_per_table = 0; // Initialized in check_num_threads()
 
 enum source_control_command source_control_command = TRADITIONAL;
 
@@ -218,6 +220,15 @@ gboolean common_arguments_callback(const gchar *option_name, const gchar *value,
   }
   return FALSE;
 }
+
+GOptionEntry first_common_entries[] = {
+    {"help", '?', 0, G_OPTION_ARG_NONE, &help, 
+        "Show help options", NULL},
+    {"print-defaults", 0, 0, G_OPTION_ARG_NONE, &print_defaults,
+        "Reads configuration file and print the program argument list and exit", NULL},
+    {"show-config", 0, 0, G_OPTION_ARG_NONE, &show_config,
+        "Reads config files, connects to the database, loads proper section from config and print the program argument list and exit", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 GOptionEntry common_entries[] = {
     {"source-data", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,

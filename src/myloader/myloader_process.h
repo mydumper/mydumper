@@ -33,7 +33,8 @@ struct fifo
   gboolean uses_decompressor;  // Track if this file uses a decompression slot
 };
 
-void initialize_process(struct configuration *c);
+//void initialize_process(struct configuration *c);
+void initialize_process(struct configuration *c, GHashTable *set_session_hash );
 
 void process_tablespace_filename(char *filename);
 void process_database_filename(char *filename);

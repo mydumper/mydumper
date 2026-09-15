@@ -82,13 +82,15 @@ guint sequences_processed = 0;
 GMutex sequences_mutex;
 
 guint max_errors = 0;
-guint max_threads_for_schema_creation = 4;
-guint max_threads_for_index_creation = 4;
+guint max_threads_for_schema_creation = 0;
+guint max_threads_for_index_creation = 0;
 guint max_threads_for_post_creation = 1;
 guint retry_count = 10;
 
 struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+extern gboolean print_defaults;
+extern gboolean show_config;
 extern guint errors;
 extern guint optimize_keys_batchsize;
 
@@ -111,7 +113,6 @@ const char DIRECTORY[] = "import";
 
 //struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 GHashTable *conf_per_table = NULL;
-GHashTable *set_session_hash = NULL;
 GString    *aws_session_commands = NULL;
 
 GHashTable *myloader_initialize_hash_of_session_variables()
@@ -259,7 +260,8 @@ void show_dbt(void *_key, void *dbt, void *total)
   //        //*((guint *)total) + 2+ ((struct db_table*)dbt)->schema_state >= CREATED /*ALL_DONE*/ ? 1 : 0;
 }
 
-void print_help()
+static
+void print_defaults_arguments()
 {
   print_connection_help();
 
@@ -444,19 +446,18 @@ int main(int argc, char *argv[])
   if (overwrite_unsafe)
     overwrite_tables = TRUE;
 
-  // Auto-scale schema/index threads based on CPU count
-  // Only auto-scale if user hasn't explicitly set these values (default is 4)
-  guint cpu_count = g_get_num_processors();
-  if (max_threads_for_schema_creation == 4 && cpu_count > 4)
-  {
-    max_threads_for_schema_creation = cpu_count;
-  }
-  if (max_threads_for_index_creation == 4 && cpu_count > 4)
-  {
-    max_threads_for_index_creation = cpu_count;
-  }
-
   check_num_threads();
+
+  // Auto-scale schema/index threads based on --threads
+  // Only auto-scale if user hasn't explicitly set these values (default is --threads)
+  if ( !max_threads_for_schema_creation || max_threads_for_schema_creation > num_threads )
+  {
+    max_threads_for_schema_creation = num_threads;
+  }
+  if ( !max_threads_for_index_creation || max_threads_for_index_creation > num_threads )
+  {
+    max_threads_for_index_creation = num_threads;
+  }
 
   initialize_set_names();
 
@@ -479,8 +480,11 @@ int main(int argc, char *argv[])
     printf("\n");
   }
 
+  if (print_defaults)
+    print_defaults_arguments();
+
   if (help)
-    print_help();
+    exit(EXIT_SUCCESS);
 
   set_verbose(verbose);
 
@@ -570,7 +574,6 @@ int main(int argc, char *argv[])
   conf_per_table = g_hash_table_new(g_str_hash, g_str_equal);
   g_chdir(directory);
 
-  initialize_process(&conf);
   initialize_table(&conf);
   initialize_database();
   initialize_common();
@@ -581,6 +584,7 @@ int main(int argc, char *argv[])
     m_thread_new("myloader_signal", signal_thread, &conf, "Signal thread could not be created");
   }
   initilize_checksum();
+
   MYSQL *conn;
   conn = mysql_init(NULL);
   m_connect(conn);
@@ -589,13 +593,15 @@ int main(int argc, char *argv[])
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
   server_detect(conn);
-  void print_connection_details_once();
-  set_session_hash = myloader_initialize_hash_of_session_variables();
+  if (key_file)
+    load_options_for_product_from_key_file(key_file, context, MYLOADER, get_major(), get_secondary(), get_revision());
+  g_message_connection_details_once();
+  GHashTable *set_session_hash = myloader_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL )
   {
-    load_hash_of_all_variables_perproduct_from_key_file(key_file,set_global_hash, "myloader_global_variables");
-    load_hash_of_all_variables_perproduct_from_key_file(key_file,set_session_hash, "myloader_session_variables");
+    load_hash_of_all_variables_perproduct_from_key_file(key_file, set_global_hash, "myloader_global_variables");
+    load_hash_of_all_variables_perproduct_from_key_file(key_file, set_session_hash, "myloader_session_variables");
     if (source_control_command == AWS && !enable_binlog)
     {
       g_hash_table_remove(set_session_hash, "SQL_LOG_BIN");
@@ -606,6 +612,14 @@ int main(int argc, char *argv[])
   load_per_table_info_from_key_file(key_file, conf_per_table, NULL );
   if (max_transaction_size == DEFAULT_MAX_TRANSACTION_SIZE)
     detect_group_replication_transaction_size_limit(conn);
+
+  initialize_process(&conf, set_session_hash);
+
+  if (show_config)
+  {
+    mysql_close(conn);
+    print_defaults_arguments();
+  }
 
   // To here.
   conf.database_queue = g_async_queue_new();
@@ -675,7 +689,7 @@ int main(int argc, char *argv[])
   }
 
   set_session_hash_insert(set_session_hash, "AUTOCOMMIT", g_strdup("1"));
-  remove_ignore_set_session_from_hash();
+  remove_ignore_set_session_from_hash(set_session_hash);
   refresh_set_session_from_hash(set_session, set_session_hash);
   refresh_set_global_from_hash(set_global, set_global_back, set_global_hash);
   execute_gstring(conn, set_session);

@@ -1127,6 +1127,9 @@ void check_num_threads()
     g_warning("Invalid number of threads %d, setting to %d", num_threads, MIN_THREAD_COUNT);
     num_threads = MIN_THREAD_COUNT;
   }
+
+  if (!max_threads_per_table)
+    max_threads_per_table = num_threads;
 }
 
 static void emit_runtime_log_event(GLogLevelFlags level, const gchar *event, const gchar *status, const gchar *source_api, const gchar *message)

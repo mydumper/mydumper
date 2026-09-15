@@ -76,9 +76,10 @@ gchar      *initial_source_pos = NULL;
 gchar      *initial_source_gtid = NULL;
 
 // Program options used only on this file
-extern guint  ftwrl_max_wait_time;
-extern guint  ftwrl_timeout_retries;
-extern char **ignore_engines;
+extern gboolean show_config;
+extern guint    ftwrl_max_wait_time;
+extern guint    ftwrl_timeout_retries;
+extern char   **ignore_engines;
 
 // static variables
 static GMutex   **pause_mutex_per_thread = NULL;
@@ -543,7 +544,6 @@ static MYSQL *create_main_connection(GOptionContext *context)
 {
   MYSQL *conn;
   conn = mysql_init(NULL);
-
   m_connect(conn);
 
   set_session = g_string_new(NULL);
@@ -551,7 +551,8 @@ static MYSQL *create_main_connection(GOptionContext *context)
   set_global_back = g_string_new(NULL);
   server_detect(conn);
   if (key_file)
-    load_options_for_product_from_key_file(key_file, context, "mydumper", get_major(), get_secondary(), get_revision());
+    load_options_for_product_from_key_file(key_file, context, MYDUMPER, get_major(), get_secondary(), get_revision());
+  g_message_connection_details_once();
   GHashTable *set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable *set_global_hash = g_hash_table_new(g_str_hash, g_str_equal);
   if (key_file != NULL)
@@ -575,6 +576,9 @@ static MYSQL *create_main_connection(GOptionContext *context)
   detect_quote_character(conn);
   initialize_headers();
   initialize_write();
+
+  if (show_config)
+    print_defaults_arguments();
 
   switch (get_product())
   {
@@ -1207,13 +1211,15 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   FILE            *mdfile = NULL;
 
   // Initializing process
-  if (clear_dumpdir)
-    clear_dump_directory(dump_directory);
-  else if (!(dirty_dumpdir || merge_dumpdir) && !is_empty_dir(dump_directory))
+  if (! show_config)
   {
-    g_error("Directory is not empty (use --clear, --dirty or --merge): %s\n", dump_directory);
+    if (clear_dumpdir)
+      clear_dump_directory(dump_directory);
+    else if (!(dirty_dumpdir || merge_dumpdir) && !is_empty_dir(dump_directory))
+    {
+      g_error("Directory is not empty (use --clear, --dirty or --merge): %s\n", dump_directory);
+    }
   }
-
   check_num_threads();
   if (machine_log_json_enabled())
   {

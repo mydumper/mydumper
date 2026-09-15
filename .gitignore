@@ -22,3 +22,7 @@ export-*
 /myloader
 sakila-db*
 data/
+libglibguard.so
+test_glibguard
+test_stream_carryover
+test_string_pk_planner_utils

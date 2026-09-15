@@ -106,7 +106,6 @@ extern gboolean enable_binlog;
 extern GString *aws_session_commands;
 void execute_aws_session_setup(MYSQL *conn);
 extern guint refresh_table_list_interval;
-extern GHashTable *set_session_hash;
 
 extern GKeyFile *key_file;
 

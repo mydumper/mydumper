@@ -113,7 +113,7 @@ gboolean is_in_ignore_set_list(gchar *haystack)
   return is_in_list(haystack, ignore_set_list);
 }
 
-void remove_ignore_set_session_from_hash()
+void remove_ignore_set_session_from_hash(GHashTable *set_session_hash)
 {
   GList *l = ignore_set_list;
   while (l)

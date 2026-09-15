@@ -202,8 +202,6 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
 }
 
 static GOptionEntry entries[] = {
-    {"help", '?', 0, G_OPTION_ARG_NONE, &help,
-        "Show help options", NULL},
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
         "Directory of the dump to import", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
@@ -344,12 +342,13 @@ GOptionContext *load_contex_entries()
   GOptionContext *context = g_option_context_new("multi-threaded MySQL loader");
   GOptionGroup   *main_group =
       g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
+
+  g_option_group_add_entries(main_group, first_common_entries);
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
-  //  load_common_entries(main_group);
-  //  GOptionGroup *
+
   load_connection_entries(context);
-  //  g_option_group_add_entries(connection_group, common_connection_entries);
+
   GOptionGroup *filter_group = load_regex_entries(context);
   g_option_group_add_entries(filter_group, filter_entries);
   g_option_group_add_entries(filter_group, common_filter_entries);
