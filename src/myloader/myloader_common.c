@@ -561,6 +561,10 @@ static gboolean get_database_table_from_filename_for_filter(const gchar *filenam
   {
     get_database_table_from_file(filename, "-schema", database, table);
   }
+  else if (m_filename_has_suffix(filename, "-schema-create.sql"))
+  {
+    get_database_table_from_file(filename, "-schema-create", database, table);
+  }
   else if (m_filename_has_suffix(filename, ".sql") || m_filename_has_suffix(filename, ".dat"))
   {
     gchar **split = g_strsplit(filename, ".", 4);
