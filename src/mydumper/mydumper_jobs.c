@@ -777,8 +777,8 @@ static void write_routines_definition_into_file(MYSQL *conn, struct database *da
         {
           remove_definer(statement);
         }
-        splited_st = g_strsplit(statement->str, ";\n", 0);
-        g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
+        splited_st = g_strsplit(statement->str, "\n", 0);
+        g_string_printf(statement, "%s", g_strjoinv(" \n", splited_st));
         g_string_append(statement, ";\n");
         restore_charset(statement);
         if (!write_data(outfile, statement))
