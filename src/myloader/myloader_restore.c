@@ -199,7 +199,7 @@ struct io_restore_result *new_io_restore_result()
 }
 
 int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database, enum restore_job_statement_type restore_job_statement_type);
-int  restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database, enum restore_job_statement_type restore_job_statement_type);
+int restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database, enum restore_job_statement_type restore_job_statement_type);
 
 void initialize_connection_pool()
 {
@@ -826,7 +826,7 @@ guint process_result_statement(GAsyncQueue *get_insert_result_queue, struct stat
 
 int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database, enum restore_job_statement_type restore_job_statement_type)
 {
-  (void) restore_job_statement_type;
+  (void)restore_job_statement_type;
   FILE    *infile = NULL;
   gboolean eof = FALSE;
   GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
@@ -951,18 +951,18 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
   struct statement *ir = g_async_queue_pop(free_results_queue);
   gboolean          results_added = FALSE;
   GString          *header = g_string_sized_new(256);
-  gboolean rep=TRUE;
+  gboolean          rep = TRUE;
   while (eof == FALSE)
   {
     if (read_data(infile, data, &eof, &line))
     {
-      rep=TRUE;
-      if ( (restore_job_statement_type == POST) && (data->str[data->len-1] == '\n') && (data->str[data->len-2] == ' '))
+      rep = TRUE;
+      if ((restore_job_statement_type == POST) && (data->str[data->len - 1] == '\n') && (data->str[data->len - 2] == ' '))
       {
-        data->str[data->len-2] = '\n';
-        data->str[data->len-1] = '\0';
-        data->len=data->len-1;
-        rep=FALSE;
+        data->str[data->len - 2] = '\n';
+        data->str[data->len - 1] = '\0';
+        data->len = data->len - 1;
+        rep = FALSE;
       }
 
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n") && rep)
