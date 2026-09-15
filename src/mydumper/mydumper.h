@@ -37,5 +37,4 @@
 
 void print_defaults_arguments();
 
-
 #endif

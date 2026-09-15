@@ -23,12 +23,13 @@
 
 #include <glib.h>
 #include <mysql.h>
+
 #include "mydumper_string_planner_utils.h"
 
 struct db_table;
 
 gboolean string_pk_planner_enabled_for_table(guint64 rows);
-void string_pk_planner_reset_for_table(struct db_table *dbt, guint64 rows);
+void     string_pk_planner_reset_for_table(struct db_table *dbt, guint64 rows);
 gboolean string_pk_planner_budget_exhausted(struct db_table *dbt);
 gboolean string_pk_planner_note_probe(struct db_table *dbt);
 gboolean string_pk_plan_prefix_chunks(MYSQL *conn, struct db_table *dbt, guint64 rows);

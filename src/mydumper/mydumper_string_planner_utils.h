@@ -23,16 +23,17 @@
 
 #include <glib.h>
 
-enum string_pk_planner_strategy {
+enum string_pk_planner_strategy
+{
   STRING_PK_PLANNER_AUTO = 0,
   STRING_PK_PLANNER_METADATA,
   STRING_PK_PLANNER_RECURSIVE
 };
 
-gboolean string_pk_planner_strategy_from_string(const gchar *value, enum string_pk_planner_strategy *strategy);
+gboolean     string_pk_planner_strategy_from_string(const gchar *value, enum string_pk_planner_strategy *strategy);
 const gchar *string_pk_planner_strategy_name(enum string_pk_planner_strategy strategy);
-gboolean string_pk_planner_should_use_metadata_mode(enum string_pk_planner_strategy strategy, gboolean metadata_enabled, gboolean split_string_pk, guint64 rows, guint64 min_rows);
-guint64 string_pk_planner_compute_root_step(guint64 rows, guint prefix_count, guint64 min_chunk_step_size);
+gboolean     string_pk_planner_should_use_metadata_mode(enum string_pk_planner_strategy strategy, gboolean metadata_enabled, gboolean split_string_pk, guint64 rows, guint64 min_rows);
+guint64      string_pk_planner_compute_root_step(guint64 rows, guint prefix_count, guint64 min_chunk_step_size);
 
 /*
  * Resolves the effective per-prefix row target used by the metadata-assisted

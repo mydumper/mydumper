@@ -18,8 +18,8 @@
 #ifndef _src_myloader_myloader_process_h
 #define _src_myloader_myloader_process_h
 
-#include <stdio.h>
 #include <glib.h>
+#include <stdio.h>
 
 #include "myloader/myloader_restore_job.h"
 
@@ -33,8 +33,8 @@ struct fifo
   gboolean uses_decompressor;  // Track if this file uses a decompression slot
 };
 
-//void initialize_process(struct configuration *c);
-void initialize_process(struct configuration *c, GHashTable *set_session_hash );
+// void initialize_process(struct configuration *c);
+void initialize_process(struct configuration *c, GHashTable *set_session_hash);
 
 void process_tablespace_filename(char *filename);
 void process_database_filename(char *filename);

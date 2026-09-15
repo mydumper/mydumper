@@ -36,8 +36,8 @@
 #include "myloader/myloader_process_filename.h"
 #include "logging.h"
 
-extern guint statement_buffer_shrink_threshold_mb;
-guint statement_buffer_shrink_threshold = 0;
+extern guint    statement_buffer_shrink_threshold_mb;
+guint           statement_buffer_shrink_threshold = 0;
 extern gboolean dry_run;
 
 struct statement *new_statement();
@@ -766,7 +766,8 @@ struct statement *initialize_statement(struct statement *ir)
   ir->result = 0;
   ir->error_number = 0;
   ir->error = NULL;
-  if (ir->buffer->allocated_len > statement_buffer_shrink_threshold){
+  if (ir->buffer->allocated_len > statement_buffer_shrink_threshold)
+  {
     g_string_free(ir->buffer, TRUE);
     ir->buffer = g_string_sized_new(STATEMENT_BUFFER_INITIAL_SIZE);
   }
@@ -998,7 +999,7 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
              blocked waiting for those same decompressor slots. */
           if (stream)
             load_data_mutex_locate(load_data_filename);
-          gchar **command=NULL;
+          gchar **command = NULL;
           //          int load_data_child_pid = 0;  // Issue #2075: Track subprocess for FIFO unlink
           gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
           if (is_fifo)

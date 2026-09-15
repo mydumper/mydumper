@@ -72,13 +72,13 @@ void aws_session_command_append(const gchar *command)
   append_normalized_sql(aws_session_commands, command);
 }
 
-gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error)
+gboolean arguments_callback(const gchar *option_name, const gchar *value, gpointer data, GError **error)
 {
-  *error=NULL;
+  *error = NULL;
   if (!g_strcmp0(option_name, "--optimize-keys"))
   {
-    optimize_keys_str=g_strdup(value);
-    if (value==NULL || !g_strcmp0(value,"1"))
+    optimize_keys_str = g_strdup(value);
+    if (value == NULL || !g_strcmp0(value, "1"))
     {
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
@@ -193,7 +193,9 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     m_warning("Option --enable-binlog / -e is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead");
     enable_binlog = TRUE;
     return TRUE;
-  } else if (!g_strcmp0(option_name, "--aws-session-command")) {
+  }
+  else if (!g_strcmp0(option_name, "--aws-session-command"))
+  {
     aws_session_command_append(value);
     return TRUE;
   }
@@ -250,15 +252,17 @@ static GOptionEntry threads_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry execution_entries[] = {
-    {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+    {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
     {"aws-session-command", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "Raw SQL executed on every myloader connection after the normal session setup. "
-        "Useful for Aurora-specific calls such as CALL mysql.rds_disable_session_binlog().", NULL},
+        "Useful for Aurora-specific calls such as CALL mysql.rds_disable_session_binlog().",
+        NULL},
     {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "Creates the table without the indexes unless SKIP is selected. "
         "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
-        "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
+        "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE",
+        NULL},
     {"optimize-keys-batchsize", 0, 0, G_OPTION_ARG_INT, &optimize_keys_batchsize,
         "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimited)", NULL},
     {"no-schemas", 0, 0, G_OPTION_ARG_NONE, &no_schemas,

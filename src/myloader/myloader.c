@@ -91,8 +91,8 @@ struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 extern gboolean print_defaults;
 extern gboolean show_config;
-extern guint errors;
-extern guint optimize_keys_batchsize;
+extern guint    errors;
+extern guint    optimize_keys_batchsize;
 
 extern guint64 max_transaction_size;
 extern guint64 max_statement_size;
@@ -111,7 +111,7 @@ extern gchar *tables_includelist_file;
 
 const char DIRECTORY[] = "import";
 
-//struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+// struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 GHashTable *conf_per_table = NULL;
 GString    *aws_session_commands = NULL;
 
@@ -119,12 +119,12 @@ GHashTable *myloader_initialize_hash_of_session_variables()
 {
   GHashTable *_set_session_hash = initialize_hash_of_session_variables();
   if (commit_count > 1)
-    set_session_hash_insert(_set_session_hash,"AUTOCOMMIT",g_strdup("0"));
+    set_session_hash_insert(_set_session_hash, "AUTOCOMMIT", g_strdup("0"));
   if (!enable_binlog)
   {
     if (source_control_command != AWS)
     {
-      set_session_hash_insert(_set_session_hash,"SQL_LOG_BIN",g_strdup("0"));
+      set_session_hash_insert(_set_session_hash, "SQL_LOG_BIN", g_strdup("0"));
     }
   }
   return _set_session_hash;
@@ -135,7 +135,7 @@ void execute_aws_session_setup(MYSQL *conn)
   if (source_control_command == AWS && !enable_binlog)
   {
     if (!m_query_critical(conn, "CALL mysql.rds_disable_session_binlog()",
-                          "Failed to disable session binlog", NULL))
+            "Failed to disable session binlog", NULL))
     {
       discard_mysql_output(conn);
     }
@@ -151,11 +151,10 @@ static void normalize_aws_binlog_mode(void)
   }
 }
 
-static
-void detect_group_replication_transaction_size_limit(MYSQL * conn)
+static void detect_group_replication_transaction_size_limit(MYSQL *conn)
 {
   guint64       _max_transaction_size = 0;
-  struct M_ROW *mr = m_store_result_row(conn, "SHOW GLOBAL VARIABLES LIKE 'group_replication_transaction_size_limit'",m_message, m_message, "Using default transaction limit", NULL);
+  struct M_ROW *mr = m_store_result_row(conn, "SHOW GLOBAL VARIABLES LIKE 'group_replication_transaction_size_limit'", m_message, m_message, "Using default transaction limit", NULL);
   if (mr->row)
     _max_transaction_size = strtoll(mr->row[0], NULL, 10) / 1024 / 1024;
   max_transaction_size = _max_transaction_size > max_transaction_size ? _max_transaction_size : max_transaction_size;
@@ -260,8 +259,7 @@ void show_dbt(void *_key, void *dbt, void *total)
   //        //*((guint *)total) + 2+ ((struct db_table*)dbt)->schema_state >= CREATED /*ALL_DONE*/ ? 1 : 0;
 }
 
-static
-void print_defaults_arguments()
+static void print_defaults_arguments()
 {
   print_connection_help();
 
@@ -450,11 +448,11 @@ int main(int argc, char *argv[])
 
   // Auto-scale schema/index threads based on --threads
   // Only auto-scale if user hasn't explicitly set these values (default is --threads)
-  if ( !max_threads_for_schema_creation || max_threads_for_schema_creation > num_threads )
+  if (!max_threads_for_schema_creation || max_threads_for_schema_creation > num_threads)
   {
     max_threads_for_schema_creation = num_threads;
   }
-  if ( !max_threads_for_index_creation || max_threads_for_index_creation > num_threads )
+  if (!max_threads_for_index_creation || max_threads_for_index_creation > num_threads)
   {
     max_threads_for_index_creation = num_threads;
   }
@@ -597,8 +595,8 @@ int main(int argc, char *argv[])
     load_options_for_product_from_key_file(key_file, context, MYLOADER, get_major(), get_secondary(), get_revision());
   g_message_connection_details_once();
   GHashTable *set_session_hash = myloader_initialize_hash_of_session_variables();
-  GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
-  if (key_file != NULL )
+  GHashTable *set_global_hash = g_hash_table_new(g_str_hash, g_str_equal);
+  if (key_file != NULL)
   {
     load_hash_of_all_variables_perproduct_from_key_file(key_file, set_global_hash, "myloader_global_variables");
     load_hash_of_all_variables_perproduct_from_key_file(key_file, set_session_hash, "myloader_session_variables");
@@ -609,7 +607,7 @@ int main(int argc, char *argv[])
   }
   //	initialize_conf_per_table(&conf_per_table);
   //  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-  load_per_table_info_from_key_file(key_file, conf_per_table, NULL );
+  load_per_table_info_from_key_file(key_file, conf_per_table, NULL);
   if (max_transaction_size == DEFAULT_MAX_TRANSACTION_SIZE)
     detect_group_replication_transaction_size_limit(conn);
 

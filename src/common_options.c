@@ -64,7 +64,7 @@ gchar       identifier_quote_character = BACKTICK;
 const char *identifier_quote_character_str = "`";
 
 gboolean schema_sequence_fix = FALSE;
-guint    max_threads_per_table = 0; // Initialized in check_num_threads()
+guint    max_threads_per_table = 0;  // Initialized in check_num_threads()
 
 enum source_control_command source_control_command = TRADITIONAL;
 
@@ -222,7 +222,7 @@ gboolean common_arguments_callback(const gchar *option_name, const gchar *value,
 }
 
 GOptionEntry first_common_entries[] = {
-    {"help", '?', 0, G_OPTION_ARG_NONE, &help, 
+    {"help", '?', 0, G_OPTION_ARG_NONE, &help,
         "Show help options", NULL},
     {"print-defaults", 0, 0, G_OPTION_ARG_NONE, &print_defaults,
         "Reads configuration file and print the program argument list and exit", NULL},

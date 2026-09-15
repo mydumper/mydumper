@@ -18,12 +18,12 @@
 #ifndef _src_myloader_myloader_common_h
 #define _src_myloader_myloader_common_h
 
-#include <stdio.h>
 #include <glib.h>
 #include <mysql.h>
+#include <stdio.h>
 
-#include "myloader/myloader_deps.h"
 #include "myloader/myloader.h"
+#include "myloader/myloader_deps.h"
 
 struct db_table;
 struct database;

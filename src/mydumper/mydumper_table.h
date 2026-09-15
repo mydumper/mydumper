@@ -18,15 +18,16 @@
 #ifndef _src_mydumper_mydumper_table_h
 #define _src_mydumper_mydumper_table_h
 
-#include <stdio.h>
 #include <glib.h>
 #include <mysql.h>
+#include <stdio.h>
 
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 
-#include "checksum.h"
 #include "common.h"
+
+#include "checksum.h"
 
 struct database;
 struct configuration;
@@ -78,27 +79,25 @@ struct db_table
   gboolean                    multicolumn;
   gint                       *chunks_completed;
   struct table_level_checksum checksum;
-  guint chunk_filesize;
-  gboolean split_integer_tables;
-  guint64 min_chunk_step_size;
-  guint64 starting_chunk_step_size;
-  guint64 max_chunk_step_size;
-  gboolean is_fixed_length;
-  enum db_table_states status;
-  guint max_threads_per_table;
-  guint current_threads_running;
-  guint64 string_planner_started_us;
-  gint64 string_planner_deadline_us;
-  guint string_planner_probe_count;
-  gboolean string_planner_budget_exhausted;
-  guint64 string_planner_estimated_rows;
+  guint                       chunk_filesize;
+  gboolean                    split_integer_tables;
+  guint64                     min_chunk_step_size;
+  guint64                     starting_chunk_step_size;
+  guint64                     max_chunk_step_size;
+  gboolean                    is_fixed_length;
+  enum db_table_states        status;
+  guint                       max_threads_per_table;
+  guint                       current_threads_running;
+  guint64                     string_planner_started_us;
+  gint64                      string_planner_deadline_us;
+  guint                       string_planner_probe_count;
+  gboolean                    string_planner_budget_exhausted;
+  guint64                     string_planner_estimated_rows;
 };
 
 #endif
-void initialize_table();
-void finalize_table();
-void prefetch_table_metadata(MYSQL *conn);
-void free_db_table(struct db_table * dbt);
-gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
-                      struct database *database, char *table, char *table_collation,
-                      gboolean is_sequence, gboolean is_view);
+void     initialize_table();
+void     finalize_table();
+void     prefetch_table_metadata(MYSQL *conn);
+void     free_db_table(struct db_table *dbt);
+gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf, struct database *database, char *table, char *table_collation, gboolean is_sequence, gboolean is_view);

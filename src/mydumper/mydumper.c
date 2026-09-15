@@ -39,7 +39,6 @@
 #include "mydumper/mydumper_global.h"
 #include "mydumper/mydumper_start_dump.h"
 #include "mydumper/mydumper_string_planner.h"
-
 #include "logging.h"
 
 const char DIRECTORY[] = "export";
@@ -133,9 +132,12 @@ void print_defaults_arguments()
   print_bool("use-single-column", use_single_column);
   print_bool("split-string-pk", split_string_pk);
   gchar *string_pk_planner_default = NULL;
-  if (string_pk_planner_strategy_str) {
+  if (string_pk_planner_strategy_str)
+  {
     print_string("string-pk-planner", string_pk_planner_strategy_str);
-  } else {
+  }
+  else
+  {
     string_pk_planner_default = g_strdup(string_pk_planner_strategy_name(string_pk_planner_strategy));
     print_string("string-pk-planner", string_pk_planner_default);
     g_free(string_pk_planner_default);
@@ -143,10 +145,10 @@ void print_defaults_arguments()
   print_int("string-pk-planner-timeout", string_pk_planner_timeout_seconds, FALSE);
   print_int("string-pk-planner-max-probes", string_pk_planner_max_probes, FALSE);
   print_int("string-pk-planner-max-prefixes", string_pk_planner_max_prefixes, FALSE);
-  gchar *string_pk_planner_min_rows_str = g_strdup_printf("%"G_GUINT64_FORMAT, string_pk_planner_min_rows);
+  gchar *string_pk_planner_min_rows_str = g_strdup_printf("%" G_GUINT64_FORMAT, string_pk_planner_min_rows);
   print_string("string-pk-planner-min-rows", string_pk_planner_min_rows_str);
   g_free(string_pk_planner_min_rows_str);
-  gchar *string_pk_planner_target_rows_per_prefix_str = g_strdup_printf("%"G_GUINT64_FORMAT, string_pk_planner_target_rows_per_prefix);
+  gchar *string_pk_planner_target_rows_per_prefix_str = g_strdup_printf("%" G_GUINT64_FORMAT, string_pk_planner_target_rows_per_prefix);
   print_string("string-pk-planner-target-rows-per-prefix", string_pk_planner_target_rows_per_prefix_str);
   g_free(string_pk_planner_target_rows_per_prefix_str);
   print_string("rows", g_strdup_printf("%" G_GUINT64_FORMAT ":%" G_GUINT64_FORMAT ":%" G_GUINT64_FORMAT, min_chunk_step_size, starting_chunk_step_size, max_chunk_step_size));
@@ -417,10 +419,10 @@ int main(int argc, char *argv[])
 
   initialize_pmm();
 
-  if ( !show_config )
+  if (!show_config)
     create_dir(output_directory);
 
-  if ( daemon_mode && !show_config )
+  if (daemon_mode && !show_config)
   {
     clear_dumpdir = TRUE;
     initialize_daemon_thread();

@@ -22,26 +22,26 @@
 #ifndef _src_mydumper_mydumper_common_h
 #define _src_mydumper_mydumper_common_h
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <glib.h>
 #include <mysql.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-void     initialize_common();
-void     initialize_headers();
-gchar   *get_ref_table(gchar *k);
-char    *determine_filename(char *table);
-char    *escape_string(MYSQL *conn, char *str);
-gchar   *build_schema_table_filename(char *database, char *table, const char *suffix);
-gchar   *build_schema_filename(const char *database, const char *suffix);
-gchar   *build_meta_filename(char *database, char *table, const char *suffix);
-void     set_charset(GString *statement, char *character_set, char *collation_connection);
-void     restore_charset(GString *statement);
-void     clear_dump_directory(gchar *directory);
-gboolean is_empty_dir(gchar *directory);
-void     set_transaction_isolation_level_repeatable_read(MYSQL *conn);
-gchar   *build_tablespace_filename();
-gchar   *build_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, const gchar *second_extension);
+void               initialize_common();
+void               initialize_headers();
+gchar             *get_ref_table(gchar *k);
+char              *determine_filename(char *table);
+char              *escape_string(MYSQL *conn, char *str);
+gchar             *build_schema_table_filename(char *database, char *table, const char *suffix);
+gchar             *build_schema_filename(const char *database, const char *suffix);
+gchar             *build_meta_filename(char *database, char *table, const char *suffix);
+void               set_charset(GString *statement, char *character_set, char *collation_connection);
+void               restore_charset(GString *statement);
+void               clear_dump_directory(gchar *directory);
+gboolean           is_empty_dir(gchar *directory);
+void               set_transaction_isolation_level_repeatable_read(MYSQL *conn);
+gchar             *build_tablespace_filename();
+gchar             *build_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, const gchar *second_extension);
 gchar             *build_sql_filename(char *database, char *table, guint64 part, guint sub_part);
 gchar             *build_rows_filename(char *database, char *table, guint64 part, guint sub_part);
 void               determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol, guint *rowscol);

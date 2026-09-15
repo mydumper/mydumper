@@ -18,9 +18,9 @@
 #ifndef _src_mydumper_mydumper_database_h
 #define _src_mydumper_mydumper_database_h
 
-#include <stdio.h>
 #include <glib.h>
 #include <mysql.h>
+#include <stdio.h>
 
 #include "checksum.h"
 

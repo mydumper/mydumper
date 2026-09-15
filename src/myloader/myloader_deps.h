@@ -24,12 +24,12 @@
 #include "common_options.h"
 #include "config.h"
 #include "connection.h"
+#include "myloader/myloader_table.h"
 #include "pmm_thread.h"
 #include "regex.h"
 #include "server_detect.h"
 #include "set_verbose.h"
 #include "tables_skiplist.h"
 #include "logging.h"
-#include "myloader/myloader_table.h"
 
 #endif

@@ -24,12 +24,12 @@
 #include <math.h>
 
 #include "mydumper/mydumper_write.h"
-#include "mydumper/mydumper_escape.h"
 
 #include "mydumper/mydumper.h"
 #include "mydumper/mydumper_arguments.h"
 #include "mydumper/mydumper_common.h"
 #include "mydumper/mydumper_database.h"
+#include "mydumper/mydumper_escape.h"
 #include "mydumper/mydumper_file_handler.h"
 #include "mydumper/mydumper_global.h"
 #include "mydumper/mydumper_jobs.h"
@@ -425,7 +425,8 @@ gboolean is_hex_blob(MYSQL_FIELD field)
   return hex_blob && (field.type == MYSQL_TYPE_BLOB || (field.charsetnr == 63 && (field.type == MYSQL_TYPE_VAR_STRING || field.type == MYSQL_TYPE_STRING)));
 }
 
-static gboolean is_mariadb_uuid_field(const MYSQL_FIELD *field){
+static gboolean is_mariadb_uuid_field(const MYSQL_FIELD *field)
+{
 #ifdef MARIADB_FIELD_ATTR_LAST
   MARIADB_CONST_STRING type_name = {0};
 
@@ -771,8 +772,8 @@ static void write_load_data_column_into_string(MYSQL *conn, gchar *column, MYSQL
     // escaping can at worst quadruple the input, so reserve for that.
     gsize used = buffers.target_column->len;
     g_string_set_size(buffers.target_column, used + length * 4 + 2);
-    gchar *tail = buffers.target_column->str + used;
-    gsize final_len;
+    gchar      *tail = buffers.target_column->str + used;
+    gsize       final_len;
     const char *conn_charset = mysql_character_set_name(conn);
     if (charset_is_single_byte(conn_charset) || (charset_is_utf8(conn_charset) && field.charsetnr != 63))
     {
@@ -831,7 +832,7 @@ static void write_sql_column_into_string(MYSQL *conn, gchar *column, MYSQL_FIELD
     // intermediate escaped buffer and one full copy of every byte
     gsize used = buffers.target_column->len;
     g_string_set_size(buffers.target_column, used + length * 2 + 1);
-    gsize escaped_len;
+    gsize       escaped_len;
     const char *conn_charset = mysql_character_set_name(conn);
     if (charset_is_single_byte(conn_charset) || (charset_is_utf8(conn_charset) && field.charsetnr != 63))
       escaped_len = fused_sql_escape(column, length, buffers.target_column->str + used);

@@ -219,7 +219,7 @@ static void get_primary_key(MYSQL *conn, struct db_table *dbt, struct configurat
   {
     while ((row = mysql_fetch_row(indexes)))
     {
-      if (!strcmp(row[2], "PRIMARY") )
+      if (!strcmp(row[2], "PRIMARY"))
       {
         guint seq_in_index = row[3] ? (guint)strtoul(row[3], NULL, 10) : 0;
         if (seq_in_index == 0)

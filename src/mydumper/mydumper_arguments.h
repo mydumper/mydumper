@@ -60,4 +60,4 @@ static inline const char *outputformat2str(enum output_format of)
 
 GOptionContext *load_contex_entries();
 
-#endif 
+#endif

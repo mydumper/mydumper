@@ -18,9 +18,9 @@
 #ifndef _src_checksum_h
 #define _src_checksum_h
 
-#include <stdio.h>
 #include <glib.h>
 #include <mysql.h>
+#include <stdio.h>
 
 enum checksum_modes
 {

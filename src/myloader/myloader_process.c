@@ -54,9 +54,9 @@ static GMutex *decompress_mutex = NULL;
 static guint   active_decompressors = 0;
 static guint   max_decompressors = 0;
 
-GHashTable    *local_set_session_hash = NULL;
+GHashTable *local_set_session_hash = NULL;
 
-void initialize_process(struct configuration *c, GHashTable *set_session_hash )
+void initialize_process(struct configuration *c, GHashTable *set_session_hash)
 {
   local_set_session_hash = set_session_hash;
   partial_metadata_queue = g_async_queue_new();

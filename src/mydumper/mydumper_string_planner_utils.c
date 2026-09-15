@@ -21,8 +21,10 @@
 
 #include "mydumper_string_planner_utils.h"
 
-const gchar *string_pk_planner_strategy_name(enum string_pk_planner_strategy strategy){
-  switch (strategy) {
+const gchar *string_pk_planner_strategy_name(enum string_pk_planner_strategy strategy)
+{
+  switch (strategy)
+  {
     case STRING_PK_PLANNER_METADATA:
       return "metadata";
     case STRING_PK_PLANNER_RECURSIVE:
@@ -33,22 +35,27 @@ const gchar *string_pk_planner_strategy_name(enum string_pk_planner_strategy str
   }
 }
 
-gboolean string_pk_planner_strategy_from_string(const gchar *value, enum string_pk_planner_strategy *strategy){
-  if (strategy == NULL) {
+gboolean string_pk_planner_strategy_from_string(const gchar *value, enum string_pk_planner_strategy *strategy)
+{
+  if (strategy == NULL)
+  {
     return FALSE;
   }
 
-  if (value == NULL || !g_ascii_strcasecmp(value, "auto")) {
+  if (value == NULL || !g_ascii_strcasecmp(value, "auto"))
+  {
     *strategy = STRING_PK_PLANNER_AUTO;
     return TRUE;
   }
 
-  if (!g_ascii_strcasecmp(value, "metadata")) {
+  if (!g_ascii_strcasecmp(value, "metadata"))
+  {
     *strategy = STRING_PK_PLANNER_METADATA;
     return TRUE;
   }
 
-  if (!g_ascii_strcasecmp(value, "recursive")) {
+  if (!g_ascii_strcasecmp(value, "recursive"))
+  {
     *strategy = STRING_PK_PLANNER_RECURSIVE;
     return TRUE;
   }
@@ -56,12 +63,15 @@ gboolean string_pk_planner_strategy_from_string(const gchar *value, enum string_
   return FALSE;
 }
 
-gboolean string_pk_planner_should_use_metadata_mode(enum string_pk_planner_strategy strategy, gboolean metadata_enabled, gboolean split_pk, guint64 rows, guint64 min_rows){
-  if (!split_pk || !metadata_enabled) {
+gboolean string_pk_planner_should_use_metadata_mode(enum string_pk_planner_strategy strategy, gboolean metadata_enabled, gboolean split_pk, guint64 rows, guint64 min_rows)
+{
+  if (!split_pk || !metadata_enabled)
+  {
     return FALSE;
   }
 
-  switch (strategy) {
+  switch (strategy)
+  {
     case STRING_PK_PLANNER_METADATA:
       return TRUE;
     case STRING_PK_PLANNER_RECURSIVE:
@@ -72,30 +82,35 @@ gboolean string_pk_planner_should_use_metadata_mode(enum string_pk_planner_strat
   }
 }
 
-guint64 string_pk_planner_compute_root_step(guint64 rows, guint prefix_count, guint64 min_chunk_step_size_value){
+guint64 string_pk_planner_compute_root_step(guint64 rows, guint prefix_count, guint64 min_chunk_step_size_value)
+{
   guint64 root_step = rows > 0 && prefix_count > 0 ? rows / prefix_count : 0;
-  if (root_step == 0) {
+  if (root_step == 0)
+  {
     root_step = min_chunk_step_size_value > 0 ? min_chunk_step_size_value : 1;
   }
-  if (root_step < min_chunk_step_size_value) {
+  if (root_step < min_chunk_step_size_value)
+  {
     root_step = min_chunk_step_size_value;
   }
   return root_step;
 }
 
-guint64 string_pk_planner_compute_target(guint64 rows, guint64 target_rows_per_prefix, guint max_prefixes, guint64 min_chunk_step_size_value){
-  guint64 target = target_rows_per_prefix > 0 ?
-      target_rows_per_prefix :
-      (max_prefixes > 0 ? rows / max_prefixes : rows);
-  if (target == 0) {
+guint64 string_pk_planner_compute_target(guint64 rows, guint64 target_rows_per_prefix, guint max_prefixes, guint64 min_chunk_step_size_value)
+{
+  guint64 target = target_rows_per_prefix > 0 ? target_rows_per_prefix : (max_prefixes > 0 ? rows / max_prefixes : rows);
+  if (target == 0)
+  {
     target = 1;
   }
-  if (target < min_chunk_step_size_value) {
+  if (target < min_chunk_step_size_value)
+  {
     target = min_chunk_step_size_value;
   }
   return target;
 }
 
-gboolean string_pk_planner_level_fits_budget(guint candidate_count, guint max_prefixes){
+gboolean string_pk_planner_level_fits_budget(guint candidate_count, guint max_prefixes)
+{
   return max_prefixes == 0 || candidate_count <= max_prefixes;
 }

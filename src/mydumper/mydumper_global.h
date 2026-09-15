@@ -21,6 +21,7 @@
 #include <mysql.h>
 
 #include "common.h"
+
 #include "mydumper/mydumper_arguments.h"
 #include "mydumper/mydumper_start_dump.h"
 
@@ -63,9 +64,9 @@ extern int          long_query_retries;
 extern gboolean     skip_ddl_locks;
 extern gboolean     no_backup_locks;
 extern gchar       *logfile;
-//extern gboolean     help;
-extern GKeyFile    *key_file;
-extern char       **tables;
+// extern gboolean     help;
+extern GKeyFile *key_file;
+extern char    **tables;
 extern int (*m_open)(char **filename, const char *);
 extern char *(*identifier_quote_character_protect)(char *r);
 struct db_table;
@@ -164,13 +165,12 @@ extern guint64 max_statement_size;
 extern gchar  *set_names_in_conn_for_sct, *set_names_in_file_for_sct, *set_names_in_file_by_default;
 extern guint   num_sequences;
 enum string_pk_planner_strategy;
-extern gchar  *string_pk_planner_strategy_str;
-extern gboolean  string_pk_planner_metadata_enabled;
-extern guint     string_pk_planner_timeout_seconds;
-extern guint     string_pk_planner_max_probes;
-extern guint     string_pk_planner_max_prefixes;
-extern guint64    string_pk_planner_min_rows;
-extern guint64    string_pk_planner_target_rows_per_prefix;
-extern enum string_pk_planner_strategy   string_pk_planner_strategy;
+extern gchar                          *string_pk_planner_strategy_str;
+extern gboolean                        string_pk_planner_metadata_enabled;
+extern guint                           string_pk_planner_timeout_seconds;
+extern guint                           string_pk_planner_max_probes;
+extern guint                           string_pk_planner_max_prefixes;
+extern guint64                         string_pk_planner_min_rows;
+extern guint64                         string_pk_planner_target_rows_per_prefix;
+extern enum string_pk_planner_strategy string_pk_planner_strategy;
 #endif
-
