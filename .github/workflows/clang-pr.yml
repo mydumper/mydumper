@@ -3,8 +3,6 @@ description: On pull requests, execute format checks
 
 on:
   pull_request:
-    branches:
-      - '**' 
     paths:
       - 'src/**'
 
