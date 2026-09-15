@@ -44,7 +44,7 @@ GOptionEntry common_checksum_entries[] = {
     {"checksum-all", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
         "Enables checksums for all elements", NULL},
     {"data-checksums", 0, 0, G_OPTION_ARG_NONE, &data_checksums,
-        "Disables table checksums with the data", NULL},
+        "Enables table checksums with the data", NULL},
     {"schema-checksums", 0, 0, G_OPTION_ARG_NONE, &schema_checksums,
         "Enables schema, table, indexes and view creation checksums. "
         "(Defaults to on; use --no-schema-checksums to disable)",
