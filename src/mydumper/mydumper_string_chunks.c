@@ -158,7 +158,7 @@ void free_string_step_item(struct chunk_step_item *csi)
   // g_free(csi);
 }
 
-struct chunk_step_item * split_string_chunk_step(struct chunk_step_item * csi)
+struct chunk_step_item *split_string_chunk_step(struct chunk_step_item *csi)
 {
   struct chunk_step_item *new_csi = NULL;
   guint64                 part = csi->part;
@@ -168,17 +168,17 @@ struct chunk_step_item * split_string_chunk_step(struct chunk_step_item * csi)
       csi->chunk_step->string_step.step, part, FALSE, FALSE, NULL, csi->position, csi->multicolumn, 0);
   new_csi->status = UNASSIGNED;
   g_free(new_csi->chunk_step->string_step.str_max);
-  new_csi->chunk_step->string_step.str_max=g_strdup(csi->chunk_step->string_step.str_max);
+  new_csi->chunk_step->string_step.str_max = g_strdup(csi->chunk_step->string_step.str_max);
   g_free(new_csi->chunk_step->string_step.str_min);
-  new_csi->chunk_step->string_step.str_min=g_strdup(csi->chunk_step->string_step.str_cur);
+  new_csi->chunk_step->string_step.str_min = g_strdup(csi->chunk_step->string_step.str_cur);
 
   g_free(csi->chunk_step->string_step.str_max);
-  csi->chunk_step->string_step.str_max=g_strdup(csi->chunk_step->string_step.str_prev_cur);
+  csi->chunk_step->string_step.str_max = g_strdup(csi->chunk_step->string_step.str_prev_cur);
 
   g_free(csi->chunk_step->string_step.str_cur);
-  csi->chunk_step->string_step.str_cur=g_strdup(csi->chunk_step->string_step.str_max);
+  csi->chunk_step->string_step.str_cur = g_strdup(csi->chunk_step->string_step.str_max);
   g_free(new_csi->chunk_step->string_step.str_cur);
-  new_csi->chunk_step->string_step.str_cur=g_strdup(new_csi->chunk_step->string_step.str_max);
+  new_csi->chunk_step->string_step.str_cur = g_strdup(new_csi->chunk_step->string_step.str_max);
 
   csi->chunk_step->string_step.str_cur = csi->chunk_step->string_step.str_max;
   new_csi->chunk_step->string_step.str_cur = new_csi->chunk_step->string_step.str_max;
@@ -278,9 +278,9 @@ struct chunk_step_item *clone_string_chunk_step_item(struct chunk_step_item *csi
 {
   return new_string_step_item(
       csi->include_null, csi->prefix, g_strdup(csi->field), csi->deep, csi->chunk_step->string_step.is_step_fixed_length,
-      csi->chunk_step->string_step.left_length, 
+      csi->chunk_step->string_step.left_length,
       g_strdup(csi->chunk_step->string_step.str_min), g_strdup(csi->chunk_step->string_step.str_max), csi->chunk_step->string_step.step,
-      csi->part, 
+      csi->part,
       csi->chunk_step->string_step.check_min, csi->chunk_step->string_step.check_max, NULL, csi->position, csi->multicolumn, 0);
 }
 
@@ -575,20 +575,25 @@ static gboolean is_last(struct chunk_step_item *csi)
   return r;
 }
 
-static gchar *string_lexicographic_successor(const gchar *value){
-  if (value == NULL) {
+static gchar *string_lexicographic_successor(const gchar *value)
+{
+  if (value == NULL)
+  {
     return NULL;
   }
 
   gsize len = strlen(value);
-  if (len == 0) {
+  if (len == 0)
+  {
     return NULL;
   }
 
   gchar *next = g_strdup(value);
-  for (gssize i = (gssize)len - 1; i >= 0; i--) {
-    guchar byte = (guchar) next[i];
-    if (byte < 255) {
+  for (gssize i = (gssize)len - 1; i >= 0; i--)
+  {
+    guchar byte = (guchar)next[i];
+    if (byte < 255)
+    {
       next[i] = (gchar)(byte + 1);
       next[i + 1] = '\0';
       return next;
@@ -599,19 +604,28 @@ static gchar *string_lexicographic_successor(const gchar *value){
   return NULL;
 }
 
-static gchar *escape_string_value(const gchar *value, gboolean like_pattern){
+static gchar *escape_string_value(const gchar *value, gboolean like_pattern)
+{
   GString *escaped = g_string_new("");
-  for (const gchar *character = value; character != NULL && *character != '\0'; character++) {
-    if (*character == '\\') {
+  for (const gchar *character = value; character != NULL && *character != '\0'; character++)
+  {
+    if (*character == '\\')
+    {
       /* Preserve a literal backslash when MySQL parses the SQL string. */
       g_string_append(escaped, "\\\\\\\\");
-    } else if (like_pattern && (*character == '%' || *character == '_')) {
+    }
+    else if (like_pattern && (*character == '%' || *character == '_'))
+    {
       /* Escape LIKE wildcards so a key prefix is a literal prefix. */
       g_string_append(escaped, "\\\\");
       g_string_append_c(escaped, *character);
-    } else if (*character == '\'') {
+    }
+    else if (*character == '\'')
+    {
       g_string_append(escaped, "''");
-    } else {
+    }
+    else
+    {
       g_string_append_c(escaped, *character);
     }
   }
@@ -1128,17 +1142,18 @@ void process_string_chunk(struct table_job *tj, struct chunk_step_item *csi)
   g_mutex_unlock(csi->mutex);
 }
 
-void update_string_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field, gchar *str_min, gchar *str_max, gboolean is_last_range){
+void update_string_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar *field, gchar *str_min, gchar *str_max, gboolean is_last_range)
+{
   gboolean is_single_prefix = !g_strcmp0(str_min, str_max);
-  gchar *upper_bound = NULL;
-  gchar *escaped_min = escape_string_value(str_min, is_single_prefix);
-  gchar *escaped_max = escape_string_value(str_max, FALSE);
-  gchar *escaped_upper_bound = NULL;
-  if (prefix && prefix->len>0)
+  gchar   *upper_bound = NULL;
+  gchar   *escaped_min = escape_string_value(str_min, is_single_prefix);
+  gchar   *escaped_max = escape_string_value(str_max, FALSE);
+  gchar   *escaped_upper_bound = NULL;
+  if (prefix && prefix->len > 0)
   {
-//    g_message("update_string_where_on_gstring:: Prefix: %s", prefix->str);
-    g_string_append_printf(where,"(%s AND ",
-                          prefix->str);
+    //    g_message("update_string_where_on_gstring:: Prefix: %s", prefix->str);
+    g_string_append_printf(where, "(%s AND ",
+        prefix->str);
   }
   if (include_null)
   {
@@ -1148,37 +1163,44 @@ void update_string_where_on_gstring(GString *where, gboolean include_null, GStri
   g_string_append(where, "(");
 
   if (is_single_prefix)
-    g_string_append_printf(where, "%s%s%s LIKE '%s%%' ESCAPE '\\\\'",identifier_quote_character_str, field, identifier_quote_character_str, escaped_min);
-  else{
+    g_string_append_printf(where, "%s%s%s LIKE '%s%%' ESCAPE '\\\\'", identifier_quote_character_str, field, identifier_quote_character_str, escaped_min);
+  else
+  {
     upper_bound = string_lexicographic_successor(str_max);
     escaped_upper_bound = upper_bound != NULL ? escape_string_value(upper_bound, FALSE) : NULL;
-    if (upper_bound != NULL) {
+    if (upper_bound != NULL)
+    {
       g_string_append_printf(where, "%s%s%s >= '%s' AND %s%s%s < '%s'",
           identifier_quote_character_str, field, identifier_quote_character_str, escaped_min,
           identifier_quote_character_str, field, identifier_quote_character_str, escaped_upper_bound);
-    } else if (is_last_range) {
+    }
+    else if (is_last_range)
+    {
       g_string_append_printf(where, "%s%s%s >= '%s'",
           identifier_quote_character_str, field, identifier_quote_character_str, escaped_min);
-    } else {
+    }
+    else
+    {
       g_string_append_printf(where, "%s%s%s >= '%s' AND %s%s%s < '%s'",
           identifier_quote_character_str, field, identifier_quote_character_str, escaped_min,
           identifier_quote_character_str, field, identifier_quote_character_str, escaped_max);
     }
   }
   if (include_null)
-    g_string_append(where,")");
-  g_string_append(where,")");
-  if (prefix && prefix->len>0)
-    g_string_append(where,")");
+    g_string_append(where, ")");
+  g_string_append(where, ")");
+  if (prefix && prefix->len > 0)
+    g_string_append(where, ")");
   g_free(upper_bound);
   g_free(escaped_min);
   g_free(escaped_max);
   g_free(escaped_upper_bound);
-//  g_message("update_string_where_on_gstring:: where = |%s|", where->str);
+  //  g_message("update_string_where_on_gstring:: where = |%s|", where->str);
 }
 
-void update_where_on_string_step(struct chunk_step_item * csi){
-  g_string_set_size(csi->where,0);
+void update_where_on_string_step(struct chunk_step_item *csi)
+{
+  g_string_set_size(csi->where, 0);
   update_string_where_on_gstring(
       csi->where,
       csi->include_null,
@@ -1189,7 +1211,8 @@ void update_where_on_string_step(struct chunk_step_item * csi){
       g_strcmp0(csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max) == 0);
 }
 
-void determine_if_we_can_go_deeper_in_string_chunk_step_item( struct chunk_step_item * csi, guint64 rows){
-  (void) rows;
-  (void) csi;
+void determine_if_we_can_go_deeper_in_string_chunk_step_item(struct chunk_step_item *csi, guint64 rows)
+{
+  (void)rows;
+  (void)csi;
 }

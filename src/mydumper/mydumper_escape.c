@@ -13,17 +13,18 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <string.h>
+
 #include "mydumper_escape.h"
 
 /* Second byte of the backslash escape sequence mysql_real_escape_string()
  * emits for each input byte, or 0 when the byte passes through verbatim. */
 static const guchar sql_escape_second[256] = {
-    [0]    = '0',
+    [0] = '0',
     ['\n'] = 'n',
     ['\r'] = 'r',
-    [26]   = 'Z',
+    [26] = 'Z',
     ['\''] = '\'',
-    ['"']  = '"',
+    ['"'] = '"',
     ['\\'] = '\\',
 };
 

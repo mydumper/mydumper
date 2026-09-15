@@ -1211,7 +1211,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   FILE            *mdfile = NULL;
 
   // Initializing process
-  if (! show_config)
+  if (!show_config)
   {
     if (clear_dumpdir)
       clear_dump_directory(dump_directory);

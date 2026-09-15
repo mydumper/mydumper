@@ -429,7 +429,8 @@ gboolean determine_explain_columns(MYSQL_RES *result, guint *rowscol)
   for (i = 0; i < mysql_num_fields(result); i++)
   {
     if (!strcasecmp(fields[i].name, "rows") ||
-        !strcasecmp(fields[i].name, "estRows")){ // estRows is used by TiDB
+        !strcasecmp(fields[i].name, "estRows"))
+    {  // estRows is used by TiDB
       *rowscol = i;
       rows_column_found = TRUE;
     }

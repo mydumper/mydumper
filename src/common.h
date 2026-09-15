@@ -18,9 +18,9 @@
 #ifndef _src_common_h
 #define _src_common_h
 
-#include <stdio.h>
 #include <glib.h>
 #include <mysql.h>
+#include <stdio.h>
 
 #include "common_options.h"
 
@@ -96,8 +96,8 @@ extern const gchar                *show_binary_log_status;
 extern const gchar                *change_replication_source;
 extern enum source_control_command source_control_command;
 extern guint                       throttle_max_usleep_limit;
-void initialize_zstd_cmd();
-void initialize_gzip_cmd();
+void                               initialize_zstd_cmd();
+void                               initialize_gzip_cmd();
 
 struct object_scope
 {
@@ -201,14 +201,14 @@ void print_bool(const char *_key, gboolean val);
 void print_list(const char *_key, GList *list, gchar *f(void *));
 void print_common();
 
-gchar      *get_zstd_cmd();
-gchar      *get_gzip_cmd();
-char       *double_quoute_protect(char *r);
-char       *backtick_protect(char *r);
-char       *newline_protect(char *r);
-char       *newline_unprotect(char *r);
-void        set_thread_name(const char *format, ...);
-extern void trace(const char *format, ...);
+gchar          *get_zstd_cmd();
+gchar          *get_gzip_cmd();
+char           *double_quoute_protect(char *r);
+char           *backtick_protect(char *r);
+char           *newline_protect(char *r);
+char           *newline_unprotect(char *r);
+void            set_thread_name(const char *format, ...);
+extern void     trace(const char *format, ...);
 extern gboolean debug;
 #define message(...)    \
   if (debug)            \

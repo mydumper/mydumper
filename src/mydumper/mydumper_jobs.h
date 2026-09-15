@@ -22,8 +22,8 @@
 #ifndef _src_mydumper_mydumper_jobs_h
 #define _src_mydumper_mydumper_jobs_h
 
-#include <stdio.h>
 #include <glib.h>
+#include <stdio.h>
 
 struct db_table;
 struct database;

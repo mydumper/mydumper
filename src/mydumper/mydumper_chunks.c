@@ -33,8 +33,8 @@
 #include "mydumper/mydumper_jobs.h"
 #include "mydumper/mydumper_partition_chunks.h"
 #include "mydumper/mydumper_start_dump.h"
-#include "mydumper/mydumper_write.h"
 #include "mydumper/mydumper_string_planner.h"
+#include "mydumper/mydumper_write.h"
 
 extern guint64  min_integer_chunk_step_size;
 extern gboolean split_string_pk;
@@ -52,7 +52,7 @@ GString *get_where_from_csi(struct chunk_step_item *csi)
       update_integer_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
       break;
     case STRING:
-      where=csi->where;
+      where = csi->where;
       g_string_set_size(where, 0);
       update_string_where_on_gstring(
           where,
@@ -233,7 +233,7 @@ struct chunk_step_item *initialize_chunk_step_item(MYSQL *conn, struct db_table 
     case MYSQL_TYPE_VAR_STRING:
       if (split_string_pk)
       {
-        trace("String PK found on `%s`.`%s`",dbt->database->source_database, dbt->table);
+        trace("String PK found on `%s`.`%s`", dbt->database->source_database, dbt->table);
         str_min = g_strdup(mr->row[2]);
         str_max = g_strdup(mr->row[3]);
         trace("String min: %s | max: %s | rows: %d", str_min, str_max, rows);
@@ -269,13 +269,13 @@ cleanup:
   return csi;
 }
 
-
 // Only the MySQL family supports the explain_format system variable (added in
 // MySQL 8.3), which can change the output of a plain EXPLAIN to TREE or JSON,
 // and accepts forcing the format back with EXPLAIN FORMAT=TRADITIONAL
-static
-gboolean explain_format_can_be_forced(){
-  switch (get_product()){
+static gboolean explain_format_can_be_forced()
+{
+  switch (get_product())
+  {
     case SERVER_TYPE_MYSQL:
     case SERVER_TYPE_PERCONA:
     case SERVER_TYPE_RDS:
@@ -287,21 +287,21 @@ gboolean explain_format_can_be_forced(){
   }
 }
 
-guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where, gchar *field)
+guint64 get_rows_from_explain(MYSQL *conn, struct db_table *dbt, GString *where, gchar *field)
 {
-  const gchar *explain_statement = "EXPLAIN";
-  gchar *query = NULL;
+  const gchar  *explain_statement = "EXPLAIN";
+  gchar        *query = NULL;
   struct M_ROW *mr = NULL;
-  guint row_col = 0;
+  guint         row_col = 0;
 
 execute_explain:
   query = g_strdup_printf(
       "%s SELECT %s %s%s%s FROM %s%s%s.%s%s%s%s%s",
       explain_statement,
-      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-      field?identifier_quote_character_str:"", field?field:"*", field?identifier_quote_character_str:"",
+      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */" : "",
+      field ? identifier_quote_character_str : "", field ? field : "*", field ? identifier_quote_character_str : "",
       identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-      where?" WHERE ":"",where?where->str:"");
+      where ? " WHERE " : "", where ? where->str : "");
   /* Get minimum/maximum */
   trace("EXPLAIN: %s", query);
   mr = m_store_result_row(conn, query,
@@ -314,11 +314,13 @@ execute_explain:
     return 0;
   }
 
-  if (!determine_explain_columns(mr->res, &row_col)){
+  if (!determine_explain_columns(mr->res, &row_col))
+  {
     m_store_result_row_free(mr);
     // The EXPLAIN output has no rows column when explain_format is set to
     // TREE or JSON: retry once forcing the TRADITIONAL format
-    if (!g_strcmp0(explain_statement, "EXPLAIN") && explain_format_can_be_forced()){
+    if (!g_strcmp0(explain_statement, "EXPLAIN") && explain_format_can_be_forced())
+    {
       explain_statement = "EXPLAIN FORMAT=TRADITIONAL";
       goto execute_explain;
     }
@@ -362,23 +364,24 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt)
   guint64                 rows;
   if (check_row_count)
   {
-    rows= get_rows_from_count(conn, dbt, NULL);
+    rows = get_rows_from_count(conn, dbt, NULL);
   }
   else
-    rows= get_rows_from_explain(conn, dbt, NULL ,NULL);
-  g_message("%s.%s has %s%" G_GINT64_FORMAT" rows", dbt->database->source_database, dbt->table,
-            (check_row_count ? "": "~"), rows);
-  dbt->rows_total= rows;
+    rows = get_rows_from_explain(conn, dbt, NULL, NULL);
+  g_message("%s.%s has %s%" G_GINT64_FORMAT " rows", dbt->database->source_database, dbt->table,
+      (check_row_count ? "" : "~"), rows);
+  dbt->rows_total = rows;
   string_pk_planner_reset_for_table(dbt, rows);
-  if (rows > dbt->min_chunk_step_size){
-    GList *partitions=NULL;
+  if (rows > dbt->min_chunk_step_size)
+  {
+    GList *partitions = NULL;
     if (split_partitions || dbt->partition_regex)
     {
       partitions = get_partitions_for_table(conn, dbt);
     }
     if (partitions)
     {
-      csi=new_real_partition_step_item(partitions,0,0);
+      csi = new_real_partition_step_item(partitions, 0, 0);
     }
     else
     {
