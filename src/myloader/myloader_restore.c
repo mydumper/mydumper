@@ -957,11 +957,9 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
     if (read_data(infile, data, &eof, &line))
     {
       rep = TRUE;
-      if (( (restore_job_statement_type == POST) 
-            || 
-            (restore_job_statement_type == TRIGGER)
-            )
-          && (data->str[data->len - 1] == '\n') && (data->str[data->len - 2] == ' '))
+      if (((restore_job_statement_type == POST) ||
+              (restore_job_statement_type == TRIGGER)) &&
+          (data->str[data->len - 1] == '\n') && (data->str[data->len - 2] == ' '))
       {
         data->str[data->len - 2] = '\n';
         data->str[data->len - 1] = '\0';
