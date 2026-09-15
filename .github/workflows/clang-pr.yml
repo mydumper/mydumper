@@ -1,7 +1,7 @@
 name: Format
 description: On pull requests, execute format checks
 
-on: [push]
+on: [pull_request]
 
 jobs:
   clang-format:
