@@ -4,7 +4,7 @@ description: On pull requests, execute format checks
 on:
   pull_request:
     branches:
-      - main
+      - '**' 
     paths:
       - 'src/**'
 
