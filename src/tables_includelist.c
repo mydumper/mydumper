@@ -135,7 +135,7 @@ void load_include_tables()
     guint len1 = _tables_list ? g_strv_length(_tables_list) : 0;
     guint len2 = tables_list_from_file ? g_strv_length(tables_list_from_file) : 0;
 
-    tables = g_new(gchar *, len1 + len2 + 1);
+    tables = g_new0(gchar *, len1 + len2 + 1);
 
     guint i = 0, j = 0;
 
