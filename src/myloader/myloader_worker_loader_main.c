@@ -154,8 +154,10 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
   {
     dbt = iter->data;
     trace("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->target_database, dbt->source_table_name, dbt->schema_state, dbt->remaining_jobs);
+    g_mutex_lock(dbt->database->mutex);
     if (dbt->database->schema_state == NOT_FOUND)
     {
+      g_mutex_unlock(dbt->database->mutex);
       iter = iter->next;
       /*
         TODO: make all "voting for finish" messages another debug level
@@ -168,6 +170,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       trace("%s.%s: %s, voting for finish", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
       continue;
     }
+    g_mutex_unlock(dbt->database->mutex);
     table_lock(dbt);
     if (dbt->schema_state >= DATA_DONE ||
         (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence)))

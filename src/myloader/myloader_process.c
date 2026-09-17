@@ -519,7 +519,9 @@ void process_database_filename(char *filename)
 
   if (!has_been_defined_a_target_database())
   {
+    g_mutex_lock(_database->mutex);
     _database->schema_state = NOT_CREATED;
+    g_mutex_unlock(_database->mutex);
     //    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE);
     schema_push(SCHEMA_CREATE_JOB, filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, db_content, CREATE_DATABASE, NULL);
     //    schema_push( gchar * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, enum restore_job_statement_type object, enum control_job_type type, struct database *use_database )
