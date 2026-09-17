@@ -163,6 +163,7 @@ gboolean process_schema(struct thread_data *td)
         schema_job = g_async_queue_try_pop(retry_queue);
       }
 
+      check_and_create_missing_databases(td);
       // set_all_databases_as_created();
       /*
             GHashTableIter iter;

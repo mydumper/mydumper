@@ -265,7 +265,8 @@ static void create_database(struct thread_data *td, gchar *database)
   return;
 }
 
-void start_database(struct thread_data *td)
+
+void check_and_create_missing_databases(struct thread_data *td)
 {
   struct database *_database;
   GHashTableIter   iter;
@@ -282,6 +283,8 @@ void start_database(struct thread_data *td)
   g_mutex_unlock(database_hash_mutex);
 }
 
+
+/*
 void set_all_databases_as_created()
 {
   struct database *_database;
@@ -297,6 +300,7 @@ void set_all_databases_as_created()
   }
   g_mutex_unlock(database_hash_mutex);
 }
+*/
 
 // _database is locked
 void set_db_schema_created(struct database *_database)

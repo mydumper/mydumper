@@ -41,8 +41,9 @@ struct database *get_database_with_prefix(gchar *k, gchar *v);
 struct database *get_database(gchar *source_database);
 void             execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar *msg);
 gboolean         execute_use(struct connection_data *cd);
-void             start_database(struct thread_data *td);
+//void             start_database(struct thread_data *td);
 gboolean         has_been_defined_a_target_database();
-void             set_all_databases_as_created();
+//void             set_all_databases_as_created();
+void             check_and_create_missing_databases(struct thread_data *td);
 void             set_db_schema_created(struct database *_database);
 #endif
