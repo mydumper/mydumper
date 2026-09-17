@@ -60,5 +60,5 @@ void     start_worker_schema();
 void     wait_schema_worker_to_finish(struct configuration *conf);
 gboolean schema_push(enum schema_job_type type, gchar *filename, enum restore_job_type rj_type, struct db_table *dbt, struct database *_database, GString *statement, enum restore_job_statement_type object, struct database *use_database);
 void     schema_ended();
-
+void     schema_job_queue_push(struct schema_job *sj);
 #endif
