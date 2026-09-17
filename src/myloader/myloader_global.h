@@ -118,8 +118,6 @@ extern GString *set_session;
 extern GString *set_global;
 extern GString *set_global_back;
 
-extern int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *);
-
 extern struct replication_statements *replication_statements;
 extern struct replication_settings    replica_data;
 extern struct replication_settings    source_data;

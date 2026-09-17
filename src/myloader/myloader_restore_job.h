@@ -31,6 +31,7 @@ enum restore_job_type
 
 enum restore_job_statement_type
 {
+  DATA_STMT,
   SEQUENCE,
   TRIGGER,
   POST,
@@ -63,6 +64,8 @@ static inline const char *rjstmtype2str(enum restore_job_statement_type rjstmtyp
 {
   switch (rjstmtype)
   {
+    case DATA_STMT:
+      return "data_stmt";
     case SEQUENCE:
       return "sequence";
     case TRIGGER:

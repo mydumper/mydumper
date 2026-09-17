@@ -35,6 +35,8 @@
 #include "myloader/myloader_worker_loader.h"
 #include "myloader/myloader_worker_loader_main.h"
 
+extern int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *, enum restore_job_statement_type restore_job_statement_type);
+
 unsigned long long int total_data_sql_files = 0;
 gboolean               shutdown_triggered = FALSE;
 GAsyncQueue           *file_list_to_do = NULL;
@@ -552,7 +554,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj)
               dbt->database->target_database, dbt->source_table_name, rj->data.drj->index, dbt->count, rj->filename, progress, total_data_sql_files, total, g_hash_table_size(td->conf->table_hash));
         }
         g_mutex_unlock(progress_mutex);
-        if (restore_data_from_file(td, rj->filename, FALSE, dbt->database) > 0)
+        if (restore_data_from_file(td, rj->filename, FALSE, dbt->database, DATA_STMT) > 0)
         {
           g_atomic_int_inc(&(detailed_errors.data_errors));
           if (machine_log_json)
@@ -639,7 +641,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj)
 
           if ((rj->data.srj->statement
                       ? restore_data_in_gstring(td, rj->data.srj->statement, TRUE, rj->data.srj->object == CREATE_DATABASE ? NULL : rj->data.srj->database)
-                      : restore_data_from_file(td, rj->filename, TRUE, rj->data.srj->object == CREATE_DATABASE ? NULL : rj->data.srj->database)) > 0)
+                      : restore_data_from_file(td, rj->filename, TRUE, rj->data.srj->object == CREATE_DATABASE ? NULL : rj->data.srj->database, rj->data.srj->object)) > 0)
           {
             increse_object_error(rj->data.srj->object);
             if (machine_log_json)
