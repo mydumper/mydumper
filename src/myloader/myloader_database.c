@@ -278,6 +278,7 @@ void start_database(struct thread_data *td)
   struct database *_database;
   GHashTableIter   iter;
   gpointer         _key;
+  g_mutex_lock(database_hash_mutex);
   g_hash_table_iter_init(&iter, database_hash);
   while (g_hash_table_iter_next(&iter, &_key, (gpointer)&_database))
   {
@@ -286,6 +287,7 @@ void start_database(struct thread_data *td)
     set_db_schema_created(_database);
     g_mutex_unlock(_database->mutex);
   }
+  g_mutex_unlock(database_hash_mutex);
 }
 
 void set_all_databases_as_created()
@@ -293,6 +295,7 @@ void set_all_databases_as_created()
   struct database *_database;
   GHashTableIter   iter;
   gpointer         _key;
+  g_mutex_lock(database_hash_mutex);
   g_hash_table_iter_init(&iter, database_hash);
   while (g_hash_table_iter_next(&iter, &_key, (gpointer)&_database))
   {
@@ -300,6 +303,7 @@ void set_all_databases_as_created()
     set_db_schema_created(_database);
     g_mutex_unlock(_database->mutex);
   }
+  g_mutex_unlock(database_hash_mutex);
 }
 
 // _database is locked
