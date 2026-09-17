@@ -90,7 +90,7 @@ static struct database *new_database(gchar *filename, gchar *source_database)
   struct database *_database = g_new(struct database, 1);
 
   gchar *target_database = (gchar *)g_hash_table_lookup(database_db, source_database);
-  if (database_db)
+  if (target_db)
   {
     if (!target_database)
       m_error("You defined multiple database relationships in -B but %s was not found", source_database);
@@ -168,7 +168,7 @@ struct database *get_database_with_prefix(gchar *filename_database, gchar *found
   else
   {
     gchar *target_database = (gchar *)g_hash_table_lookup(database_db, founded_database);
-    if (database_db)
+    if (target_db)
     {
       if (!target_database)
         m_error("You defined multiple database relationships in -B but %s was not found", founded_database);
