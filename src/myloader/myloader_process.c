@@ -504,7 +504,7 @@ void process_database_filename(char *filename)
 
   trace("Adding database: %s -> %s", db_kname, db_vname);
   //  struct database *_database = get_database(db_kname, db_vname);
-  struct database *_database = db_kname == db_vname ? get_database(db_kname) : get_database2(db_kname, db_vname);
+  struct database *_database = db_kname == db_vname ? get_database(db_kname) : get_database_with_prefix(db_kname, db_vname);
 
   if (!eval_regex(_database->source_database, NULL))
   {

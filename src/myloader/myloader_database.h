@@ -37,7 +37,7 @@ struct database
 };
 
 void             initialize_database();
-struct database *get_database2(gchar *k, gchar *v);
+struct database *get_database_with_prefix(gchar *k, gchar *v);
 struct database *get_database(gchar *source_database);
 void             execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar *msg);
 gboolean         execute_use(struct connection_data *cd);

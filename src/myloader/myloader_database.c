@@ -30,19 +30,21 @@ GHashTable    *database_hash = NULL;
 static GMutex *database_hash_mutex = NULL;
 gchar         *target_db = NULL;
 // struct database *database_db = NULL;
-GList *database_db = NULL;
+GHashTable *database_db = NULL;
 
 gboolean has_been_defined_a_target_database()
 {
   return database_db != NULL;
 }
 
-static struct database *add_new_database(gchar *source_database, gchar *target_database);
+static struct database *add_new_database(gchar *filename_database, gchar *source_database);
 
 void initialize_database()
 {
   database_hash_mutex = g_mutex_new();
   database_hash = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  database_db = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  //  database_hash = g_hash_table_new(g_str_hash, g_str_equal);
   if (target_db)
   {
     gchar **kv = NULL;
@@ -55,7 +57,8 @@ void initialize_database()
         kv = g_strsplit(database_list->data, ":", 2);
         if (g_strv_length(kv) != 2)
           m_error("Failed to parser element `%s` on database list: %s", database_list->data, target_db);
-        database_db = g_list_prepend(database_db, add_new_database(g_strdup(kv[0]), g_strdup(kv[1])));
+        //        database_db = g_list_prepend(database_db, add_new_database(g_strdup(kv[0]), g_strdup(kv[1])));
+        g_hash_table_insert(database_db, g_strdup(kv[0]), g_strdup(kv[1]));
         database_list = g_list_delete_link(database_list, database_list);
         g_strfreev(kv);
       }
@@ -64,9 +67,11 @@ void initialize_database()
     {
       kv = g_strsplit(target_db, ":", 2);
       if (g_strv_length(kv) > 1)
-        database_db = g_list_prepend(database_db, add_new_database(g_strdup(kv[0]), g_strdup(kv[1])));
+        g_hash_table_insert(database_db, g_strdup(kv[0]), g_strdup(kv[1]));
+      //        database_db = g_list_prepend(database_db, add_new_database(g_strdup(kv[0]), g_strdup(kv[1])));
       else
-        database_db = g_list_prepend(database_db, add_new_database(g_strdup(target_db), g_strdup(target_db)));
+        g_hash_table_insert(database_db, g_strdup(target_db), g_strdup(target_db));
+      //        database_db = g_list_prepend(database_db, add_new_database(g_strdup(target_db), g_strdup(target_db)));
       database_list = g_list_delete_link(database_list, database_list);
       g_strfreev(kv);
     }
@@ -80,13 +85,25 @@ gint find_database_with_source_database(gconstpointer a, gconstpointer b)
   return g_strcmp0(a_source_database, b_source_database);
 }
 
-struct database *new_database(gchar *filename, gchar *source_database, gchar *target_database)
+static struct database *new_database(gchar *filename, gchar *source_database)
 {
   struct database *_database = g_new(struct database, 1);
 
+  gchar *target_database = (gchar *)g_hash_table_lookup(database_db, source_database);
+  if (database_db)
+  {
+    if (!target_database)
+      m_error("You defined multiple database relationships in -B but %s was not found", source_database);
+    else
+      _database->target_database = g_strdup(target_database);
+  }
+  else
+    _database->target_database = g_strdup(source_database);
+
   _database->source_database = g_strdup(source_database);
-  _database->target_database = g_strdup(target_database);  // first_stage? :get_target_db(_database->source_database, first_stage);
   _database->database_name_in_filename = g_strdup(filename);
+
+  g_message("ADDING NEW DATABASE: %s %s %s", filename, source_database, target_database);
 
   _database->schema_state = target_db ? CREATED : NOT_FOUND;
 
@@ -127,23 +144,15 @@ struct database *new_database(gchar *filename, gchar *source_database, gchar *ta
   return _database;
 }
 
-static struct database *add_new_database0(gchar *source_database)
+static struct database *add_new_database(gchar *filename_database, gchar *source_database)
 {
-  struct database *_database = new_database(source_database, source_database, source_database);
-  g_hash_table_insert(database_hash, g_strdup(source_database), _database);
+  struct database *_database = new_database(filename_database, source_database);
+  g_hash_table_insert(database_hash, g_strdup(filename_database), _database);
+  g_message("INERTED %s -> %s", filename_database, source_database);
   return _database;
 }
 
-static struct database *add_new_database(gchar *source_database, gchar *target_database)
-{
-  struct database *_database = new_database(NULL, source_database, target_database);
-  g_hash_table_insert(database_hash, source_database, _database);
-  if (g_strcmp0(source_database, target_database))
-    g_hash_table_insert(database_hash, g_strdup(target_database), _database);
-  return _database;
-}
-
-struct database *get_database2(gchar *filename_database, gchar *founded_database)
+struct database *get_database_with_prefix(gchar *filename_database, gchar *founded_database)
 {
   // This function is only used when the filename has prefix "mydumper_"
   g_mutex_lock(database_hash_mutex);
@@ -151,43 +160,23 @@ struct database *get_database2(gchar *filename_database, gchar *founded_database
   struct database *_database = g_hash_table_lookup(database_hash, filename_database);
   if (_database == NULL)
   {
+    g_message("NOT FOUND= %s", filename_database);
     //    _database=new_database(g_strdup(name), filename);
     //    g_hash_table_insert(database_hash, filename, _database);
-    if (target_db)
-    {
-      if (g_hash_table_size(database_hash) == 1)
-      {
-        GHashTableIter   iter;
-        gpointer         _key;
-        struct database *__database;
-        g_hash_table_iter_init(&iter, database_hash);
-        g_hash_table_iter_next(&iter, &_key, (gpointer *)&__database);
-        if (!g_strcmp0(__database->source_database, __database->target_database))
-        {
-          // means all tables goes to this database
-          _database = add_new_database(filename_database, __database->target_database);
-        }
-        else
-        {
-          m_error("You defined multiple database relationships in -B but %s was not found in %s", filename_database, target_db);
-        }
-      }
-      else
-      {
-        m_error("You defined multiple database relationships in -B but %s was not found in %s", filename_database, target_db);
-      }
-    }
-    else
-      _database = add_new_database(filename_database, founded_database);
-    //    if (g_strcmp0(filename,name))
-    //      g_hash_table_insert(database_hash, g_strdup(name), _database);
-    _database = g_hash_table_lookup(database_hash, filename_database);
+    _database = add_new_database(filename_database, founded_database);
   }
   else
   {
-    _database->source_database = g_strdup(founded_database);
-    if (target_db)
-      _database->target_database = g_strdup(target_db ? _database->target_database : _database->source_database);
+    gchar *target_database = (gchar *)g_hash_table_lookup(database_db, founded_database);
+    if (database_db)
+    {
+      if (!target_database)
+        m_error("You defined multiple database relationships in -B but %s was not found", founded_database);
+      else
+        _database->target_database = g_strdup(target_database);
+    }
+    else
+      _database->target_database = g_strdup(founded_database);
   }
   g_mutex_unlock(database_hash_mutex);
   return _database;
@@ -197,45 +186,16 @@ struct database *get_database(gchar *source_database)
 {
   g_mutex_lock(database_hash_mutex);
   struct database *_database = g_hash_table_lookup(database_hash, source_database);
-  g_message("ACA1");
   if (_database == NULL)
   {
-    if (target_db)
-    {
-      if (g_hash_table_size(database_hash) == 1)
-      {
-        GHashTableIter   iter;
-        gpointer         _key;
-        struct database *__database;
-        g_hash_table_iter_init(&iter, database_hash);
-        g_hash_table_iter_next(&iter, &_key, (gpointer *)&__database);
-        if (!g_strcmp0(__database->source_database, __database->target_database))
-        {
-          // means all tables goes to this database
-          _database = add_new_database(source_database, __database->target_database);
-        }
-        else
-        {
-          m_error("You defined multiple database relationships in -B but %s was not found in %s", source_database, target_db);
-        }
-      }
-      else
-      {
-        m_error("You defined multiple database relationships in -B but %s was not found in %s", source_database, target_db);
-      }
-    }
-    else
-      _database = add_new_database0(source_database);
+    g_message("NOT FOUND= %s", source_database);
+    _database = add_new_database(source_database, source_database);
   }
   else
   {
-    g_message("ACA2");
-    _database = add_new_database0(source_database);
-    g_message("ACA3");
+    g_message("get_database:: %s found", source_database);
   }
-  g_message("ACA4");
   g_mutex_unlock(database_hash_mutex);
-  g_message("ACA: %s", _database->target_database);
   return _database;
 }
 
@@ -277,20 +237,15 @@ gboolean execute_use(struct connection_data *cd)
 
 void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar *msg)
 {
-  if (database != NULL && (target_db == NULL || cd->current_database == NULL))
+  if (database != NULL && (cd->current_database == NULL || g_strcmp0(database->target_database, cd->current_database->target_database) != 0))
   {
-    if (cd->current_database == NULL || g_strcmp0(database->target_database, cd->current_database->target_database) != 0)
-    {
-      cd->current_database = database;
-      if (execute_use(cd))
-      {
-        m_critical("Thread %ld with connection %ld: Error switching to database `%s` %s: %s", cd->thread_id, cd->connection_id, cd->current_database->target_database, msg, mysql_error(cd->thrconn));
-      }
-    }
+    cd->current_database = database;
+    if (execute_use(cd))
+      m_critical("Thread %ld with connection %ld: Error switching to database `%s` %s: %s", cd->thread_id, cd->connection_id, cd->current_database->target_database, msg, mysql_error(cd->thrconn));
   }
 }
 
-void create_database(struct thread_data *td, gchar *database)
+static void create_database(struct thread_data *td, gchar *database)
 {
   const gchar *filename =
       g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension ? exec_per_thread_extension : "");
@@ -320,16 +275,16 @@ void create_database(struct thread_data *td, gchar *database)
 
 void start_database(struct thread_data *td)
 {
-  if (database_db)
+  struct database *_database;
+  GHashTableIter   iter;
+  gpointer         _key;
+  g_hash_table_iter_init(&iter, database_hash);
+  while (g_hash_table_iter_next(&iter, &_key, (gpointer)&_database))
   {
-    GList *_database_db = database_db;
-    while (_database_db)
-    {
-      if (!no_schemas)
-        create_database(td, ((struct database *)_database_db->data)->target_database);
-      ((struct database *)_database_db->data)->schema_state = CREATED;
-      _database_db = _database_db->next;
-    }
+    g_mutex_lock(_database->mutex);
+    create_database(td, _database->target_database);
+    set_db_schema_created(_database);
+    g_mutex_unlock(_database->mutex);
   }
 }
 
