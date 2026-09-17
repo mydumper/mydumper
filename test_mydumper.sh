@@ -523,7 +523,7 @@ do
 events=1
 triggers=1
 outputdir=/tmp/data
-regex=^(?!(mysql\.|sys\.))" >> ${dynamic_mydumper}
+regex=^(?!(mysql|sys)(\.|$))" >> ${dynamic_mydumper}
               dynamic_myloader=${dir}/myloader.cnf
               echo "[myloader]
 drop-table

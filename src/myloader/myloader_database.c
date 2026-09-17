@@ -34,7 +34,7 @@ GHashTable *database_db = NULL;
 
 gboolean has_been_defined_a_target_database()
 {
-  return database_db != NULL;
+  return target_db != NULL;
 }
 
 static struct database *add_new_database(gchar *filename_database, gchar *source_database);
@@ -103,8 +103,6 @@ static struct database *new_database(gchar *filename, gchar *source_database)
   _database->source_database = g_strdup(source_database);
   _database->database_name_in_filename = g_strdup(filename);
 
-  g_message("ADDING NEW DATABASE: %s %s %s", filename, source_database, target_database);
-
   _database->schema_state = target_db ? CREATED : NOT_FOUND;
 
   _database->mutex = g_mutex_new();
@@ -148,7 +146,6 @@ static struct database *add_new_database(gchar *filename_database, gchar *source
 {
   struct database *_database = new_database(filename_database, source_database);
   g_hash_table_insert(database_hash, g_strdup(filename_database), _database);
-  g_message("INERTED %s -> %s", filename_database, source_database);
   return _database;
 }
 
@@ -188,12 +185,7 @@ struct database *get_database(gchar *source_database)
   struct database *_database = g_hash_table_lookup(database_hash, source_database);
   if (_database == NULL)
   {
-    g_message("NOT FOUND= %s", source_database);
     _database = add_new_database(source_database, source_database);
-  }
-  else
-  {
-    g_message("get_database:: %s found", source_database);
   }
   g_mutex_unlock(database_hash_mutex);
   return _database;

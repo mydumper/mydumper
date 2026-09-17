@@ -754,7 +754,7 @@ int main(int argc, char *argv[])
   {
     g_message("start_database");
   }
-  start_database(t);
+//  start_database(t);
   if (machine_log_json_enabled())
   {
     machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
