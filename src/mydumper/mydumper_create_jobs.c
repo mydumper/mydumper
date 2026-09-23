@@ -142,9 +142,14 @@ void create_job_to_dump_schema(struct database *database)
   create_database_related_job(database, JOB_CREATE_DATABASE, "schema-create");
 }
 
-void create_job_to_dump_post(struct database *database)
+void create_job_to_dump_routines(struct database *database)
 {
-  create_database_related_job(database, JOB_SCHEMA_POST, "schema-post");
+  create_database_related_job(database, JOB_SCHEMA_ROUTINES, "schema-routines");
+}
+
+void create_job_to_dump_events(struct database *database)
+{
+  create_database_related_job(database, JOB_SCHEMA_EVENTS, "schema-events");
 }
 
 //

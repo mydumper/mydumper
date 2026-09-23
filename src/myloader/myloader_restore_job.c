@@ -205,6 +205,12 @@ void increse_object_error(enum restore_job_statement_type object)
     case VIEW:
       g_atomic_int_inc(&(detailed_errors.view_errors));
       break;
+    case ROUTINES:
+      g_atomic_int_inc(&(detailed_errors.routine_errors));
+      break;
+    case EVENTS:
+      g_atomic_int_inc(&(detailed_errors.event_errors));
+      break;
     case POST:
       g_atomic_int_inc(&(detailed_errors.post_errors));
       break;
@@ -587,6 +593,8 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj)
       // VIEW
       // SEQUENCE
       // TRIGGER
+      // ROUTINES
+      // EVENTS
       // POST
       trace("Thread %d: Restoring JOB_RESTORE_SCHEMA_FILENAME %s", td->thread_id, rj->filename);
       if (!source_db || g_strcmp0(rj->data.srj->database->source_database, source_db) == 0)
@@ -596,6 +604,8 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj)
                                (rj->data.srj->object == VIEW && !dbt->object_to_import.no_view) ||
                                (rj->data.srj->object == SEQUENCE) ||
                                (rj->data.srj->object == TRIGGER) ||
+                               (rj->data.srj->object == ROUTINES) ||
+                               (rj->data.srj->object == EVENTS) ||
                                (rj->data.srj->object == POST)
 
                                    ))
