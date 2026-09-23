@@ -44,7 +44,8 @@ enum job_type
   JOB_SEQUENCE,
   JOB_TRIGGERS,
   JOB_SCHEMA_TRIGGERS,
-  JOB_SCHEMA_POST,
+  JOB_SCHEMA_ROUTINES,
+  JOB_SCHEMA_EVENTS,
   JOB_BINLOG,
   JOB_CREATE_DATABASE,
   JOB_CREATE_TABLESPACE,
@@ -105,7 +106,8 @@ struct view_job
 void initialize_jobs();
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job);
 void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job);
-void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job);
+void do_JOB_SCHEMA_ROUTINES(struct thread_data *td, struct job *job);
+void do_JOB_SCHEMA_EVENTS(struct thread_data *td, struct job *job);
 void do_JOB_VIEW(struct thread_data *td, struct job *job);
 void do_JOB_SEQUENCE(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job);

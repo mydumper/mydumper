@@ -111,7 +111,8 @@ struct job *create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, cha
 
 void create_job_to_write_source_and_replica_status(FILE *mdfile);
 void create_job_to_dump_tablespaces();
-void create_job_to_dump_post(struct database *database);
+void create_job_to_dump_routines(struct database *database);
+void create_job_to_dump_events(struct database *database);
 void create_job_to_dump_table_schema(struct db_table *dbt);
 void create_job_to_dump_view(struct db_table *dbt);
 void create_job_to_dump_sequence(struct db_table *dbt);

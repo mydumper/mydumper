@@ -182,7 +182,7 @@ void write_database_checksum(FILE *mdfile, struct database_level_checksum *datab
   if (!database_checksum->skip_schema && database_checksum->schema)
     fprintf(mdfile, "%s = %s\n", "schema_checksum", database_checksum->schema);
   if (!database_checksum->skip_routine && database_checksum->routine)
-    fprintf(mdfile, "%s = %s\n", "post_checksum", database_checksum->routine);
+    fprintf(mdfile, "%s = %s\n", "routines_checksum", database_checksum->routine);
   if (!database_checksum->skip_event && database_checksum->event)
     fprintf(mdfile, "%s = %s\n", "events_checksum", database_checksum->event);
   if (!database_checksum->skip_trigger && database_checksum->trigger)
@@ -268,7 +268,7 @@ gboolean checksum_database(gchar *target_database, struct database_level_checksu
         "Schema create checksum", "database_schema", checksum_database_defaults);
   if (!database_checksum->skip_routine && database_checksum->routine)
     checksum_ok &= checksum_database_template(target_database, database_checksum->routine, conn,
-        "Post checksum", "database_post", checksum_process_structure);
+        "Routines checksum", "database_routines", checksum_process_structure);
   if (!database_checksum->skip_event && database_checksum->event)
     checksum_ok &= checksum_database_template(target_database, database_checksum->event, conn,
         "Events checksum", "database_events", checksum_events_structure_from_database);

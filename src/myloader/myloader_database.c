@@ -70,7 +70,8 @@ static struct database *new_database(gchar *database, gchar *filename)
     c = GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
   else
     c = FALSE;
-  _database->checksum.skip_routine = c ? c : skip_routine_checksums;
+  // Routines/Events that are not imported can not be verified
+  _database->checksum.skip_routine = c ? c : (skip_routine_checksums || skip_routines);
   cpt = g_hash_table_lookup(conf_per_table, SKIP_TRIGGER_CHECKSUMS);
   if (cpt)
     c = GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
@@ -82,7 +83,7 @@ static struct database *new_database(gchar *database, gchar *filename)
     c = GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
   else
     c = FALSE;
-  _database->checksum.skip_event = c ? c : skip_event_checksums;
+  _database->checksum.skip_event = c ? c : (skip_event_checksums || skip_events);
   g_free(any_table_config_file_dbt_key);
   return _database;
 }

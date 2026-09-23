@@ -42,6 +42,8 @@ extern gboolean resume;
 extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
 extern gboolean skip_post;
+extern gboolean skip_routines;
+extern gboolean skip_events;
 extern gboolean skip_create_table;
 extern gboolean skip_create_database;
 extern gboolean skip_triggers;
