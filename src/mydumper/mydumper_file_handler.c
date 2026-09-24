@@ -240,16 +240,20 @@ void release_pid(){
   g_async_queue_push(available_pids, GINT_TO_POINTER(1));
 }
 
-int execute_file_per_thread( int p_in[2], int out){
-  int childpid=fork();
-  if(!childpid){
+int execute_file_per_thread(int p_in[2], gchar * new_filename ) //int out)
+{
+  int childpid = fork();
+  if (!childpid)
+  {
     dup2(p_in[0], STDIN_FILENO);
     close(p_in[1]);
+    int out = open(new_filename, O_CREAT | O_WRONLY | O_TRUNC, 0660);
     dup2(out, STDOUT_FILENO);
-    close(out);
-    int fd=3;
-    for (fd=3; fd<256; fd++) (void) close(fd);
-    execv(exec_per_thread_cmd[0],exec_per_thread_cmd);
+//    close(out);
+//    int fd = 3;
+//    for (fd = 3; fd < 256; fd++)
+//      (void)close(fd);
+    execv(exec_per_thread_cmd[0], exec_per_thread_cmd);
   }
   return childpid;
 }
@@ -289,8 +293,8 @@ int m_open_pipe(gchar **filename, const char *type){
   if (status != 0){
     g_error("Not able to create pipe (%d)", e);
   }
-  
-  f->child_pid=execute_file_per_thread(f->pipe, f->fdout);
+
+  f->child_pid = execute_file_per_thread(f->pipe, new_filename ); //f->fdout);
 
   g_mutex_unlock(pipe_creation);
 //  g_mutex_lock(fifo_table_mutex);
