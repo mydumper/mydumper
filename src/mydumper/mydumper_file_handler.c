@@ -18,11 +18,12 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+#define _GNU_SOURCE
 
 #include <gio/gio.h>
 #include <errno.h>
 #include <sys/wait.h>
-#include <fcntl.h>
+#include <unistd.h>
 
 #include "mydumper_global.h"
 #include "mydumper_stream.h"
@@ -278,10 +279,11 @@ int m_open_pipe(gchar **filename, const char *type){
   f=g_new0(struct fifo, 1);
   f->out_mutex=g_mutex_new();
   g_mutex_lock(f->out_mutex);
-  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC, 0660);
-  if (!f->fdout){
-    g_error("opening file: %s", new_filename);
-  }
+//  f->fdout = open(new_filename, O_CREAT | O_WRONLY | O_TRUNC, 0660);
+//  if (!f->fdout)
+//  {
+//    g_error("opening file: %s", new_filename);
+//  }
   dump_summary_note_file_created();
   g_async_queue_pop(available_pids);
   f->queue = g_async_queue_new();
@@ -289,8 +291,9 @@ int m_open_pipe(gchar **filename, const char *type){
   f->stdout_filename=new_filename;
   guint e=0;
   g_mutex_lock(pipe_creation);
-  gint status=pipe(f->pipe);
-  if (status != 0){
+  gint status = pipe2(f->pipe,O_CLOEXEC);
+  if (status != 0)
+  {
     g_error("Not able to create pipe (%d)", e);
   }
 
@@ -350,9 +353,9 @@ void * close_file_thread(void *data){
     if (f->error_number==EAGAIN){
       usleep(1000);
     }
-    if (fsync(f->fdout))
-      g_error("while syncing file %s (%d)",f->filename, errno);
-    close(f->fdout);
+//    if (fsync(f->fdout))
+//      g_error("while syncing file %s (%d)", f->filename, errno);
+//    close(f->fdout);
 
     release_pid();
     final_step_close_file(0, f->filename, f, f->size, f->dbt);
