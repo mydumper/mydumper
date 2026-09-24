@@ -288,7 +288,7 @@ void release_pid()
   g_async_queue_push(available_pids, GINT_TO_POINTER(1));
 }
 
-int execute_file_per_thread(int p_in[2], gchar * new_filename ) //int out)
+int execute_file_per_thread(int p_in[2], gchar *new_filename)
 {
   int childpid = fork();
   if (!childpid)
@@ -297,10 +297,6 @@ int execute_file_per_thread(int p_in[2], gchar * new_filename ) //int out)
     close(p_in[1]);
     int out = open(new_filename, O_CREAT | O_WRONLY | O_TRUNC, 0660);
     dup2(out, STDOUT_FILENO);
-//    close(out);
-//    int fd = 3;
-//    for (fd = 3; fd < 256; fd++)
-//      (void)close(fd);
     execv(exec_per_thread_cmd[0], exec_per_thread_cmd);
   }
   return childpid;
@@ -328,11 +324,6 @@ int m_open_pipe(gchar **filename, const char *type)
   f = g_new0(struct fifo, 1);
   f->out_mutex = g_mutex_new();
   g_mutex_lock(f->out_mutex);
-//  f->fdout = open(new_filename, O_CREAT | O_WRONLY | O_TRUNC, 0660);
-//  if (!f->fdout)
-//  {
-//    g_error("opening file: %s", new_filename);
-//  }
   dump_summary_note_file_created();
   g_async_queue_pop(available_pids);
   f->queue = g_async_queue_new();
@@ -340,13 +331,13 @@ int m_open_pipe(gchar **filename, const char *type)
   f->stdout_filename = new_filename;
   guint e = 0;
   g_mutex_lock(pipe_creation);
-  gint status = pipe2(f->pipe,O_CLOEXEC);
+  gint status = pipe2(f->pipe, O_CLOEXEC);
   if (status != 0)
   {
     g_error("Not able to create pipe (%d)", e);
   }
 
-  f->child_pid = execute_file_per_thread(f->pipe, new_filename ); //f->fdout);
+  f->child_pid = execute_file_per_thread(f->pipe, new_filename);
 
   g_mutex_unlock(pipe_creation);
   //  g_mutex_lock(fifo_table_mutex);
