@@ -108,6 +108,19 @@ void free_set_names()
   g_free(set_names_statement);
 }
 
+static void append_config_file_line(GString *new_content, const gchar *line, gsize line_length)
+{
+  gsize content_length = line_length, i = 0;
+  if (content_length > 0 && line[content_length - 1] == '\r')
+    content_length--;
+  while (i < content_length && g_ascii_isspace(line[i]))
+    i++;
+  g_string_append_len(new_content, line, content_length);
+  if (i < content_length && line[i] != '#' && line[i] != '[' && !memchr(line + i, '=', content_length - i))
+    g_string_append(new_content, "= 1");
+  g_string_append_len(new_content, line + content_length, line_length - content_length);
+}
+
 GKeyFile *load_config_file(gchar *config_file)
 {
   GError   *error = NULL;
@@ -119,41 +132,16 @@ GKeyFile *load_config_file(gchar *config_file)
   {
     g_error("Error while loading config file %s: %s", config_file, error->message);
   }
-  gchar   *current_contents = contents;
-  GString *new_content = g_string_sized_new(length);
-  gboolean equal_found = FALSE, new_line = TRUE;
-  while ((unsigned int)(current_contents - contents) < length)
+  GString     *new_content = g_string_sized_new(length);
+  const gchar *cursor = contents, *contents_end = contents + length;
+  while (cursor < contents_end)
   {
-    if (current_contents[0] == '[')
-    {
-      while (((unsigned int)(current_contents - contents) < length) && current_contents[0] != '\n')
-      {
-        g_string_append_c(new_content, current_contents[0]);
-        current_contents++;
-      }
-    }
-    else
-    {
-      if (current_contents[0] == '\n')
-      {
-        if (!equal_found && !new_line)
-        {
-          g_string_append(new_content, "= 1");
-        }
-        new_line = TRUE;
-        equal_found = FALSE;
-      }
-      else
-      {
-        if (current_contents[0] == '=')
-        {
-          equal_found = TRUE;
-        }
-        new_line = FALSE;
-      }
-    }
-    g_string_append_c(new_content, current_contents[0]);
-    current_contents++;
+    const gchar *line_end = memchr(cursor, '\n', contents_end - cursor);
+    append_config_file_line(new_content, cursor, (line_end ? line_end : contents_end) - cursor);
+    if (!line_end)
+      break;
+    g_string_append_c(new_content, '\n');
+    cursor = line_end + 1;
   }
 
   if (!g_key_file_load_from_data(kf, new_content->str, new_content->len,
