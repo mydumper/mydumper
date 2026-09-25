@@ -408,9 +408,9 @@ void *close_file_thread(void *data)
     {
       usleep(1000);
     }
-//    if (fsync(f->fdout))
-//      g_error("while syncing file %s (%d)", f->filename, errno);
-//    close(f->fdout);
+    //    if (fsync(f->fdout))
+    //      g_error("while syncing file %s (%d)", f->filename, errno);
+    //    close(f->fdout);
 
     release_pid();
     final_step_close_file(0, f->filename, f, f->size, f->dbt);
