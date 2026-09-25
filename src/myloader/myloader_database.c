@@ -30,6 +30,8 @@ static GMutex   *database_hash_mutex = NULL;
 gchar           *target_db = NULL;
 struct database *database_db = NULL;
 
+extern int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *, enum restore_job_statement_type restore_job_statement_type);
+
 gboolean has_been_defined_a_target_database()
 {
   return database_db != NULL;
@@ -175,7 +177,7 @@ void create_database(struct thread_data *td, gchar *database)
   if (g_file_test(filepath, G_FILE_TEST_EXISTS))
   {
     trace("Creating database from %s", filename);
-    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_mydumper_file(td, filename, TRUE, NULL));
+    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, filename, TRUE, NULL, CREATE_DATABASE));
   }
   else
   {
