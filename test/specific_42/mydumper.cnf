@@ -1,0 +1,10 @@
+[mydumper]
+database=specific_42
+outputdir=/tmp/data
+regex=^(specific_4[2]\.)
+events
+  
+	
+#[`specific_42`.`t1`]
+
+triggers
