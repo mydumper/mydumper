@@ -733,8 +733,7 @@ static void write_sequence_definition_into_file(MYSQL *conn, struct db_table *db
   return;
 }
 
-// Routines, Functions and Events
-// TODO: We need to split it in 3 functions
+// Routines (Procedures, Functions and Packages) and Events
 
 static void write_routines_definition_into_file(MYSQL *conn, struct database *database, int outfile)
 {
@@ -854,18 +853,16 @@ static void write_events_definition_into_file(MYSQL *conn, struct database *data
   mysql_free_result(result);
 }
 
-static void write_post_into_file(MYSQL *conn, struct database *database, char *filename)
+static int open_post_file(struct database *database, char *filename)
 {
-  int outfile;
-
-  outfile = m_open(&filename, "w");
+  int outfile = m_open(&filename, "w");
 
   if (!outfile)
   {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database->source_database,
         filename, errno);
     errors++;
-    return;
+    return 0;
   }
 
   GString *statement = g_string_sized_new(statement_size);
@@ -874,28 +871,29 @@ static void write_post_into_file(MYSQL *conn, struct database *database, char *f
   {
     g_critical("Could not write %s", filename);
     errors++;
-    return;
   }
   g_string_free(statement, TRUE);
+  return outfile;
+}
 
-  // get routines
-  if (dump_routines)
-  {
-    g_assert(nroutines > 0);
-    write_routines_definition_into_file(conn, database, outfile);
-    if (!database->checksum.skip_routine)
-      database->checksum.routine = get_checksum(conn, database, NULL, checksum_process_structure);
-    if (!database->checksum.skip_event)
-      database->checksum.event = get_checksum(conn, database, NULL, checksum_events_structure_from_database);
-  }
-
-  // get events
-  if (dump_events)
-    write_events_definition_into_file(conn, database, outfile);
-
+static void write_routines_into_file(MYSQL *conn, struct database *database, char *filename)
+{
+  int outfile = open_post_file(database, filename);
+  if (!outfile)
+    return;
+  write_routines_definition_into_file(conn, database, outfile);
   m_close(0, outfile, filename, 1, NULL);
+}
 
-  return;
+static void write_events_into_file(MYSQL *conn, struct database *database, char *filename)
+{
+  int outfile = open_post_file(database, filename);
+  if (!outfile)
+    return;
+  write_events_definition_into_file(conn, database, outfile);
+  if (!database->checksum.skip_event)
+    database->checksum.event = get_checksum(conn, database, NULL, checksum_events_structure_from_database);
+  m_close(0, outfile, filename, 1, NULL);
 }
 
 void free_schema_job(struct schema_job *sj)
@@ -976,22 +974,42 @@ void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job)
   g_free(job);
 }
 
-void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job)
+void do_JOB_SCHEMA_ROUTINES(struct thread_data *td, struct job *job)
 {
   struct database_job *tj = (struct database_job *)job->job_data;
   if (machine_log_json_enabled())
   {
-    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping post schema objects",
-        "dump_post", "create_post_schema", "started",
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping routines",
+        "dump_routines", "create_routines", "started",
         td->thread_id, masquerade_filename ? tj->database->database_name_in_filename : tj->database->source_database,
         NULL, tj->filename);
   }
   else
   {
-    g_message("Thread %d: dumping Store Procedures, Functions and Events for %s%s%s", td->thread_id,
+    g_message("Thread %d: dumping Stored Procedures and Functions for %s%s%s", td->thread_id,
         identifier_quote_character_str, masquerade_filename ? tj->database->database_name_in_filename : tj->database->source_database, identifier_quote_character_str);
   }
-  write_post_into_file(td->thrconn, tj->database, tj->filename);
+  write_routines_into_file(td->thrconn, tj->database, tj->filename);
+  free_database_job(tj);
+  g_free(job);
+}
+
+void do_JOB_SCHEMA_EVENTS(struct thread_data *td, struct job *job)
+{
+  struct database_job *tj = (struct database_job *)job->job_data;
+  if (machine_log_json_enabled())
+  {
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping events",
+        "dump_events", "create_events", "started",
+        td->thread_id, masquerade_filename ? tj->database->database_name_in_filename : tj->database->source_database,
+        NULL, tj->filename);
+  }
+  else
+  {
+    g_message("Thread %d: dumping Events for %s%s%s", td->thread_id,
+        identifier_quote_character_str, masquerade_filename ? tj->database->database_name_in_filename : tj->database->source_database, identifier_quote_character_str);
+  }
+  write_events_into_file(td->thrconn, tj->database, tj->filename);
   free_database_job(tj);
   g_free(job);
 }
