@@ -23,6 +23,7 @@
 #include <gio/gio.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include "mydumper_global.h"
