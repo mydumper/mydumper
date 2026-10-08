@@ -19,6 +19,7 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 #define _GNU_SOURCE
+#include <glib-unix.h>
 
 #include <gio/gio.h>
 #include <errno.h>
@@ -283,7 +284,11 @@ int m_open_pipe(gchar **filename, const char *type){
   f->stdout_filename=new_filename;
   guint e=0;
   g_mutex_lock(pipe_creation);
-  gint status = pipe2(f->pipe, O_CLOEXEC);
+#if GLIB_CHECK_VERSION(2, 78, 0)
+  gint status = !g_unix_open_pipe(f->pipe, O_CLOEXEC, NULL);
+#else
+  gint status = !g_unix_open_pipe(f->pipe, FD_CLOEXEC, NULL);
+#endif
   if (status != 0)
   {
     g_error("Not able to create pipe (%d)", e);
