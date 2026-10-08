@@ -19,10 +19,10 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 #define _GNU_SOURCE
-#include <glib-unix.h>
-
-#include <gio/gio.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <gio/gio.h>
+#include <glib-unix.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <unistd.h>
