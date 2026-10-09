@@ -34,6 +34,8 @@ enum restore_job_statement_type
   DATA_STMT,
   SEQUENCE,
   TRIGGER,
+  ROUTINES,
+  EVENTS,
   POST,
   TABLESPACE,
   CREATE_DATABASE,
@@ -70,6 +72,10 @@ static inline const char *rjstmtype2str(enum restore_job_statement_type rjstmtyp
       return "sequence";
     case TRIGGER:
       return "trigger";
+    case ROUTINES:
+      return "routines";
+    case EVENTS:
+      return "events";
     case POST:
       return "post";
     case TABLESPACE:

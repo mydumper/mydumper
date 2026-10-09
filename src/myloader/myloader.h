@@ -46,6 +46,8 @@ struct restore_errors
   guint view_errors;
   guint sequence_errors;
   guint tablespace_errors;
+  guint routine_errors;
+  guint event_errors;
   guint post_errors;
   guint constraints_errors;
   guint skip_errors;
@@ -172,6 +174,8 @@ enum file_type
   LOAD_DATA,
   SCHEMA_VIEW,
   SCHEMA_TRIGGER,
+  SCHEMA_ROUTINES,
+  SCHEMA_EVENTS,
   SCHEMA_POST,
   IGNORED,
   FILENAME_ENDED
@@ -203,6 +207,10 @@ static inline const char *ft2str(enum file_type ft)
       return "SCHEMA_VIEW";
     case SCHEMA_TRIGGER:
       return "SCHEMA_TRIGGER";
+    case SCHEMA_ROUTINES:
+      return "SCHEMA_ROUTINES";
+    case SCHEMA_EVENTS:
+      return "SCHEMA_EVENTS";
     case SCHEMA_POST:
       return "SCHEMA_POST";
     case IGNORED:

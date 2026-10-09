@@ -191,7 +191,18 @@ void *process_file_type_worker(void *data)
         if (!skip_triggers)
           process_schema_post_filename(fti->filename, TRIGGER);  // pushed to post_queue
         break;
+      case SCHEMA_ROUTINES:
+        if (!skip_routines)
+          process_schema_post_filename(fti->filename, ROUTINES);  // pushed to post_queue
+        break;
+      case SCHEMA_EVENTS:
+        if (!skip_events)
+          process_schema_post_filename(fti->filename, EVENTS);  // pushed to post_queue
+        break;
       case SCHEMA_POST:
+        // Legacy file with routines and events together, it can not be partially imported
+        if (skip_routines != skip_events)
+          g_warning("%s contains routines and events, it can not be partially imported. Use --skip-post to skip it", fti->filename);
         if (!skip_post)
           process_schema_post_filename(fti->filename, POST);  // pushed to post_queue
         break;
