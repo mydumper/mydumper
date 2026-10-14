@@ -553,6 +553,14 @@ static gboolean get_database_table_from_filename_for_filter(const gchar *filenam
   {
     get_database_table_from_file(filename, "-schema-triggers", database, table);
   }
+  else if (m_filename_has_suffix(filename, "-schema-routines.sql"))
+  {
+    get_database_table_from_file(filename, "-schema-routines", database, table);
+  }
+  else if (m_filename_has_suffix(filename, "-schema-events.sql"))
+  {
+    get_database_table_from_file(filename, "-schema-events", database, table);
+  }
   else if (m_filename_has_suffix(filename, "-schema-post.sql"))
   {
     get_database_table_from_file(filename, "-schema-post", database, table);

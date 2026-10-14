@@ -181,6 +181,13 @@ static enum file_type get_file_type(const char *filename)
   if (m_filename_has_suffix(filename, "-schema-triggers.sql"))
     return SCHEMA_TRIGGER;
 
+  if (m_filename_has_suffix(filename, "-schema-routines.sql"))
+    return SCHEMA_ROUTINES;
+
+  if (m_filename_has_suffix(filename, "-schema-events.sql"))
+    return SCHEMA_EVENTS;
+
+  // Legacy: routines and events together, from backups taken by older versions
   if (m_filename_has_suffix(filename, "-schema-post.sql"))
     return SCHEMA_POST;
 

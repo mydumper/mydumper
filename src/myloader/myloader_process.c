@@ -869,7 +869,10 @@ void process_metadata_global_filename(gchar *file, GOptionContext *local_context
         {
           struct database *database = get_database(database_table[0], database_table[0]);
           database->checksum.schema = get_value(kf, groups[j], "schema_checksum");
-          database->checksum.routine = get_value(kf, groups[j], "post_checksum");
+          database->checksum.routine = get_value(kf, groups[j], "routines_checksum");
+          // Legacy: backups taken by older versions store it as post_checksum
+          if (!database->checksum.routine)
+            database->checksum.routine = get_value(kf, groups[j], "post_checksum");
           database->checksum.trigger = get_value(kf, groups[j], "triggers_checksum");
           database->checksum.event = get_value(kf, groups[j], "events_checksum");
         }
