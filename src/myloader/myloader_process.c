@@ -483,7 +483,7 @@ static gchar *get_database_name_from_content(gchar *filename, GString **out_cont
   return target_database;
 }
 
-void process_database_filename(char *filename)
+gboolean process_database_filename(char *filename)
 {
   gchar   *db_kname, *db_vname;
   GString *db_content = NULL;
@@ -502,8 +502,6 @@ void process_database_filename(char *filename)
     m_critical("It was not possible to process db file: %s", filename);
   }
 
-  trace("Adding database: %s -> %s", db_kname, db_vname);
-  //  struct database *_database = get_database(db_kname, db_vname);
   struct database *_database = db_kname == db_vname ? get_database(db_kname) : get_database_with_prefix(db_kname, db_vname);
 
   if (!eval_regex(_database->source_database, NULL))
@@ -515,23 +513,25 @@ void process_database_filename(char *filename)
     _database->checksum.event = NULL;
     if (db_content)
       g_string_free(db_content, TRUE);
-    return;
+    return _database->target_defined;
   }
 
-  if (!has_been_defined_a_target_database())
+  if (!_database->target_defined)
   {
+    g_mutex_lock(_database->mutex);
     _database->schema_state = NOT_CREATED;
-    //    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE);
+    g_mutex_unlock(_database->mutex);
     schema_push(SCHEMA_CREATE_JOB, filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, db_content, CREATE_DATABASE, NULL);
-    //    schema_push( gchar * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, enum restore_job_statement_type object, enum control_job_type type, struct database *use_database )
-    //    g_async_queue_push(conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
   }
   else
   {
+    g_mutex_lock(_database->mutex);
     _database->schema_state = CREATED;
+    g_mutex_unlock(_database->mutex);
     if (db_content)
       g_string_free(db_content, TRUE);
   }
+  return _database->target_defined;
 }
 
 gboolean process_schema_sequence_filename(gchar *filename)
@@ -998,7 +998,7 @@ gboolean process_data_filename(char *filename)
   struct db_table *dbt = NULL;
   if (append_new_db_table(&dbt, _database, NULL, table_name, FALSE))
   {
-    if (!has_been_defined_a_target_database())
+    if (!_database->target_defined)
     {
       gchar *schema_filename = common_build_schema_table_filename(directory, _database->target_database, table_name, "schema");
       if (g_file_test(schema_filename, G_FILE_TEST_EXISTS))

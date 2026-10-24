@@ -154,14 +154,17 @@ void *process_file_type_worker(void *data)
         g_warning("Tablespace file %s has been ignored. It should be imported manually before restoring", fti->filename);
         break;
       case SCHEMA_CREATE:
-        process_database_filename(fti->filename);  // pushed to database_queue
+      {
+        gboolean target_defined = process_database_filename(fti->filename);  // pushed to database_queue
         g_atomic_int_inc(&schema_processed_counter);
-        if (has_been_defined_a_target_database())
+        // the schema-create file is not needed when -B defines the target database
+        if (target_defined)
         {
-          trace("tryging to remove: %s", fti->filename);
+          trace("trying to remove: %s", fti->filename);
           m_remove(directory, fti->filename);
         }
         break;
+      }
       case SCHEMA_SEQUENCE:
         process_schema_sequence_filename(fti->filename);  // pushed to table_queue if database is created, _database->sequence_queue otherwise
         break;

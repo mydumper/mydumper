@@ -137,7 +137,7 @@ gboolean process_schema(struct thread_data *td)
       trace("database_queue -> %s", _database->source_database);
       g_mutex_lock(_database->mutex);
       process_restore_job(td, schema_job->restore_job);
-      //      ret=process_job(td, job, NULL);
+      // releases the table/sequence jobs that were waiting for this database
       set_db_schema_created(_database);
       trace("Set DB created: %s", _database->source_database);
       g_mutex_unlock(_database->mutex);
@@ -163,19 +163,8 @@ gboolean process_schema(struct thread_data *td)
         schema_job = g_async_queue_try_pop(retry_queue);
       }
 
-      check_and_create_missing_databases(td);
       // set_all_databases_as_created();
-      /*
-            GHashTableIter iter;
-            gpointer       _key;
-            g_hash_table_iter_init(&iter, database_hash);
-            while (g_hash_table_iter_next(&iter, &_key, (gpointer)&_database))
-            {
-              g_mutex_lock(_database->mutex);
-              set_db_schema_created(_database);
-              g_mutex_unlock(_database->mutex);
-            }
-      */
+
       schema_job_queue_push(new_schema_job(SCHEMA_ENDED, NULL, NULL));
 
       // refresh_table_list(td->conf);

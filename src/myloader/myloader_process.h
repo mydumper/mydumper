@@ -36,8 +36,8 @@ struct fifo
 // void initialize_process(struct configuration *c);
 void initialize_process(struct configuration *c, GHashTable *set_session_hash);
 
-void process_tablespace_filename(char *filename);
-void process_database_filename(char *filename);
+void     process_tablespace_filename(char *filename);
+gboolean process_database_filename(char *filename);
 
 gboolean process_table_filename(char *filename);
 gboolean process_schema_post_filename(gchar *filename, enum restore_job_statement_type object);
