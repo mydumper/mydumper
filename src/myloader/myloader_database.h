@@ -44,4 +44,5 @@ void             execute_use_if_needs_to(struct connection_data *cd, struct data
 gboolean         execute_use(struct connection_data *cd);
 void             start_database(struct thread_data *td);
 void             set_db_schema_created(struct database *_database);
+void             set_not_found_databases_as_created();
 #endif

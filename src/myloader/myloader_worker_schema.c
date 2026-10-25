@@ -51,10 +51,11 @@ struct schema_job *new_schema_job(enum schema_job_type type, struct restore_job 
   return sj;
 }
 
+// sorted, so jobs released after SCHEMA_ENDED was queued are still processed
 void schema_job_queue_push(struct schema_job *sj)
 {
   trace("schema_job_queue <- %s", schema_job_type2str(sj->type));
-  g_async_queue_push(schema_job_queue, sj);
+  g_async_queue_push_sorted(schema_job_queue, sj, &schema_job_cmp, NULL);
 }
 
 gboolean schema_push(enum schema_job_type schema_worker_job, gchar *filename, enum restore_job_type rj_type, struct db_table *dbt, struct database *_database, GString *statement, enum restore_job_statement_type object, struct database *use_database)
@@ -163,8 +164,7 @@ gboolean process_schema(struct thread_data *td)
         schema_job = g_async_queue_try_pop(retry_queue);
       }
 
-      // set_all_databases_as_created();
-
+      set_not_found_databases_as_created();
       schema_job_queue_push(new_schema_job(SCHEMA_ENDED, NULL, NULL));
 
       // refresh_table_list(td->conf);

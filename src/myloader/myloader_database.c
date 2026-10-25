@@ -268,6 +268,26 @@ void start_database(struct thread_data *td)
   g_hash_table_destroy(created);
 }
 
+// Databases without schema-create file never get a SCHEMA_CREATE_JOB, so the
+// table and sequence jobs waiting for them are released here. Locking each
+// database also waits for any SCHEMA_CREATE_JOB in progress.
+void set_not_found_databases_as_created()
+{
+  struct database *_database;
+  GHashTableIter   iter;
+  gpointer         _key;
+  g_mutex_lock(database_hash_mutex);
+  g_hash_table_iter_init(&iter, database_hash);
+  while (g_hash_table_iter_next(&iter, &_key, (gpointer)&_database))
+  {
+    g_mutex_lock(_database->mutex);
+    if (_database->schema_state == NOT_FOUND)
+      set_db_schema_created(_database);
+    g_mutex_unlock(_database->mutex);
+  }
+  g_mutex_unlock(database_hash_mutex);
+}
+
 // _database is locked
 void set_db_schema_created(struct database *_database)
 {
