@@ -1,6 +1,7 @@
 #
-# Testing -B with a partial list of source:target pairs (issue #2300). Only
-# specific_43_db1 is renamed, specific_43_db2 must keep its own name.
+# Testing -B with a list of source:target pairs (issue #2300). The same table
+# name exists in every source database, and each one must be restored into its
+# own target database instead of overwriting each other.
 #
 
 [mydumper]

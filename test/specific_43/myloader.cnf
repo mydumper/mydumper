@@ -1,5 +1,11 @@
+#
+# drop-database must drop the target databases before restoring into them, not
+# after. prepare_myloader.sql leaves a table on specific_43_r1 to check it.
+#
+
 [myloader]
-database=specific_43_db1:specific_43_r1
+database=specific_43_db1:specific_43_r1,specific_43_db2:specific_43_r2,specific_43_db3:specific_43_r3
+drop-database
 drop-table
 max-threads-for-index-creation=1
 max-threads-for-post-actions=1

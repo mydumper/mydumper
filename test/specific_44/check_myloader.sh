@@ -4,13 +4,17 @@
 
 fail() { echo "specific_44: $*" >&2; exit 1; }
 
-rows=$(mysql -N -e "SELECT COUNT(*), MIN(val) FROM specific_44.t1" | tr '\t' ' ')
-[ "$rows" == "1 db1" ] || fail "specific_44.t1 has: ${rows}"
+rows=$(mysql -N -e "SELECT COUNT(*), MIN(val) FROM specific_44_r1.table1" | tr '\t' ' ')
+[ "$rows" == "1 db1" ] || fail "specific_44_r1.table1 has: ${rows}"
 
-rows=$(mysql -N -e "SELECT COUNT(*), MIN(val) FROM specific_44.t2" | tr '\t' ' ')
-[ "$rows" == "2 db2" ] || fail "specific_44.t2 has: ${rows}"
+rows=$(mysql -N -e "SELECT COUNT(*), MIN(val) FROM specific_44_db2.table1" | tr '\t' ' ')
+[ "$rows" == "2 db2" ] || fail "specific_44_db2.table1 has: ${rows}"
 
-sources=$(mysql -N -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'specific\_44\_db%'")
-[ "$sources" -eq 0 ] || fail "source databases were created"
+# specific_44_db2 is not renamed, so it must be created from its schema-create file
+charset=$(mysql -N -e "SELECT DEFAULT_CHARACTER_SET_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='specific_44_db2'")
+[ "$charset" == "latin1" ] || fail "specific_44_db2 was created with charset: ${charset}"
+
+exists=$(mysql -N -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='specific_44_db1'")
+[ "$exists" -eq 0 ] || fail "specific_44_db1 was created"
 
 exit 0

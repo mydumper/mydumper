@@ -1,5 +1,5 @@
 [myloader]
-database=specific_44
+database=specific_44_db1:specific_44_r1
 drop-table
 max-threads-for-index-creation=1
 max-threads-for-post-actions=1

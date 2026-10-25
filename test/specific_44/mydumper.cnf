@@ -1,6 +1,6 @@
 #
-# Testing -B with a single database: every database is restored into it, as
-# before issue #2300 added the source:target list.
+# Testing -B with a partial list of source:target pairs (issue #2300). Only
+# specific_44_db1 is renamed, specific_44_db2 must keep its own name.
 #
 
 [mydumper]
