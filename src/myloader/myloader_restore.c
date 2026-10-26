@@ -387,7 +387,8 @@ static int restore_data_in_gstring_by_statement(struct connection_data *cd, GStr
       }
     }
   }
-  *query_counter = *query_counter + 1;
+  if (query_counter)
+    *query_counter = *query_counter + 1;
   g_string_set_size(data, 0);
   return 0;
 }
@@ -558,7 +559,7 @@ static int restore_insert(struct connection_data *cd, struct thread_data *td, GS
       table_lock(dbt);
       dbt->rows_inserted += current_rows;
       table_unlock(dbt);
-      if (cd->transaction && *query_counter == commit_count)
+      if (cd->transaction && *query_counter >= commit_count)
       {
         tr += m_commit_and_start_transaction(cd, query_counter);
         transaction_size = 0;
@@ -613,8 +614,10 @@ void *restore_thread(MYSQL *thrconn)
       if (ir->kind_of_statement == CLOSE)
       {
         trace("Releasing connection: %ld", cd->connection_id);
-        if (cd->transaction && query_counter > 0)
+        if (cd->transaction)
           m_commit(cd);
+        // The transaction ends with the file, so the next file must start counting from zero.
+        query_counter = 0;
         g_async_queue_push(cd->queue->result, ir);
         cd->queue = NULL;
         ir = NULL;
@@ -661,7 +664,8 @@ void *restore_thread(MYSQL *thrconn)
       }
       else
       {
-        ir->result = restore_data_in_gstring_by_statement(cd, ir->buffer, ir->is_schema, &query_counter, ir->preline, 0);  // current_offset_line);
+        // Only INSERTs count towards --queries-per-transaction; SET headers and other statements do not.
+        ir->result = restore_data_in_gstring_by_statement(cd, ir->buffer, ir->is_schema, NULL, ir->preline, 0);  // current_offset_line);
         if (ir->result > 0)
         {
           ir->error = g_strdup(mysql_error(cd->thrconn));
