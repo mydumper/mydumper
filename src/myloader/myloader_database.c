@@ -23,38 +23,79 @@
 #include "myloader/myloader_global.h"
 #include "myloader/myloader_restore.h"
 #include "myloader/myloader_restore_job.h"
+#include "myloader_worker_schema.h"
 #include "logging.h"
 
-GHashTable      *database_hash = NULL;
-static GMutex   *database_hash_mutex = NULL;
-gchar           *target_db = NULL;
-struct database *database_db = NULL;
+GHashTable    *database_hash = NULL;
+static GMutex *database_hash_mutex = NULL;
+gchar         *target_db = NULL;
+// -B accepts a single database, where every database is restored into, or a
+// comma-separated list of source:target pairs, where only the listed databases
+// are renamed and the rest keep their own name.
+static gchar      *single_target_database = NULL;
+static GHashTable *target_database_by_source = NULL;
 
+static struct database *add_new_database(gchar *filename_database, gchar *source_database);
 extern int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *, enum restore_job_statement_type restore_job_statement_type);
-
-gboolean has_been_defined_a_target_database()
-{
-  return database_db != NULL;
-}
 
 void initialize_database()
 {
   database_hash_mutex = g_mutex_new();
   database_hash = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
-  if (target_db)
-    database_db = get_database(g_strdup(target_db), g_strdup(target_db));
+  target_database_by_source = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  if (!target_db)
+    return;
+  if (!strchr(target_db, ':'))
+  {
+    if (strchr(target_db, ','))
+      m_error("-B must be a single database or a list of source:target pairs: %s", target_db);
+    single_target_database = g_strdup(target_db);
+    return;
+  }
+  GList *database_list = m_glistsplit(target_db);
+  while (database_list)
+  {
+    gchar **kv = g_strsplit(database_list->data, ":", 2);
+    if (g_strv_length(kv) != 2 || !strlen(kv[0]) || !strlen(kv[1]))
+      m_error("Failed to parse `%s` on -B, expected source:target: %s", (gchar *)database_list->data, target_db);
+    if (g_hash_table_contains(target_database_by_source, kv[0]))
+      m_error("Database `%s` is defined more than once on -B: %s", kv[0], target_db);
+    g_hash_table_insert(target_database_by_source, g_strdup(kv[0]), g_strdup(kv[1]));
+    g_strfreev(kv);
+    g_free(database_list->data);
+    database_list = g_list_delete_link(database_list, database_list);
+  }
 }
 
-static struct database *new_database(gchar *database, gchar *filename)
+// @return the database defined with -B for source_database, or NULL when it
+// must be restored with its own name
+static gchar *get_target_database(gchar *source_database)
+{
+  if (single_target_database)
+    return single_target_database;
+  return g_hash_table_lookup(target_database_by_source, source_database);
+}
+
+static void set_target_database(struct database *_database)
+{
+  gchar *target_database = get_target_database(_database->source_database);
+  _database->target_defined = target_database != NULL;
+  _database->target_database = target_database ? g_strdup(target_database) : newline_unprotect(_database->source_database);
+}
+
+static struct database *new_database(gchar *filename, gchar *source_database)
 {
   struct database *_database = g_new(struct database, 1);
-  _database->source_database = database;
-  _database->target_database = target_db ? g_strdup(target_db) : newline_unprotect(_database->source_database);
-  _database->database_name_in_filename = filename;
+
+  _database->source_database = g_strdup(source_database);
+  _database->database_name_in_filename = g_strdup(filename);
+  set_target_database(_database);
+
+  _database->schema_state = _database->target_defined ? CREATED : NOT_FOUND;
+
   _database->mutex = g_mutex_new();
   _database->sequence_queue = g_async_queue_new();
   _database->table_queue = g_async_queue_new();
-  _database->schema_state = target_db ? CREATED : NOT_FOUND;
   _database->checksum.schema = NULL;
   _database->checksum.routine = NULL;
   _database->checksum.trigger = NULL;
@@ -90,25 +131,40 @@ static struct database *new_database(gchar *database, gchar *filename)
   return _database;
 }
 
-struct database *get_database(gchar *filename, gchar *name)
+static struct database *add_new_database(gchar *filename_database, gchar *source_database)
+{
+  trace("Adding database: %s -> %s", filename_database, source_database);
+  struct database *_database = new_database(filename_database, source_database);
+  g_hash_table_insert(database_hash, g_strdup(filename_database), _database);
+  return _database;
+}
+
+struct database *get_database_with_prefix(gchar *filename_database, gchar *founded_database)
+{
+  // This function is only used when the filename has prefix "mydumper_"
+  g_mutex_lock(database_hash_mutex);
+  // it will be faster to find the filename_database even if is is not the source_database
+  struct database *_database = g_hash_table_lookup(database_hash, filename_database);
+  if (_database == NULL)
+    _database = add_new_database(filename_database, founded_database);
+  else if (g_strcmp0(_database->source_database, founded_database))
+  {
+    // created before its schema-create file was processed, with the name in
+    // the filename as source_database
+    _database->source_database = g_strdup(founded_database);
+    set_target_database(_database);
+  }
+  g_mutex_unlock(database_hash_mutex);
+  return _database;
+}
+
+struct database *get_database(gchar *source_database)
 {
   g_mutex_lock(database_hash_mutex);
-  struct database *_database = g_hash_table_lookup(database_hash, filename);
+  struct database *_database = g_hash_table_lookup(database_hash, source_database);
   if (_database == NULL)
   {
-    _database = new_database(g_strdup(name), filename);
-    g_hash_table_insert(database_hash, filename, _database);
-    if (g_strcmp0(filename, name))
-      g_hash_table_insert(database_hash, g_strdup(name), _database);
-    _database = g_hash_table_lookup(database_hash, name);
-  }
-  else
-  {
-    if (filename != name)
-    {
-      _database->source_database = g_strdup(name);
-      _database->target_database = g_strdup(target_db ? target_db : _database->source_database);
-    }
+    _database = add_new_database(source_database, source_database);
   }
   g_mutex_unlock(database_hash_mutex);
   return _database;
@@ -152,20 +208,15 @@ gboolean execute_use(struct connection_data *cd)
 
 void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar *msg)
 {
-  if (database != NULL && (target_db == NULL || cd->current_database == NULL))
+  if (database != NULL && (cd->current_database == NULL || g_strcmp0(database->target_database, cd->current_database->target_database) != 0))
   {
-    if (cd->current_database == NULL || g_strcmp0(database->target_database, cd->current_database->target_database) != 0)
-    {
-      cd->current_database = database;
-      if (execute_use(cd))
-      {
-        m_critical("Thread %ld with connection %ld: Error switching to database `%s` %s: %s", cd->thread_id, cd->connection_id, cd->current_database->target_database, msg, mysql_error(cd->thrconn));
-      }
-    }
+    cd->current_database = database;
+    if (execute_use(cd))
+      m_critical("Thread %ld with connection %ld: Error switching to database `%s` %s: %s", cd->thread_id, cd->connection_id, cd->current_database->target_database, msg, mysql_error(cd->thrconn));
   }
 }
 
-void create_database(struct thread_data *td, gchar *database)
+static void create_database(struct thread_data *td, gchar *database)
 {
   const gchar *filename =
       g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension ? exec_per_thread_extension : "");
@@ -193,12 +244,67 @@ void create_database(struct thread_data *td, gchar *database)
   return;
 }
 
+// Creates the target databases defined with -B before any schema job runs, as
+// databases mapped with -B are considered CREATED and their tables are not
+// waiting for a schema-create job.
 void start_database(struct thread_data *td)
 {
-  if (database_db)
+  if (no_schemas)
+    return;
+  if (single_target_database)
   {
-    if (!no_schemas)
-      create_database(td, database_db->target_database);
-    database_db->schema_state = CREATED;
+    create_database(td, single_target_database);
+    return;
+  }
+  GHashTable    *created = g_hash_table_new(g_str_hash, g_str_equal);
+  GHashTableIter iter;
+  gpointer       _key, _target_database;
+  g_hash_table_iter_init(&iter, target_database_by_source);
+  while (g_hash_table_iter_next(&iter, &_key, &_target_database))
+  {
+    if (g_hash_table_contains(created, _target_database))
+      continue;
+    create_database(td, _target_database);
+    g_hash_table_add(created, _target_database);
+  }
+  g_hash_table_destroy(created);
+}
+
+// Databases without schema-create file never get a SCHEMA_CREATE_JOB, so the
+// table and sequence jobs waiting for them are released here. Locking each
+// database also waits for any SCHEMA_CREATE_JOB in progress.
+void set_not_found_databases_as_created()
+{
+  struct database *_database;
+  GHashTableIter   iter;
+  gpointer         _key;
+  g_mutex_lock(database_hash_mutex);
+  g_hash_table_iter_init(&iter, database_hash);
+  while (g_hash_table_iter_next(&iter, &_key, (gpointer)&_database))
+  {
+    g_mutex_lock(_database->mutex);
+    if (_database->schema_state == NOT_FOUND)
+      set_db_schema_created(_database);
+    g_mutex_unlock(_database->mutex);
+  }
+  g_mutex_unlock(database_hash_mutex);
+}
+
+// _database is locked
+void set_db_schema_created(struct database *_database)
+{
+  _database->schema_state = CREATED;
+
+  struct schema_job *sj = g_async_queue_try_pop(_database->sequence_queue);
+  while (sj)
+  {
+    schema_job_queue_push(sj);
+    sj = g_async_queue_try_pop(_database->sequence_queue);
+  }
+  sj = g_async_queue_try_pop(_database->table_queue);
+  while (sj)
+  {
+    schema_job_queue_push(sj);
+    sj = g_async_queue_try_pop(_database->table_queue);
   }
 }

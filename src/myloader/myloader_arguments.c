@@ -213,7 +213,7 @@ static GOptionEntry entries[] = {
     {"load-data-tmp-dir", 0, 0, G_OPTION_ARG_FILENAME, &load_data_tmp_directory,
         "Directory where the FIFO temporary files will be created when needed for LOAD DATA statements. Default: temporary directoy will be created", NULL},
     {"database", 'B', 0, G_OPTION_ARG_STRING, &target_db,
-        "An alternative database to restore into", NULL},
+        "An alternative database to restore into, or a comma-separated list of source:target pairs to rename only those databases. Eg: db1:restore1,db2:restore2", NULL},
     {"show-warnings", 0, 0, G_OPTION_ARG_NONE, &show_warnings,
         "If enabled, during INSERT IGNORE the warnings will be printed", NULL},
     {"resume", 0, 0, G_OPTION_ARG_NONE, &resume,

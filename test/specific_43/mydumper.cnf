@@ -1,0 +1,9 @@
+#
+# Testing -B with a list of source:target pairs (issue #2300). The same table
+# name exists in every source database, and each one must be restored into its
+# own target database instead of overwriting each other.
+#
+
+[mydumper]
+regex=^specific_43_db
+outputdir=/tmp/data

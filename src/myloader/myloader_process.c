@@ -483,7 +483,7 @@ static gchar *get_database_name_from_content(gchar *filename, GString **out_cont
   return target_database;
 }
 
-void process_database_filename(char *filename)
+gboolean process_database_filename(char *filename)
 {
   gchar   *db_kname, *db_vname;
   GString *db_content = NULL;
@@ -502,8 +502,7 @@ void process_database_filename(char *filename)
     m_critical("It was not possible to process db file: %s", filename);
   }
 
-  trace("Adding database: %s -> %s", db_kname, db_vname);
-  struct database *_database = get_database(db_kname, db_vname);
+  struct database *_database = db_kname == db_vname ? get_database(db_kname) : get_database_with_prefix(db_kname, db_vname);
 
   if (!eval_regex(_database->source_database, NULL))
   {
@@ -514,25 +513,25 @@ void process_database_filename(char *filename)
     _database->checksum.event = NULL;
     if (db_content)
       g_string_free(db_content, TRUE);
-    return;
+    return _database->target_defined;
   }
 
-  if (!has_been_defined_a_target_database())
+  if (!_database->target_defined)
   {
     g_mutex_lock(_database->mutex);
     _database->schema_state = NOT_CREATED;
     g_mutex_unlock(_database->mutex);
-    //    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE);
     schema_push(SCHEMA_CREATE_JOB, filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, db_content, CREATE_DATABASE, NULL);
-    //    schema_push( gchar * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, enum restore_job_statement_type object, enum control_job_type type, struct database *use_database )
-    //    g_async_queue_push(conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
   }
   else
   {
+    g_mutex_lock(_database->mutex);
     _database->schema_state = CREATED;
+    g_mutex_unlock(_database->mutex);
     if (db_content)
       g_string_free(db_content, TRUE);
   }
+  return _database->target_defined;
 }
 
 gboolean process_schema_sequence_filename(gchar *filename)
@@ -546,7 +545,7 @@ gboolean process_schema_sequence_filename(gchar *filename)
     g_error("Database is null on: %s", filename);
     return FALSE;
   }
-  _database = get_database(database, database);
+  _database = get_database(database);
   if (_database == NULL)
   {
     g_warning("It was not possible to process file: %s (3) because _database isn't found. We might renqueue it, take into account that restores without schema-create files are not supported", filename);
@@ -611,7 +610,7 @@ gboolean process_table_filename(char *filename)
     m_critical("It was not possible to process file: %s (1)", filename);
   }
 
-  struct database *_database = get_database(db_name, db_name);
+  struct database *_database = get_database(db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex))
   {
     trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
@@ -806,7 +805,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext *local_context
         if (!source_db || g_strcmp0(database_table[0], source_db) == 0)
         {
           const gchar     *table_name_for_eval = database_table[1];
-          struct database *_database = get_database(database_table[0], database_table[0]);
+          struct database *_database = get_database(database_table[0]);
           //          gchar *table_filename=g_strdup(database_table[1]);
 
           value = get_value(kf, groups[j], "real_table_name");
@@ -867,7 +866,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext *local_context
         database_table[0][strlen(database_table[0]) - 1] = '\0';
         if (!source_db || g_strcmp0(database_table[0], source_db) == 0)
         {
-          struct database *database = get_database(database_table[0], database_table[0]);
+          struct database *database = get_database(database_table[0]);
           database->checksum.schema = get_value(kf, groups[j], "schema_checksum");
           database->checksum.routine = get_value(kf, groups[j], "routines_checksum");
           // Legacy: backups taken by older versions store it as post_checksum
@@ -915,7 +914,7 @@ gboolean process_schema_view_filename(gchar *filename)
   {
     g_critical("Database is null on: %s", filename);
   }
-  _database = get_database(database, database);
+  _database = get_database(database);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex))
   {
     trace("File %s has been filtered out by table selection", filename);
@@ -941,7 +940,7 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
   {
     g_critical("Database is null on: %s", filename);
   }
-  _database = get_database(database, database);
+  _database = get_database(database);
   if (table_name != NULL)
   {
     if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex))
@@ -992,7 +991,7 @@ gboolean process_data_filename(char *filename)
     m_critical("It was not possible to process file: %s (3)", filename);
   }
 
-  struct database *_database = get_database(db_name, db_name);
+  struct database *_database = get_database(db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex))
   {
     trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
@@ -1002,7 +1001,7 @@ gboolean process_data_filename(char *filename)
   struct db_table *dbt = NULL;
   if (append_new_db_table(&dbt, _database, NULL, table_name, FALSE))
   {
-    if (!has_been_defined_a_target_database())
+    if (!_database->target_defined)
     {
       gchar *schema_filename = common_build_schema_table_filename(directory, _database->target_database, table_name, "schema");
       if (g_file_test(schema_filename, G_FILE_TEST_EXISTS))

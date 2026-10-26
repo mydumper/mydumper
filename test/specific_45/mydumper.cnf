@@ -1,0 +1,8 @@
+#
+# Testing -B with a single database: every database is restored into it, as
+# before issue #2300 added the source:target list.
+#
+
+[mydumper]
+regex=^specific_45_db
+outputdir=/tmp/data

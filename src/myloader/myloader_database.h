@@ -29,6 +29,7 @@ struct database
 
   gchar                         *target_database;            // aka: the output schema name this can change when use -B.
   gchar                         *database_name_in_filename;  // aka: the key of the schema. Useful if you have mydumper_ filenames.
+  gboolean                       target_defined;             // aka: -B defines the target_database, so its schema-create file is not used.
   enum schema_status             schema_state;
   GAsyncQueue                   *sequence_queue;
   GAsyncQueue                   *table_queue;
@@ -37,10 +38,11 @@ struct database
 };
 
 void             initialize_database();
-struct database *get_database(gchar *k, gchar *v);
+struct database *get_database_with_prefix(gchar *k, gchar *v);
+struct database *get_database(gchar *source_database);
 void             execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar *msg);
 gboolean         execute_use(struct connection_data *cd);
 void             start_database(struct thread_data *td);
-gboolean         has_been_defined_a_target_database();
-
+void             set_db_schema_created(struct database *_database);
+void             set_not_found_databases_as_created();
 #endif

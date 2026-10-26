@@ -1,0 +1,8 @@
+[myloader]
+database=specific_45
+drop-table
+max-threads-for-index-creation=1
+max-threads-for-post-actions=1
+fifodir=/tmp/fifodir
+directory=/tmp/data
+max-threads-for-schema-creation=1

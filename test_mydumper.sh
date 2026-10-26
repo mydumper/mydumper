@@ -242,6 +242,7 @@ test_case_dir (){
   mydumper_prepare_database="${DIR}/prepare_mydumper.sql"
   mydumper_check="${DIR}/check_mydumper.sh"
   myloader_prepare_database="${DIR}/prepare_myloader.sql"
+  myloader_check="${DIR}/check_myloader.sh"
   myloader_pre_execution="${DIR}/pre_myloader.sh"
   myloader_clean_database="${DIR}/clean_databases.sql"
 
@@ -363,6 +364,12 @@ test_case_dir (){
           echo "Files found on streaming backup dir"
           error=1
         fi
+      fi
+
+      if [ -f $myloader_check ]
+      then
+        "$myloader_check" $error
+        error=$?
       fi
 
 
@@ -523,7 +530,7 @@ do
 events=1
 triggers=1
 outputdir=/tmp/data
-regex=^(?!(mysql\.|sys\.))" >> ${dynamic_mydumper}
+regex=^(?!(mysql|sys)(\.|$))" >> ${dynamic_mydumper}
               dynamic_myloader=${dir}/myloader.cnf
               echo "[myloader]
 drop-table

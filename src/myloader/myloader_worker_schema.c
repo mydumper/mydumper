@@ -28,7 +28,7 @@
 
 /* refresh_db_queue2 is for schemas creation */
 static GAsyncQueue *refresh_db_queue2 = NULL;
-extern GHashTable  *database_hash;
+// extern GHashTable  *database_hash;
 GAsyncQueue        *schema_job_queue = NULL;
 struct thread_data *schema_td = NULL;
 GAsyncQueue        *retry_queue = NULL;
@@ -51,10 +51,11 @@ struct schema_job *new_schema_job(enum schema_job_type type, struct restore_job 
   return sj;
 }
 
-static void schema_job_queue_push(struct schema_job *sj)
+// sorted, so jobs released after SCHEMA_ENDED was queued are still processed
+void schema_job_queue_push(struct schema_job *sj)
 {
   trace("schema_job_queue <- %s", schema_job_type2str(sj->type));
-  g_async_queue_push(schema_job_queue, sj);
+  g_async_queue_push_sorted(schema_job_queue, sj, &schema_job_cmp, NULL);
 }
 
 gboolean schema_push(enum schema_job_type schema_worker_job, gchar *filename, enum restore_job_type rj_type, struct db_table *dbt, struct database *_database, GString *statement, enum restore_job_statement_type object, struct database *use_database)
@@ -100,46 +101,6 @@ void schema_ended()
   schema_job_queue_push(new_schema_job(SCHEMA_PROCESS_ENDED, NULL, NULL));
 }
 
-// _database is locked
-static void set_db_schema_created(struct database *_database)
-{
-  //  struct control_job * cj;
-  //  enum file_type ft;
-  //  GAsyncQueue *queue;
-  _database->schema_state = CREATED;
-
-  /* Until all sequences processed we requeue only sequences */
-  /*
-    if (sequences_processed < sequences) {
-      trace("FT change to SCHEMA_SEQUENCE due %d < %d", sequences_processed, sequences );
-  //    ft= SCHEMA_SEQUENCE;
-      queue= _database->sequence_queue;
-    } else {
-  //    ft= SCHEMA_TABLE;
-      queue= _database->table_queue;
-    }
-    cj= g_async_queue_try_pop(queue);
-    while (cj != NULL){
-      g_async_queue_push( conf->table_queue, cj);
-  //    schema_job_queue_push(ft, " (requeuing from db queue)");
-      cj = g_async_queue_try_pop(queue);
-    }
-    */
-
-  struct schema_job *sj = g_async_queue_try_pop(_database->sequence_queue);
-  while (sj)
-  {
-    schema_job_queue_push(sj);
-    sj = g_async_queue_try_pop(_database->sequence_queue);
-  }
-  sj = g_async_queue_try_pop(_database->table_queue);
-  while (sj)
-  {
-    schema_job_queue_push(sj);
-    sj = g_async_queue_try_pop(_database->table_queue);
-  }
-}
-
 static void set_table_schema_state_to_created(struct configuration *conf)
 {
   g_mutex_lock(conf->table_list_mutex);
@@ -177,7 +138,7 @@ gboolean process_schema(struct thread_data *td)
       trace("database_queue -> %s", _database->source_database);
       g_mutex_lock(_database->mutex);
       process_restore_job(td, schema_job->restore_job);
-      //      ret=process_job(td, job, NULL);
+      // releases the table/sequence jobs that were waiting for this database
       set_db_schema_created(_database);
       trace("Set DB created: %s", _database->source_database);
       g_mutex_unlock(_database->mutex);
@@ -203,17 +164,7 @@ gboolean process_schema(struct thread_data *td)
         schema_job = g_async_queue_try_pop(retry_queue);
       }
 
-      GHashTableIter iter;
-      gpointer       _key;
-      g_hash_table_iter_init(&iter, database_hash);
-      while (g_hash_table_iter_next(&iter, &_key, (gpointer)&_database))
-      {
-        g_mutex_lock(_database->mutex);
-        if (_database->schema_state == NOT_FOUND)
-          set_db_schema_created(_database);
-        g_mutex_unlock(_database->mutex);
-      }
-
+      set_not_found_databases_as_created();
       schema_job_queue_push(new_schema_job(SCHEMA_ENDED, NULL, NULL));
 
       // refresh_table_list(td->conf);

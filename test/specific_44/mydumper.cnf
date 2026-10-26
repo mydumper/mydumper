@@ -1,0 +1,8 @@
+#
+# Testing -B with a partial list of source:target pairs (issue #2300). Only
+# specific_44_db1 is renamed, specific_44_db2 must keep its own name.
+#
+
+[mydumper]
+regex=^specific_44_db
+outputdir=/tmp/data
