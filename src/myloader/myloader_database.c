@@ -36,6 +36,12 @@ static gchar      *single_target_database = NULL;
 static GHashTable *target_database_by_source = NULL;
 
 static struct database *add_new_database(gchar *filename_database, gchar *source_database);
+extern int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *, enum restore_job_statement_type restore_job_statement_type);
+
+gboolean has_been_defined_a_target_database()
+{
+  return database_db != NULL;
+}
 
 void initialize_database()
 {
@@ -112,7 +118,8 @@ static struct database *new_database(gchar *filename, gchar *source_database)
     c = GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
   else
     c = FALSE;
-  _database->checksum.skip_routine = c ? c : skip_routine_checksums;
+  // Routines/Events that are not imported can not be verified
+  _database->checksum.skip_routine = c ? c : (skip_routine_checksums || skip_routines);
   cpt = g_hash_table_lookup(conf_per_table, SKIP_TRIGGER_CHECKSUMS);
   if (cpt)
     c = GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
@@ -124,7 +131,7 @@ static struct database *new_database(gchar *filename, gchar *source_database)
     c = GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
   else
     c = FALSE;
-  _database->checksum.skip_event = c ? c : skip_event_checksums;
+  _database->checksum.skip_event = c ? c : (skip_event_checksums || skip_events);
   g_free(any_table_config_file_dbt_key);
   return _database;
 }
@@ -227,7 +234,7 @@ static void create_database(struct thread_data *td, gchar *database)
   if (g_file_test(filepath, G_FILE_TEST_EXISTS))
   {
     trace("Creating database from %s", filename);
-    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_mydumper_file(td, filename, TRUE, NULL));
+    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, filename, TRUE, NULL, CREATE_DATABASE));
   }
   else
   {

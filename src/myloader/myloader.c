@@ -69,6 +69,8 @@ gboolean skip_triggers = FALSE;
 gboolean skip_constraints = FALSE;
 gboolean skip_indexes = FALSE;
 gboolean skip_post = FALSE;
+gboolean skip_routines = FALSE;
+gboolean skip_events = FALSE;
 gboolean resume = FALSE;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
@@ -87,7 +89,7 @@ guint max_threads_for_index_creation = 0;
 guint max_threads_for_post_creation = 1;
 guint retry_count = 10;
 
-struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 extern gboolean print_defaults;
 extern gboolean show_config;
@@ -269,6 +271,8 @@ static void print_defaults_arguments()
   print_bool("skip-create-table", skip_create_table);
   print_bool("skip-triggers", skip_triggers);
   print_bool("skip-post", skip_post);
+  print_bool("skip-routines", skip_routines);
+  print_bool("skip-events", skip_events);
   print_bool("skip-constraints", skip_constraints);
   print_bool("skip-indexes", skip_indexes);
   print_bool("no-data", no_data);
@@ -370,6 +374,8 @@ void print_errors()
       detailed_errors.index_errors ||
       detailed_errors.trigger_errors ||
       detailed_errors.constraints_errors ||
+      detailed_errors.routine_errors ||
+      detailed_errors.event_errors ||
       detailed_errors.post_errors ||
       detailed_errors.skip_errors ||
       detailed_errors.retries)
@@ -383,6 +389,8 @@ void print_errors()
         "- Index:     \t%d\n"
         "- Trigger:   \t%d\n"
         "- Constraint:\t%d\n"
+        "- Routine:   \t%d\n"
+        "- Event:     \t%d\n"
         "- Post:      \t%d\n"
         "Warnings found:\n"
         "- Data:\t%d\n"
@@ -396,6 +404,8 @@ void print_errors()
         detailed_errors.index_errors,
         detailed_errors.trigger_errors,
         detailed_errors.constraints_errors,
+        detailed_errors.routine_errors,
+        detailed_errors.event_errors,
         detailed_errors.post_errors,
         detailed_errors.data_warnings,
         detailed_errors.skip_errors,
@@ -443,6 +453,12 @@ int main(int argc, char *argv[])
 
   if (overwrite_unsafe)
     overwrite_tables = TRUE;
+
+  // --skip-post is the same as --skip-routines --skip-events
+  if (skip_post)
+    skip_routines = skip_events = TRUE;
+  else if (skip_routines && skip_events)
+    skip_post = TRUE;
 
   check_num_threads();
 

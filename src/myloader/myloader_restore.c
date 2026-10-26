@@ -47,7 +47,7 @@ gchar            *replace_definer = NULL;
 GAsyncQueue      *connection_pool = NULL;
 GAsyncQueue      *restore_queues = NULL;
 GAsyncQueue      *free_results_queue = NULL;
-int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *) = NULL;
+int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *, enum restore_job_statement_type restore_job_statement_type) = NULL;
 gchar      *replace_definer_str = NULL;
 GMutex     *load_data_list_mutex = NULL;
 GHashTable *load_data_list = NULL;
@@ -198,7 +198,8 @@ struct io_restore_result *new_io_restore_result()
   return iors;
 }
 
-int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
+int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database, enum restore_job_statement_type restore_job_statement_type);
+int restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database, enum restore_job_statement_type restore_job_statement_type);
 
 void initialize_connection_pool()
 {
@@ -386,7 +387,8 @@ static int restore_data_in_gstring_by_statement(struct connection_data *cd, GStr
       }
     }
   }
-  *query_counter = *query_counter + 1;
+  if (query_counter)
+    *query_counter = *query_counter + 1;
   g_string_set_size(data, 0);
   return 0;
 }
@@ -557,7 +559,7 @@ static int restore_insert(struct connection_data *cd, struct thread_data *td, GS
       table_lock(dbt);
       dbt->rows_inserted += current_rows;
       table_unlock(dbt);
-      if (cd->transaction && *query_counter == commit_count)
+      if (cd->transaction && *query_counter >= commit_count)
       {
         tr += m_commit_and_start_transaction(cd, query_counter);
         transaction_size = 0;
@@ -612,8 +614,10 @@ void *restore_thread(MYSQL *thrconn)
       if (ir->kind_of_statement == CLOSE)
       {
         trace("Releasing connection: %ld", cd->connection_id);
-        if (cd->transaction && query_counter > 0)
+        if (cd->transaction)
           m_commit(cd);
+        // The transaction ends with the file, so the next file must start counting from zero.
+        query_counter = 0;
         g_async_queue_push(cd->queue->result, ir);
         cd->queue = NULL;
         ir = NULL;
@@ -660,7 +664,8 @@ void *restore_thread(MYSQL *thrconn)
       }
       else
       {
-        ir->result = restore_data_in_gstring_by_statement(cd, ir->buffer, ir->is_schema, &query_counter, ir->preline, 0);  // current_offset_line);
+        // Only INSERTs count towards --queries-per-transaction; SET headers and other statements do not.
+        ir->result = restore_data_in_gstring_by_statement(cd, ir->buffer, ir->is_schema, NULL, ir->preline, 0);  // current_offset_line);
         if (ir->result > 0)
         {
           ir->error = g_strdup(mysql_error(cd->thrconn));
@@ -823,8 +828,9 @@ guint process_result_statement(GAsyncQueue *get_insert_result_queue, struct stat
   return r;
 }
 
-int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database)
+int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database, enum restore_job_statement_type restore_job_statement_type)
 {
+  (void)restore_job_statement_type;
   FILE    *infile = NULL;
   gboolean eof = FALSE;
   GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
@@ -918,7 +924,7 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
   return r;
 }
 
-int restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database)
+int restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database, enum restore_job_statement_type restore_job_statement_type)
 {
   FILE    *infile = NULL;
   gboolean eof = FALSE;
@@ -949,11 +955,23 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
   struct statement *ir = g_async_queue_pop(free_results_queue);
   gboolean          results_added = FALSE;
   GString          *header = g_string_sized_new(256);
+  gboolean          rep = TRUE;
   while (eof == FALSE)
   {
     if (read_data(infile, data, &eof, &line))
     {
-      if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n"))
+      rep = TRUE;
+      if (((restore_job_statement_type == POST) ||
+              (restore_job_statement_type == TRIGGER)) &&
+          (data->str[data->len - 1] == '\n') && (data->str[data->len - 2] == ' '))
+      {
+        data->str[data->len - 2] = '\n';
+        data->str[data->len - 1] = '\0';
+        data->len = data->len - 1;
+        rep = FALSE;
+      }
+
+      if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n") && rep)
       {
         if (g_str_has_prefix(data->str, "CREATE"))
         {

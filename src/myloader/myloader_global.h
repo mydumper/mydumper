@@ -42,6 +42,8 @@ extern gboolean resume;
 extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
 extern gboolean skip_post;
+extern gboolean skip_routines;
+extern gboolean skip_events;
 extern gboolean skip_create_table;
 extern gboolean skip_create_database;
 extern gboolean skip_triggers;
@@ -117,8 +119,6 @@ extern GMutex  sequences_mutex;
 extern GString *set_session;
 extern GString *set_global;
 extern GString *set_global_back;
-
-extern int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *);
 
 extern struct replication_statements *replication_statements;
 extern struct replication_settings    replica_data;

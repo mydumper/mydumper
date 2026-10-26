@@ -843,8 +843,11 @@ gboolean process_job(struct thread_data *td, struct job *job)
     case JOB_SCHEMA_TRIGGERS:
       do_JOB_SCHEMA_TRIGGERS(td, job);
       break;
-    case JOB_SCHEMA_POST:
-      do_JOB_SCHEMA_POST(td, job);
+    case JOB_SCHEMA_ROUTINES:
+      do_JOB_SCHEMA_ROUTINES(td, job);
+      break;
+    case JOB_SCHEMA_EVENTS:
+      do_JOB_SCHEMA_EVENTS(td, job);
       break;
       /*    case JOB_WRITE_MASTER_STATUS:
             write_snapshot_info(td->thrconn, job->job_data);
@@ -1250,50 +1253,23 @@ static void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean 
   }
 }
 
-static gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct database *database)
+// Stored Procedures, Functions and Events are not attached to tables, so we
+// need to define when we need to dump them or not. Having regex filters makes
+// this hard because we don't know if a full schema is filtered or not, and we
+// can't decide it based on the tables from a schema being dumped. So we only
+// use the skip list and regex to decide, and one match is enough to dump all.
+
+static gboolean determine_if_schema_is_elected_to_dump_routines(MYSQL *conn, struct database *database)
 {
   char      *query;
-  MYSQL_RES *result = mysql_store_result(conn);
+  MYSQL_RES *result;
   MYSQL_ROW  row;
-  // Store Procedures and Events
-  // As these are not attached to tables we need to define when we need to dump
-  // or not Having regex filter make this hard because we dont now if a full
-  // schema is filtered or not Also I cant decide this based on tables from a
-  // schema being dumped So I will use only regex to dump or not SP and EVENTS I
-  // only need one match to dump all
 
-  if (dump_routines)
+  g_assert(nroutines > 0);
+  for (guint r = 0; r < nroutines; r++)
   {
-    g_assert(nroutines > 0);
-    for (guint r = 0; r < nroutines; r++)
-    {
-      query = g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->source_database_escaped);
-      result = m_store_result(conn, query, m_critical, "Error showing procedure on: %s - Could not execute query", database->source_database);
-      g_free(query);
-      if (!result)
-        return FALSE;
-      while ((row = mysql_fetch_row(result)))
-      {
-        /* Checks skip list on 'database.sp' string */
-        if (check_skiplist(database->source_database, row[1]))
-          continue;
-
-        /* Checks PCRE expressions on 'database.sp' string */
-        if (!eval_regex(database->source_database, row[1]))
-          continue;
-
-        mysql_free_result(result);
-        return TRUE;
-      }
-      mysql_free_result(result);
-    }  // for (i= 0; i < upper_bound; i++)
-  }  // if (dump_routines)
-
-  if (dump_events)
-  {
-    // EVENTS
-    query = g_strdup_printf("SHOW EVENTS FROM %s%s%s", identifier_quote_character_str, database->source_database, identifier_quote_character_str);
-    result = m_store_result(conn, query, m_critical, "Error showing events on: %s - Could not execute query", database->source_database);
+    query = g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->source_database_escaped);
+    result = m_store_result(conn, query, m_critical, "Error showing procedure on: %s - Could not execute query", database->source_database);
     g_free(query);
     if (!result)
       return FALSE;
@@ -1302,6 +1278,7 @@ static gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct 
       /* Checks skip list on 'database.sp' string */
       if (check_skiplist(database->source_database, row[1]))
         continue;
+
       /* Checks PCRE expressions on 'database.sp' string */
       if (!eval_regex(database->source_database, row[1]))
         continue;
@@ -1310,7 +1287,34 @@ static gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct 
       return TRUE;
     }
     mysql_free_result(result);
+  }  // for (i= 0; i < upper_bound; i++)
+  return FALSE;
+}
+
+static gboolean determine_if_schema_is_elected_to_dump_events(MYSQL *conn, struct database *database)
+{
+  char      *query;
+  MYSQL_RES *result;
+  MYSQL_ROW  row;
+
+  query = g_strdup_printf("SHOW EVENTS FROM %s%s%s", identifier_quote_character_str, database->source_database, identifier_quote_character_str);
+  result = m_store_result(conn, query, m_critical, "Error showing events on: %s - Could not execute query", database->source_database);
+  g_free(query);
+  if (!result)
+    return FALSE;
+  while ((row = mysql_fetch_row(result)))
+  {
+    /* Checks skip list on 'database.event' string */
+    if (check_skiplist(database->source_database, row[1]))
+      continue;
+    /* Checks PCRE expressions on 'database.event' string */
+    if (!eval_regex(database->source_database, row[1]))
+      continue;
+
+    mysql_free_result(result);
+    return TRUE;
   }
+  mysql_free_result(result);
   return FALSE;
 }
 
@@ -1459,8 +1463,11 @@ static void dump_database_thread(MYSQL *conn, struct database *database)
 
   mysql_free_result(result);
 
-  if (determine_if_schema_is_elected_to_dump_post(conn, database))
-    create_job_to_dump_post(database);
+  if (dump_routines && determine_if_schema_is_elected_to_dump_routines(conn, database))
+    create_job_to_dump_routines(database);
+
+  if (dump_events && determine_if_schema_is_elected_to_dump_events(conn, database))
+    create_job_to_dump_events(database);
 
   if (dump_triggers && database->dump_triggers)
     create_job_to_dump_schema_triggers(database);
