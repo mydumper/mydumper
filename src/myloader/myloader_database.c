@@ -38,11 +38,6 @@ static GHashTable *target_database_by_source = NULL;
 static struct database *add_new_database(gchar *filename_database, gchar *source_database);
 extern int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *, enum restore_job_statement_type restore_job_statement_type);
 
-gboolean has_been_defined_a_target_database()
-{
-  return database_db != NULL;
-}
-
 void initialize_database()
 {
   database_hash_mutex = g_mutex_new();
