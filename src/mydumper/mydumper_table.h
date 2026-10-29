@@ -58,6 +58,7 @@ struct db_table
   gboolean            is_sequence;
   gboolean            is_view;
   gboolean            has_json_fields;
+  GHashTable         *uuid_fields;
   char               *character_set;
   guint64             rows_total;
   guint64             rows;
