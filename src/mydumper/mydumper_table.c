@@ -54,7 +54,7 @@ static GHashTable *get_uuid_fields(MYSQL *conn, char *database, char *table)
       "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
       "WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' AND DATA_TYPE='uuid'",
       escaped_database, escaped_table);
-  MYSQL_RES *result = m_store_result(conn, query, m_warning, "Failed to get UUID column metadata", NULL);
+  MYSQL_RES  *result = m_store_result(conn, query, m_warning, "Failed to get UUID column metadata", NULL);
   GHashTable *uuid_fields = NULL;
 
   if (result)
