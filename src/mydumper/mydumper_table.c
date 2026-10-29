@@ -46,6 +46,38 @@ static GHashTable *json_fields_cache = NULL;       // "db.table" -> GINT_TO_POIN
 static GHashTable *generated_fields_cache = NULL;  // "db.table" -> GINT_TO_POINTER(1) if has generated
 static gboolean    metadata_prefetch_done = FALSE;
 
+static GHashTable *get_uuid_fields(MYSQL *conn, char *database, char *table)
+{
+  gchar *escaped_database = escape_string(conn, database);
+  gchar *escaped_table = escape_string(conn, table);
+  gchar *query = g_strdup_printf(
+      "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+      "WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' AND DATA_TYPE='uuid'",
+      escaped_database, escaped_table);
+  MYSQL_RES *result = m_store_result(conn, query, m_warning, "Failed to get UUID column metadata", NULL);
+  GHashTable *uuid_fields = NULL;
+
+  if (result)
+  {
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(result)))
+    {
+      if (row[0])
+      {
+        if (!uuid_fields)
+          uuid_fields = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+        g_hash_table_add(uuid_fields, g_strdup(row[0]));
+      }
+    }
+    mysql_free_result(result);
+  }
+
+  g_free(escaped_database);
+  g_free(escaped_table);
+  g_free(query);
+  return uuid_fields;
+}
+
 void initialize_table()
 {
   all_dbts_mutex = g_mutex_new();
@@ -160,6 +192,8 @@ void free_db_table(struct db_table *dbt)
   g_free(dbt->checksum.data);
   dbt->checksum.data = NULL;
   g_free(dbt->chunks_completed);
+  if (dbt->uuid_fields)
+    g_hash_table_destroy(dbt->uuid_fields);
 
   g_free(dbt->table);
   g_mutex_unlock(dbt->chunks_mutex);
@@ -476,6 +510,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     g_mutex_unlock(all_dbts_mutex);
     dbt->database = database;
     dbt->table = identifier_quote_character_protect(table);
+    dbt->uuid_fields = get_uuid_fields(conn, database->source_database, table);
     dbt->table_filename = get_ref_table(dbt->table);
     dbt->is_sequence = is_sequence;
     dbt->is_view = is_view;
