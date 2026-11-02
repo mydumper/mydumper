@@ -217,6 +217,12 @@ void start_working_thread(struct configuration *conf)
       {
         dump_summary_note_retry();
       }
+      if (!binlog_snapshot_gtid_executed_status_local){
+        g_warning("Binlog position and GTID are not consistent. You can only trust in the GTID position, removing binlog position information.");
+        initial_source_gtid = _binlog_snapshot_gtid_executed;
+        initial_source_log = NULL;
+        initial_source_pos = NULL;
+      }
     }
   }
 
@@ -520,6 +526,7 @@ void initialize_consistent_snapshot(struct thread_data *td)
         else
           m_critical("Failed to get content of binlog_snapshot_gtid_executed");
         mysql_free_result(res);
+        trace("Thread %d: GTID: %s", td->thread_id, td->binlog_snapshot_gtid_executed);
       }
       else
         m_critical("Failed to get content of binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
@@ -597,12 +604,15 @@ static void write_source_info(FILE *file)
 {
   //  get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
 
-  if (initial_source_log)
+  if (initial_source_log || initial_source_gtid)
   {
     fprintf(file, "\n[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
     if (initial_source_gtid && strlen(initial_source_gtid) > 0)
       fprintf(file, "# executed_gtid_set = \"%s\"\n", initial_source_gtid);
-    fprintf(file, "# SOURCE_LOG_FILE = \"%s\"\n# SOURCE_LOG_POS = %s\n", initial_source_log, initial_source_pos);
+    if (initial_source_log && strlen(initial_source_log)>0)
+      fprintf(file, "# SOURCE_LOG_FILE = \"%s\"\n", initial_source_log);
+    if (initial_source_pos && strlen(initial_source_pos)>0)
+        fprintf(file,"# SOURCE_LOG_POS = %s\n", initial_source_pos);
 
     if (source_data.enabled)
     {
