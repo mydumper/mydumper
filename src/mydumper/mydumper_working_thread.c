@@ -207,7 +207,7 @@ void start_working_thread(struct configuration *conf)
       {
         binlog_snapshot_gtid_executed_status_local = binlog_snapshot_gtid_executed_status_local && g_strcmp0(thread_data[n].binlog_snapshot_gtid_executed, _binlog_snapshot_gtid_executed) == 0;
       }
-      if ( g_strcmp0(initial_source_gtid, _binlog_snapshot_gtid_executed) )
+      if (g_strcmp0(initial_source_gtid, _binlog_snapshot_gtid_executed))
       {
         if (!start_transaction_retry)
           g_warning("Binlog position and GTID are not consistent. You can only trust in the GTID position, removing binlog position information.");
