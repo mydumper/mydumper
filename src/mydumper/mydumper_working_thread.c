@@ -199,6 +199,14 @@ void start_working_thread(struct configuration *conf ){
       for (n = 1; n < num_threads; n++) {
         binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status_local && g_strcmp0(thread_data[n].binlog_snapshot_gtid_executed,_binlog_snapshot_gtid_executed)==0;
       }
+      if ( g_strcmp0(initial_source_gtid,_binlog_snapshot_gtid_executed) )
+      {
+        if (!start_transaction_retry)
+          g_warning("Binlog position and GTID are not consistent. You can only trust in the GTID position, removing binlog position information.");
+        initial_source_gtid = _binlog_snapshot_gtid_executed;
+        initial_source_log = NULL;
+        initial_source_pos = NULL;
+      }
       for (n = 0; n < num_threads; n++) {
         g_async_queue_push(conf->are_all_threads_in_same_pos,binlog_snapshot_gtid_executed_status_local?GINT_TO_POINTER(1):GINT_TO_POINTER(2));
       }
@@ -206,12 +214,6 @@ void start_working_thread(struct configuration *conf ){
       if (!binlog_snapshot_gtid_executed_status_local &&
           start_transaction_retry < MAX_START_TRANSACTION_RETRIES) {
         dump_summary_note_retry();
-      }
-      if (!binlog_snapshot_gtid_executed_status_local){
-        g_warning("Binlog position and GTID are not consistent. You can only trust in the GTID position, removing binlog position information.");
-        initial_source_gtid = _binlog_snapshot_gtid_executed;
-        initial_source_log = NULL;
-        initial_source_pos = NULL;
       }
     }
   }
