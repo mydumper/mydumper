@@ -195,7 +195,7 @@ void start_working_thread(struct configuration *conf ){
         g_async_queue_pop(conf->gtid_pos_checked);
       }
 
-      _binlog_snapshot_gtid_executed=g_strdup(thread_data[0].binlog_snapshot_gtid_executed);
+      _binlog_snapshot_gtid_executed = remove_new_line(g_strdup(thread_data[0].binlog_snapshot_gtid_executed));
       for (n = 1; n < num_threads; n++) {
         binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status_local && g_strcmp0(thread_data[n].binlog_snapshot_gtid_executed,_binlog_snapshot_gtid_executed)==0;
       }
@@ -203,8 +203,11 @@ void start_working_thread(struct configuration *conf ){
       {
         if (!start_transaction_retry)
           g_warning("Binlog position and GTID are not consistent. You can only trust in the GTID position, removing binlog position information.");
+        g_free(initial_source_gtid);
         initial_source_gtid = _binlog_snapshot_gtid_executed;
+        g_free(initial_source_log);
         initial_source_log = NULL;
+        g_free(initial_source_pos);
         initial_source_pos = NULL;
       }
       for (n = 0; n < num_threads; n++) {
@@ -478,7 +481,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
       if (res){
         MYSQL_ROW row = mysql_fetch_row(res);
         if (row!=NULL)
-          td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
+          td->binlog_snapshot_gtid_executed = remove_new_line(g_strdup(row[1]));
         else
           m_critical("Failed to get content of binlog_snapshot_gtid_executed");
         mysql_free_result(res);
