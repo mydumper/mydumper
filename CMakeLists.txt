@@ -78,10 +78,10 @@ if (NOT CMAKE_INSTALL_PREFIX)
 endif (NOT CMAKE_INSTALL_PREFIX)
 MARK_AS_ADVANCED(CMAKE)
 
-# Directory where mydumper.cnf and myloader.cnf are installed, and where
+# Directory where mydumper.cnf are installed, and where
 # mydumper/myloader look for the default configuration file. A relative path
 # is interpreted relative to CMAKE_INSTALL_PREFIX.
-SET(MYDUMPER_SYSCONFDIR "/etc" CACHE STRING "Directory for mydumper.cnf and myloader.cnf")
+SET(MYDUMPER_SYSCONFDIR "/etc" CACHE STRING "Directory for mydumper.cnf")
 if (IS_ABSOLUTE "${MYDUMPER_SYSCONFDIR}")
   SET(MYDUMPER_FULL_SYSCONFDIR "${MYDUMPER_SYSCONFDIR}")
 else ()
