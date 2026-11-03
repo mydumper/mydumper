@@ -17,4 +17,7 @@ PREPARE stmt FROM @create_table;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
-INSERT INTO uuid_test VALUES (UUID(), 'native uuid');
+INSERT INTO uuid_test VALUES
+  ('00000000-0000-0000-0000-000000000001', 'row-1'),
+  ('11111111-1111-4111-8111-111111111111', 'row-2'),
+  ('abcdefab-cdef-4abc-8def-abcdefabcdef', 'row-3');
