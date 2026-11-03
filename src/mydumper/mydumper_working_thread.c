@@ -228,13 +228,6 @@ void start_working_thread(struct configuration *conf)
       {
         dump_summary_note_retry();
       }
-      if (!binlog_snapshot_gtid_executed_status_local)
-      {
-        g_warning("Binlog position and GTID are not consistent. You can only trust in the GTID position, removing binlog position information.");
-        initial_source_gtid = _binlog_snapshot_gtid_executed;
-        initial_source_log = NULL;
-        initial_source_pos = NULL;
-      }
     }
   }
 
