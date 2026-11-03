@@ -117,7 +117,6 @@ struct M_ROW
 
 #define STREAM_BUFFER_SIZE 1000000
 #define STREAM_BUFFER_SIZE_NO_STREAM 100
-#define DEFAULTS_FILE "/etc/mydumper.cnf"
 struct function_pointer;
 typedef gboolean (*fun_ptr)(GString *, gchar *, gulong *, struct function_pointer *);
 

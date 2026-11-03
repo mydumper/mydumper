@@ -248,7 +248,7 @@ GOptionEntry common_entries[] = {
     {"ignore-errors", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
         "Not increment error count and Warning instead of Critical in case of any of the comma-separated error number list", NULL},
     {"defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file,
-        "Use a specific defaults file. Default: /etc/mydumper.cnf", NULL},
+        "Use a specific defaults file. Default: " DEFAULTS_FILE, NULL},
     {"defaults-extra-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_extra_file,
         "Use an additional defaults file. This is loaded after --defaults-file, replacing previous defined values", NULL},
     {"source-control-command", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,

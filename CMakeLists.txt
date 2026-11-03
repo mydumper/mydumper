@@ -78,6 +78,18 @@ if (NOT CMAKE_INSTALL_PREFIX)
 endif (NOT CMAKE_INSTALL_PREFIX)
 MARK_AS_ADVANCED(CMAKE)
 
+# Directory where mydumper.cnf are installed, and where
+# mydumper/myloader look for the default configuration file. A relative path
+# is interpreted relative to CMAKE_INSTALL_PREFIX.
+SET(MYDUMPER_SYSCONFDIR "/etc" CACHE STRING "Directory for mydumper.cnf")
+if (IS_ABSOLUTE "${MYDUMPER_SYSCONFDIR}")
+  SET(MYDUMPER_FULL_SYSCONFDIR "${MYDUMPER_SYSCONFDIR}")
+else ()
+  SET(MYDUMPER_FULL_SYSCONFDIR "${CMAKE_INSTALL_PREFIX}/${MYDUMPER_SYSCONFDIR}")
+endif ()
+SET(DEFAULTS_FILE "${MYDUMPER_FULL_SYSCONFDIR}/mydumper.cnf")
+MESSAGE(STATUS "Default configuration file: ${DEFAULTS_FILE}")
+
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/src/config.h )
 SET( SHARED_SRCS src/server_detect.c src/connection.c src/logging.c src/set_verbose.c src/common.c src/tables_skiplist.c src/tables_includelist.c src/regex.c src/common_options.c src/pmm_thread.c src/checksum.c )
 SET( MYDUMPER_SRCS src/mydumper/mydumper.c ${SHARED_SRCS} src/mydumper/mydumper_pmm.c src/mydumper/mydumper_start_dump.c src/mydumper/mydumper_jobs.c src/mydumper/mydumper_common.c src/mydumper/mydumper_stream.c src/mydumper/mydumper_database.c src/mydumper/mydumper_table.c src/mydumper/mydumper_working_thread.c src/mydumper/mydumper_daemon_thread.c src/mydumper/mydumper_exec_command.c src/mydumper/mydumper_masquerade.c src/mydumper/mydumper_chunks.c src/mydumper/mydumper_write.c src/mydumper/mydumper_escape.c src/mydumper/mydumper_arguments.c src/mydumper/mydumper_integer_chunks.c src/mydumper/mydumper_string_chunks.c src/mydumper/mydumper_string_planner.c src/mydumper/mydumper_string_planner_utils.c src/mydumper/mydumper_partition_chunks.c src/mydumper/mydumper_file_handler.c src/mydumper/mydumper_create_jobs.c )
@@ -109,7 +121,7 @@ INSTALL(TARGETS mydumper myloader
 )
 
 INSTALL(FILES mydumper.cnf myloader.cnf
-  DESTINATION /etc
+  DESTINATION ${MYDUMPER_FULL_SYSCONFDIR}
   COMPONENT config
 )
 
