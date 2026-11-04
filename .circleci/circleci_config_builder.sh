@@ -5,6 +5,7 @@
 # Server command for CI: binlog on, like most production servers.
 # TiDB has no such options and keeps plain mysqld through its _5 entry.
 db_server_command="[mysqld, --log-bin=mysql-bin, --server-id=1]"
+replica_db_server_command="[mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]"
 
 declare -A all_vendors
 vendor=mysql80
@@ -55,6 +56,7 @@ vendor=tidb
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="pingcap/tidb"
 all_vendors[${vendor}_5]="mysqld"
+all_vendors[${vendor}_6]="mysqld"
 
 vendor=debian_default
 all_vendors[${vendor}_0]="$vendor"
@@ -245,6 +247,11 @@ do
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: ${all_vendors[${vendor}_1]}
+      command: ${all_vendors[${vendor}_6]:-${replica_db_server_command}}
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
     done
 
@@ -261,6 +268,11 @@ do
     - image: ${all_vendors[${vendor}_1]}
       command: ${all_vendors[${vendor}_5]:-${db_server_command}}
       environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: ${all_vendors[${vendor}_1]}
+      command: ${all_vendors[${vendor}_6]:-${replica_db_server_command}}
+      environment:
+        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
     done
@@ -517,8 +529,8 @@ cat <<EOF
     - when:
         condition: << parameters.test >>
         steps:
-        - run: bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL
-        - run: bash ./test_mydumper.sh -d SSL
+        - run: bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port 3307
+        - run: bash ./test_mydumper.sh -d SSL --replica-port 3307
     - store_artifacts:
         path: /tmp/stream.sql
         destination: stream.sql
