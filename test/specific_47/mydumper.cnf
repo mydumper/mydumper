@@ -1,0 +1,11 @@
+#
+# Testing that --no-backup-locks on Percona Server 5.7 falls back to
+# FLUSH TABLES WITH READ LOCK and sends no backup lock. See issue #2369.
+#
+
+[mydumper]
+database=specific_47
+outputdir=/tmp/data
+sync-thread-lock-mode=AUTO
+no-backup-locks
+trx-tables=0
