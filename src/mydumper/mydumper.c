@@ -351,6 +351,13 @@ int main(int argc, char *argv[])
     exec_per_thread_cmd[0] = tmpcmd;
   }
 
+  gboolean skip_ddl_locks_forced = FALSE;
+  if (!skip_ddl_locks && (sync_thread_lock_mode == NO_LOCK || sync_thread_lock_mode == LOCK_ALL))
+  {
+    skip_ddl_locks = TRUE;
+    skip_ddl_locks_forced = TRUE;
+  }
+
   initialize_set_names();
 
   if (debug)
@@ -377,6 +384,9 @@ int main(int argc, char *argv[])
     exit(EXIT_SUCCESS);
 
   set_verbose(verbose);
+
+  if (skip_ddl_locks_forced)
+    g_message("DDL locks are not used with --sync-thread-lock-mode=%s, setting --skip-ddl-locks", syncthreadlockmode2str(sync_thread_lock_mode));
 
   if (machine_log_json)
   {

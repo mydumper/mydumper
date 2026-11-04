@@ -1,0 +1,12 @@
+#
+# Testing that --skip-ddl-locks on Percona Server 5.7 falls back to
+# FLUSH TABLES WITH READ LOCK, and that no DDL lock is sent on any server.
+# See issue #2369.
+#
+
+[mydumper]
+database=specific_48
+outputdir=/tmp/data
+sync-thread-lock-mode=AUTO
+skip-ddl-locks
+trx-tables=0

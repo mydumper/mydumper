@@ -88,7 +88,12 @@ static guint      resume_at = 0;
 static gchar    **db_items = NULL;
 static GRecMutex *ready_table_dump_mutex = NULL;
 static gboolean   ftwrl_completed = FALSE;
-static void       initialize_start_dump()
+static void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
+static void (*release_ddl_lock_function)(MYSQL *) = NULL;
+
+static void (*acquire_global_write_lock_function)(MYSQL *) = NULL;
+static void (*release_global_write_lock_function)(MYSQL *) = NULL;
+static void initialize_start_dump()
 {
   all_dbts = g_hash_table_new(g_str_hash, g_str_equal);
   initialize_table();
@@ -708,9 +713,13 @@ static void send_mariadb_backup_locks(MYSQL *conn)
   m_query_verbose(conn, "BACKUP STAGE BLOCK_DDL", m_critical, "Couldn't acquire BACKUP STAGE BLOCK_DDL", NULL);
 }
 
-static void send_percona57_backup_locks(MYSQL *conn)
+static void send_percona57_lock_tables_for_backup(MYSQL *conn)
 {
   m_query_verbose(conn, "LOCK TABLES FOR BACKUP", m_critical, "Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will not be consistent", NULL);
+}
+
+static void send_percona57_lock_binlog_for_backup(MYSQL *conn)
+{
   m_query_verbose(conn, "LOCK BINLOG FOR BACKUP", m_critical, "Couldn't acquire LOCK BINLOG FOR BACKUP, snapshots will not be consistent", NULL);
 }
 
@@ -774,18 +783,7 @@ static void initialize_tidb_snapshot(MYSQL *conn)
   g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
 }
 
-static void default_locking(void (**acquire_global_lock_function)(MYSQL *), void (**release_global_lock_function)(MYSQL *), void (**acquire_ddl_lock_function)(MYSQL *), void (**release_ddl_lock_function)(MYSQL *), void (**release_binlog_function)(MYSQL *))
-{
-  *acquire_ddl_lock_function = NULL;
-  *release_ddl_lock_function = NULL;
-
-  *acquire_global_lock_function = &send_flush_table_with_read_lock;
-  *release_global_lock_function = &send_unlock_tables;
-
-  *release_binlog_function = NULL;
-}
-
-static void determine_ddl_lock_function(MYSQL **conn, void (**acquire_global_lock_function)(MYSQL *), void (**release_global_lock_function)(MYSQL *), void (**acquire_ddl_lock_function)(MYSQL *), void (**release_ddl_lock_function)(MYSQL *), void (**release_binlog_function)(MYSQL *))
+static void determine_best_ddl_locking_functions(MYSQL **conn)
 {
   switch (get_product())
   {
@@ -795,36 +793,16 @@ static void determine_ddl_lock_function(MYSQL **conn, void (**acquire_global_loc
       {
         *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
         *release_ddl_lock_function = &send_ddl_unlock_instance_backup;
-        if (sync_thread_lock_mode == AUTO)
-        {
-          sync_thread_lock_mode = SNAPSHOT_CLONING;
-
-        }
-        else
-        {
-          *acquire_global_lock_function = &send_flush_table_with_read_lock;
-          *release_global_lock_function = &send_unlock_tables;
-        }
       }
       else if ( get_major() == 5 )
       {
         if (get_secondary() == 7)
         {
-          if (no_backup_locks)
-          {
-            *acquire_ddl_lock_function = NULL;
-            *release_ddl_lock_function = NULL;
-          }
-          else
-          {
-            *acquire_ddl_lock_function = &send_percona57_backup_locks;
-            *release_ddl_lock_function = &send_unlock_tables;
-          }
-
-          *acquire_global_lock_function = &send_flush_table_with_read_lock;
-          *release_global_lock_function = &send_unlock_tables;
-
-          *release_binlog_function = &send_unlock_binlogs;
+          if (!no_backup_locks && !skip_ddl_locks)
+            {
+              acquire_ddl_lock_function = &send_percona57_lock_tables_for_backup;
+              release_ddl_lock_function = &send_unlock_tables;
+            }
 
           *conn = create_connection();
         }
@@ -841,41 +819,78 @@ static void determine_ddl_lock_function(MYSQL **conn, void (**acquire_global_loc
       break;
     case SERVER_TYPE_MYSQL:
     case SERVER_TYPE_GOOGLE:
-      switch (get_major())
+      if (get_major() == 8)
       {
-        case 8:
-          *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
-          *release_ddl_lock_function = &send_ddl_unlock_instance_backup;
-
-          *acquire_global_lock_function = &send_flush_table_with_read_lock;
-          *release_global_lock_function = &send_unlock_tables;
-          break;
-        default:
-          default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
-          break;
+        acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
+        release_ddl_lock_function = &send_ddl_unlock_instance_backup;
       }
       break;
     case SERVER_TYPE_MARIADB:
       if (((get_major() == 10 && get_secondary() >= 5) || get_major() > 10) && sync_thread_lock_mode != FTWRL && !skip_ddl_locks)
       {
-        *acquire_ddl_lock_function = &send_mariadb_backup_locks;
-        //            *release_ddl_lock_function = &send_backup_stage_end;
-        *release_ddl_lock_function = NULL;
+        acquire_ddl_lock_function = &send_mariadb_backup_locks;
+        release_ddl_lock_function = NULL;
+      }
+      break;
+  }
+}
 
-        *acquire_global_lock_function = &send_backup_stage_on_block_commit;
-        *release_global_lock_function = &send_backup_stage_end;
+static void set_default_write_lock_function()
+{
+  acquire_global_write_lock_function = &send_flush_table_with_read_lock;
+  release_global_write_lock_function = &send_unlock_tables;
+}
+
+static void determine_AUTO_locking_functions()
+{
+  switch (get_product())
+  {
+    case SERVER_TYPE_PERCONA:
+      switch (get_major())
+      {
+        case 8:
+          if (sync_thread_lock_mode == AUTO)
+          {
+            sync_thread_lock_mode = SNAPSHOT_CLONING;
+          }
+          else
+            set_default_write_lock_function();
+          break;
+        case 5:
+          if (get_secondary() == 7)
+          {
+            if (!no_backup_locks && !skip_ddl_locks)
+            {
+              acquire_global_write_lock_function = &send_percona57_lock_binlog_for_backup;
+              release_global_write_lock_function = &send_unlock_binlogs;
+            }
+            else
+              set_default_write_lock_function();
+          }
+          else
+            set_default_write_lock_function();
+          break;
+        default:
+          set_default_write_lock_function();
+      }
+      break;
+    case SERVER_TYPE_RDS:
+      m_critical("We support LOCK_ALL and SAFE_NO_LOCK modes for RDS/Aurora. Select one of them to configure --sync-thread-lock-mode");
+      break;
+    case SERVER_TYPE_MARIADB:
+      if (((get_major() == 10 && get_secondary() >= 5) || get_major() > 10) && !skip_ddl_locks)
+      {
+        acquire_global_write_lock_function = &send_backup_stage_on_block_commit;
+        release_global_write_lock_function = &send_backup_stage_end;
       }
       else
-      {
-        default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
-      }
+        set_default_write_lock_function();
       break;
     case SERVER_TYPE_TIDB:
-      *acquire_global_lock_function = &initialize_tidb_snapshot;
+      acquire_global_write_lock_function = &initialize_tidb_snapshot;
       break;
     default:
-      default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
-      break;
+      set_default_write_lock_function();
   }
 }
 
@@ -1200,14 +1215,9 @@ void start_dump(struct configuration *conf, GOptionContext *context)
 {
   memset(conf, 0, sizeof(struct configuration));
 
-  MYSQL *conn = NULL, *second_conn = NULL;
-  char  *metadata_partial_filename, *metadata_filename;
-  char  *u;
-  void (*acquire_global_lock_function)(MYSQL *) = NULL;
-  void (*release_global_lock_function)(MYSQL *) = NULL;
-  void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
-  void (*release_ddl_lock_function)(MYSQL *) = NULL;
-  void (*release_binlog_function)(MYSQL *) = NULL;
+  MYSQL           *conn = NULL, *second_conn = NULL;
+  char            *metadata_partial_filename, *metadata_filename;
+  char            *u;
   struct db_table *dbt = NULL;
   guint            n;
   FILE            *nufile = NULL;
@@ -1401,27 +1411,26 @@ void start_dump(struct configuration *conf, GOptionContext *context)
       break;
     case LOCK_ALL:
       send_lock_all_tables(conn);
-      release_global_lock_function = &send_unlock_tables;
+      release_global_write_lock_function = &send_unlock_tables;
       break;
     case AUTO:
-      determine_ddl_lock_function(&second_conn, &acquire_global_lock_function, &release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
+      if (!skip_ddl_locks)
+        determine_best_ddl_locking_functions(&second_conn);
+      determine_AUTO_locking_functions();
       break;
     case FTWRL:
-      determine_ddl_lock_function(&second_conn, &acquire_global_lock_function, &release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
-      acquire_global_lock_function = &send_flush_table_with_read_lock;
-      release_global_lock_function = &send_unlock_tables;
+      if (!skip_ddl_locks)
+        determine_best_ddl_locking_functions(&second_conn);
+      set_default_write_lock_function();
       break;
     case SNAPSHOT_CLONING:
       g_message("Using extended STWCS syntax with the optional FROM SESSION clause which doesn't need to lock the database to sync the threads");
       break;
     case GTID:
       g_message("Using binlog_snapshot_gtid_executed which doesn't lock the database but uses best effort to sync the threads");
+      if (!skip_ddl_locks)
+        determine_best_ddl_locking_functions(&second_conn);
       break;
-  }
-  if (skip_ddl_locks)
-  {
-    acquire_ddl_lock_function = NULL;
-    release_ddl_lock_function = NULL;
   }
 
   if (acquire_ddl_lock_function != NULL)
@@ -1442,7 +1451,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     acquire_ddl_lock_function(second_conn);
   }
 
-  if (acquire_global_lock_function != NULL)
+  if (acquire_global_write_lock_function != NULL)
   {
     if (machine_log_json_enabled())
     {
@@ -1457,7 +1466,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     {
       g_message("Acquiring Global lock");
     }
-    acquire_global_lock_function(conn);
+    acquire_global_write_lock_function(conn);
   }
 
   // TODO: this should be deleted on future releases.
@@ -1674,25 +1683,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     {
       g_message("Transactions started, unlocking tables");
     }
-    if (release_binlog_function != NULL)
-    {
-      if (machine_log_json_enabled())
-      {
-        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-            "MESSAGE", "Releasing binlog lock",
-            "EVENT", "binlog_lock",
-            "PHASE", "startup",
-            "STATUS", "finished",
-            NULL);
-      }
-      else
-      {
-        g_message("Releasing binlog lock");
-      }
-      release_binlog_function(second_conn);
-    }
-    if (release_global_lock_function)
-      release_global_lock_function(conn);
+    if (release_global_write_lock_function)
+      release_global_write_lock_function(conn);
     if (is_mysql_like() && replica_stopped)
     {
       if (machine_log_json_enabled())
@@ -1796,23 +1788,6 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     {
       g_async_queue_pop(conf->unlock_tables);
     }
-    if (release_binlog_function != NULL)
-    {
-      if (machine_log_json_enabled())
-      {
-        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-            "MESSAGE", "Releasing binlog lock",
-            "EVENT", "binlog_lock",
-            "PHASE", "shutdown",
-            "STATUS", "finished",
-            NULL);
-      }
-      else
-      {
-        g_message("Releasing binlog lock");
-      }
-      release_binlog_function(second_conn);
-    }
     if (machine_log_json_enabled())
     {
       machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
@@ -1826,8 +1801,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     {
       g_message("Non-InnoDB dump complete, releasing global locks");
     }
-    if (release_global_lock_function)
-      release_global_lock_function(conn);
+    if (release_global_write_lock_function)
+      release_global_write_lock_function(conn);
     if (machine_log_json_enabled())
     {
       machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,

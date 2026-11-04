@@ -1,0 +1,10 @@
+DROP DATABASE IF EXISTS specific_47;
+CREATE DATABASE specific_47;
+
+USE specific_47;
+
+CREATE TABLE t_innodb (id INT PRIMARY KEY AUTO_INCREMENT, val INT) ENGINE=InnoDB;
+CREATE TABLE t_myisam (id INT PRIMARY KEY AUTO_INCREMENT, val INT) ENGINE=MyISAM;
+
+INSERT INTO t_innodb (val) VALUES (1),(2),(3),(4),(5);
+INSERT INTO t_myisam (val) VALUES (1),(2),(3),(4),(5);

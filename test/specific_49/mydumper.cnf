@@ -1,0 +1,10 @@
+#
+# Testing that NO_LOCK sends no global or DDL lock on any server and that
+# mydumper reports it is setting --skip-ddl-locks. See issue #2369.
+#
+
+[mydumper]
+database=specific_49
+outputdir=/tmp/data
+sync-thread-lock-mode=NO_LOCK
+trx-tables=0
