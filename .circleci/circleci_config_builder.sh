@@ -2,6 +2,10 @@
 
 # TODO: make ASAN counterpart of builders
 
+# Server command for CI: binlog on, like most production servers.
+# TiDB has no such options and keeps plain mysqld through its _5 entry.
+db_server_command="[mysqld, --log-bin=mysql-bin, --server-id=1]"
+
 declare -A all_vendors
 vendor=mysql80
 all_vendors[${vendor}_0]="$vendor"
@@ -50,6 +54,7 @@ all_vendors[${vendor}_4]="mariadbclient"
 vendor=tidb
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="pingcap/tidb"
+all_vendors[${vendor}_5]="mysqld"
 
 vendor=debian_default
 all_vendors[${vendor}_0]="$vendor"
@@ -68,6 +73,7 @@ all_vendors[${vendor}_4]="mysqlclient"
 #_2
 #_3: variable found in CMAKE, like: -DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}
 #_4: static library name, like: lib${all_vendors[${vendor}_4]}.a
+#_5: server command, when it differs from db_server_command
 
 
 list_mysql_version=( "mysql80" "mysql84" "debian_default" "ubuntu_default")
@@ -235,7 +241,7 @@ do
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: ${all_vendors[${vendor}_1]}
-      command: mysqld
+      command: ${all_vendors[${vendor}_5]:-${db_server_command}}
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -253,7 +259,7 @@ do
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: ${all_vendors[${vendor}_1]}
-      command: mysqld
+      command: ${all_vendors[${vendor}_5]:-${db_server_command}}
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
