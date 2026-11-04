@@ -88,12 +88,12 @@ static guint      resume_at = 0;
 static gchar    **db_items = NULL;
 static GRecMutex *ready_table_dump_mutex = NULL;
 static gboolean   ftwrl_completed = FALSE;
-static void     (*acquire_ddl_lock_function)(MYSQL *) = NULL;
-static void     (*release_ddl_lock_function)(MYSQL *) = NULL;
+static void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
+static void (*release_ddl_lock_function)(MYSQL *) = NULL;
 
-static void     (*acquire_global_write_lock_function)(MYSQL *) = NULL;
-static void     (*release_global_write_lock_function)(MYSQL *) = NULL;
-static void       initialize_start_dump()
+static void (*acquire_global_write_lock_function)(MYSQL *) = NULL;
+static void (*release_global_write_lock_function)(MYSQL *) = NULL;
+static void initialize_start_dump()
 {
   all_dbts = g_hash_table_new(g_str_hash, g_str_equal);
   initialize_table();
@@ -797,7 +797,7 @@ static void determine_best_ddl_locking_functions(MYSQL **conn)
         case 5:
           if (get_secondary() == 7)
           {
-            if (! no_backup_locks &&  !skip_ddl_locks)
+            if (!no_backup_locks && !skip_ddl_locks)
             {
               acquire_ddl_lock_function = &send_percona57_lock_tables_for_backup;
               release_ddl_lock_function = &send_unlock_tables;
@@ -854,7 +854,7 @@ static void determine_AUTO_locking_functions()
               release_global_write_lock_function = &send_unlock_binlogs;
             }
             else
-             set_default_write_lock_function();
+              set_default_write_lock_function();
           }
           else
             set_default_write_lock_function();
@@ -1204,9 +1204,9 @@ void start_dump(struct configuration *conf, GOptionContext *context)
 {
   memset(conf, 0, sizeof(struct configuration));
 
-  MYSQL *conn = NULL, *second_conn = NULL;
-  char  *metadata_partial_filename, *metadata_filename;
-  char  *u;
+  MYSQL           *conn = NULL, *second_conn = NULL;
+  char            *metadata_partial_filename, *metadata_filename;
+  char            *u;
   struct db_table *dbt = NULL;
   guint            n;
   FILE            *nufile = NULL;
