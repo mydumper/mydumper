@@ -506,8 +506,7 @@ void initialize_thread(struct thread_data *td)
   }
 }
 
-static
-void initialize_consistent_snapshot(struct thread_data *td)
+static void initialize_consistent_snapshot(struct thread_data *td)
 {
   gchar *query = NULL;
   if (sync_wait != -1)
@@ -567,16 +566,17 @@ void initialize_consistent_snapshot(struct thread_data *td)
       m_critical("We were not able to sync all threads. We unsuccessfully tried %d times. Reducing the amount of threads might help.", MAX_START_TRANSACTION_RETRIES);
     }
   }
-  else if (sync_thread_lock_mode == SNAPSHOT_CLONING )
+  else if (sync_thread_lock_mode == SNAPSHOT_CLONING)
   {
-    m_query_critical(td->thrconn, start_transaction_with_snapshot_cloning , "Failed to start consistent snapshot for session_id %d", snapshot_cloning_session_id);
+    m_query_critical(td->thrconn, start_transaction_with_snapshot_cloning, "Failed to start consistent snapshot for session_id %d", snapshot_cloning_session_id);
     trace("Connection %d: Start consistent snapshot for session_id %d", mysql_thread_id(td->thrconn), snapshot_cloning_session_id);
   }
   else if (sync_thread_lock_mode != NO_LOCK)
     m_query_critical(td->thrconn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
 }
 
-void initialize_snapshot_cloning_session_id(guint session_id){
+void initialize_snapshot_cloning_session_id(guint session_id)
+{
   snapshot_cloning_session_id = session_id;
   start_transaction_with_snapshot_cloning = g_strdup_printf("START TRANSACTION WITH CONSISTENT SNAPSHOT FROM SESSION %d", snapshot_cloning_session_id);
   trace("Connection %d: Starting Main consistent snapshot", snapshot_cloning_session_id);

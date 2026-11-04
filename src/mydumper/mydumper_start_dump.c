@@ -794,15 +794,15 @@ static void determine_best_ddl_locking_functions(MYSQL **conn)
         *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
         *release_ddl_lock_function = &send_ddl_unlock_instance_backup;
       }
-      else if ( get_major() == 5 )
+      else if (get_major() == 5)
       {
         if (get_secondary() == 7)
         {
           if (!no_backup_locks && !skip_ddl_locks)
-            {
-              acquire_ddl_lock_function = &send_percona57_lock_tables_for_backup;
-              release_ddl_lock_function = &send_unlock_tables;
-            }
+          {
+            acquire_ddl_lock_function = &send_percona57_lock_tables_for_backup;
+            release_ddl_lock_function = &send_unlock_tables;
+          }
 
           *conn = create_connection();
         }
@@ -812,7 +812,7 @@ static void determine_best_ddl_locking_functions(MYSQL **conn)
         }
       }
       else
-          default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
+        default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
       break;
     case SERVER_TYPE_RDS:
       m_critical("We support LOCK_ALL and SAFE_NO_LOCK modes for RDS/Aurora. Select one of them to configure --sync-thread-lock-mode");
@@ -1611,7 +1611,6 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     start_working_thread(conf);
     g_async_queue_pop(conf->source_and_replica_status_queue);
     g_async_queue_unref(conf->source_and_replica_status_queue);
-
   }
   else
   {
