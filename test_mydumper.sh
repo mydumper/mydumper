@@ -353,13 +353,13 @@ test_case_dir (){
   fi
   if [ -f $myloader_clean_database ]
   then
-    mysql < $myloader_clean_database
+    mysql_replica < $myloader_clean_database
   else
-    mysql < test/clean_databases.sql
+    mysql_replica < test/clean_databases.sql
   fi
   if [ -f $myloader_prepare_database ]
   then
-    mysql < $myloader_prepare_database
+    mysql_replica < $myloader_prepare_database
   else
     prepare_database_in_directory ${DIR}
   fi
