@@ -272,7 +272,6 @@ do
     - image: ${all_vendors[${vendor}_1]}
       command: ${all_vendors[${vendor}_6]:-${replica_db_server_command}}
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
     done
