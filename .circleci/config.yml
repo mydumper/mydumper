@@ -16,7 +16,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -32,7 +37,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -48,7 +58,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -64,7 +79,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -80,7 +100,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -100,6 +125,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   bionic_mysql80:
@@ -110,7 +140,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -123,7 +157,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -136,7 +174,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -149,7 +191,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -175,7 +221,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -191,7 +242,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -207,7 +263,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -223,7 +284,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -239,7 +305,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -259,6 +330,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   focal_mysql80:
@@ -269,7 +345,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -282,7 +362,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -295,7 +379,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -308,7 +396,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -334,7 +426,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -350,7 +447,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -366,7 +468,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -382,7 +489,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -398,7 +510,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -418,6 +535,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   jammy_mysql80:
@@ -428,7 +550,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -441,7 +567,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -454,7 +584,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -467,7 +601,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -493,7 +631,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -509,7 +652,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -525,7 +673,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -541,7 +694,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -557,7 +715,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -577,6 +740,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   noble_mysql80:
@@ -587,7 +755,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -600,7 +772,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -613,7 +789,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -626,7 +806,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -652,7 +836,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -668,7 +857,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -684,7 +878,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -700,7 +899,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -716,7 +920,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -736,6 +945,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   resolute_mysql80:
@@ -746,7 +960,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -759,7 +977,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -772,7 +994,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -785,7 +1011,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -811,7 +1041,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -827,7 +1062,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -843,7 +1083,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -859,7 +1104,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -875,7 +1125,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -895,6 +1150,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   el7_mysql80:
@@ -905,7 +1165,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -918,7 +1182,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -931,7 +1199,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -944,7 +1216,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -970,7 +1246,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -986,7 +1267,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1002,7 +1288,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1018,7 +1309,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1034,7 +1330,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1054,6 +1355,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   el8_mysql80:
@@ -1064,7 +1370,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1077,7 +1387,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1090,7 +1404,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1103,7 +1421,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1129,7 +1451,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1145,7 +1472,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1161,7 +1493,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1177,7 +1514,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1193,7 +1535,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1213,6 +1560,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   el9_mysql80:
@@ -1223,7 +1575,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1236,7 +1592,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1249,7 +1609,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1262,7 +1626,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1288,7 +1656,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1304,7 +1677,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1320,7 +1698,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1336,7 +1719,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1352,7 +1740,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1372,6 +1765,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   el10_mysql80:
@@ -1382,7 +1780,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1395,7 +1797,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1408,7 +1814,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1421,7 +1831,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1447,7 +1861,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1463,7 +1882,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1479,7 +1903,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1495,7 +1924,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1511,7 +1945,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1531,6 +1970,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   bullseye_mysql80:
@@ -1541,7 +1985,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1554,7 +2002,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1567,7 +2019,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1580,7 +2036,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1606,7 +2066,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1622,7 +2087,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1638,7 +2108,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1654,7 +2129,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1670,7 +2150,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1690,6 +2175,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   bookworm_mysql80:
@@ -1700,7 +2190,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1713,7 +2207,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1726,7 +2224,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1739,7 +2241,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1765,7 +2271,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1781,7 +2292,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1797,7 +2313,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1813,7 +2334,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1829,7 +2355,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona/percona-server:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1849,6 +2380,11 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
   trixie_mysql80:
@@ -1859,7 +2395,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.0
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1872,7 +2412,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1885,7 +2429,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -1898,7 +2446,11 @@ executors:
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mysql:8.4
-      command: mysqld
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
@@ -2815,8 +3367,8 @@ commands:
     - when:
         condition: << parameters.test >>
         steps:
-        - run: bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL
-        - run: bash ./test_mydumper.sh -d SSL
+        - run: bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port 3307
+        - run: bash ./test_mydumper.sh -d SSL --replica-port 3307
     - store_artifacts:
         path: /tmp/stream.sql
         destination: stream.sql

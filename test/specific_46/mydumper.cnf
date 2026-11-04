@@ -1,0 +1,12 @@
+#
+# Testing that AUTO mode on Percona Server 5.7 uses backup locks
+# (LOCK TABLES FOR BACKUP + LOCK BINLOG FOR BACKUP) instead of
+# FLUSH TABLES WITH READ LOCK. See issue #2369.
+# trx-tables=0 so the non-transactional path holds the locks.
+#
+
+[mydumper]
+database=specific_46
+outputdir=/tmp/data
+sync-thread-lock-mode=AUTO
+trx-tables=0

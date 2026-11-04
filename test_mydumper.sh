@@ -95,7 +95,7 @@ export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
 
-optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,skip-backup,prepare,directories:,retry:"
+optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,skip-backup,prepare,directories:,retry:,replica-host:,replica-port:"
 optstring_short="c:,e:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
@@ -111,6 +111,8 @@ unset rr_myloader
 unset rr_mydumper
 unset case_min
 unset case_max
+unset replica_host
+unset replica_port
 log_level="--verbose 4"
 
 while true
@@ -169,9 +171,40 @@ do
   --prepare)
     prepare_only=1
     shift;;
+  --replica-host)
+    replica_host=$2
+    shift 2;;
+  --replica-port)
+    replica_port=$2
+    shift 2;;
   --) shift; break;;
   esac
 done
+
+# The replica defaults to the primary connection: host and port when the
+# primary uses TCP, or the same socket when it does not.
+export replica_host=${replica_host:-$MYSQL_HOST}
+export replica_port=${replica_port:-$MYSQL_TCP_PORT}
+if [ -n "$replica_port" ] && [ -z "$replica_host" ]
+then
+  # A port alone would be ignored by the client when it uses the socket
+  replica_host=127.0.0.1
+fi
+if [ -n "$replica_host" ]
+then
+  echo "Using replica TCP connection to $replica_host:${replica_port:-3306}"
+  myloader_global_parameters=" --host=${replica_host} --port=${replica_port}"
+else
+  echo "Using replica on the same socket as the primary"
+fi
+
+mysql_replica()
+{
+  local host_arg=${replica_host:+-h $replica_host --protocol=TCP}
+  local port_arg=${replica_port:+-P $replica_port}
+  $mysql_exe --no-defaults -f --user $mysql_user $host_arg $port_arg "$@" || exit
+}
+export -f mysql_replica
 
 mkdir -p ${mydumper_stor_dir}
 rm -rf ${mydumper_stor_dir}
@@ -247,7 +280,7 @@ test_case_dir (){
   myloader_clean_database="${DIR}/clean_databases.sql"
 
   mydumper_parameters="$log_level --logfile $tmp_mydumper_log --user $mysql_user --checksum-all --defaults-extra-file=${mydumper_default_extra_file}"
-  myloader_parameters="$log_level --logfile $tmp_myloader_log --user $mysql_user --checksum-all --checksum=fail --defaults-extra-file=${myloader_default_extra_file}"
+  myloader_parameters="$log_level --logfile $tmp_myloader_log --user $mysql_user --checksum-all --checksum=fail --defaults-extra-file=${myloader_default_extra_file} ${myloader_global_parameters}"
 
   mydumper_execute=0;
   if [ -f $mydumper_default_extra_file ]
@@ -320,13 +353,13 @@ test_case_dir (){
   fi
   if [ -f $myloader_clean_database ]
   then
-    mysql < $myloader_clean_database
+    mysql_replica < $myloader_clean_database
   else
-    mysql < test/clean_databases.sql
+    mysql_replica < test/clean_databases.sql
   fi
   if [ -f $myloader_prepare_database ]
   then
-    mysql < $myloader_prepare_database
+    mysql_replica < $myloader_prepare_database
   else
     prepare_database_in_directory ${DIR}
   fi

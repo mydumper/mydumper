@@ -4,13 +4,13 @@
 
 fail() { echo "specific_45: $*" >&2; exit 1; }
 
-rows=$(mysql -N -e "SELECT COUNT(*), MIN(val) FROM specific_45.t1" | tr '\t' ' ')
+rows=$(mysql_replica -N -e "SELECT COUNT(*), MIN(val) FROM specific_45.t1" | tr '\t' ' ')
 [ "$rows" == "1 db1" ] || fail "specific_45.t1 has: ${rows}"
 
-rows=$(mysql -N -e "SELECT COUNT(*), MIN(val) FROM specific_45.t2" | tr '\t' ' ')
+rows=$(mysql_replica -N -e "SELECT COUNT(*), MIN(val) FROM specific_45.t2" | tr '\t' ' ')
 [ "$rows" == "2 db2" ] || fail "specific_45.t2 has: ${rows}"
 
-sources=$(mysql -N -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'specific\_45\_db%'")
+sources=$(mysql_replica -N -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'specific\_45\_db%'")
 [ "$sources" -eq 0 ] || fail "source databases were created"
 
 exit 0
