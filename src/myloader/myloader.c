@@ -655,15 +655,6 @@ int main(int argc, char *argv[]) {
     wait_stream_to_finish();
   }
 
-
-  GList * tl=conf.table_list;
-  while (tl != NULL){
-    if(((struct db_table *)(tl->data))->max_connections_per_job==1){
-      ((struct db_table *)(tl->data))->max_connections_per_job=0;
-    }
-    tl=tl->next;
-  }
-
   wait_schema_worker_to_finish(&conf);
   wait_worker_loader_main();
   enqueue_indexes_if_possible(&conf);
@@ -692,7 +683,7 @@ int main(int argc, char *argv[]) {
                               checksum_mode == CHECKSUM_WARN ? "warn" : "skip",
                       NULL);
   }
-  tl=conf.table_list;
+  GList *tl=conf.table_list;
   struct db_table *dbt;
   while (tl != NULL){
     dbt=tl->data;
