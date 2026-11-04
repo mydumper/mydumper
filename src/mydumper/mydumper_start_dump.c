@@ -791,8 +791,8 @@ static void determine_best_ddl_locking_functions(MYSQL **conn)
 
       if (get_major() >= 8)
       {
-        *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
-        *release_ddl_lock_function = &send_ddl_unlock_instance_backup;
+        acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
+        release_ddl_lock_function = &send_ddl_unlock_instance_backup;
       }
       else if (get_major() == 5)
       {
@@ -806,13 +806,7 @@ static void determine_best_ddl_locking_functions(MYSQL **conn)
 
           *conn = create_connection();
         }
-        else
-        {
-          default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
-        }
       }
-      else
-        default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
       break;
     case SERVER_TYPE_RDS:
       m_critical("We support LOCK_ALL and SAFE_NO_LOCK modes for RDS/Aurora. Select one of them to configure --sync-thread-lock-mode");
