@@ -65,3 +65,4 @@ void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, g
 void build_lock_tables_statement(struct configuration *conf);
 void check_pause_resume(struct thread_data *td);
 void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt);
+void initialize_snapshot_cloning_session_id(guint session_id);

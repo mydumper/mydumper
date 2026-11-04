@@ -228,6 +228,12 @@ gboolean arguments_callback(const gchar *option_name, const gchar *value, gpoint
       sync_thread_lock_mode = GTID;
       return TRUE;
     }
+    if (!g_ascii_strcasecmp(value, "SNAPSHOT_CLONING"))
+    {
+      sync_thread_lock_mode = SNAPSHOT_CLONING;
+      return TRUE;
+    }
+
     if (!g_ascii_strcasecmp(value, "NO_LOCK"))
     {
       sync_thread_lock_mode = NO_LOCK;

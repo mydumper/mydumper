@@ -790,46 +790,51 @@ static void determine_ddl_lock_function(MYSQL **conn, void (**acquire_global_loc
   switch (get_product())
   {
     case SERVER_TYPE_PERCONA:
-      switch (get_major())
+
+      if (get_major() >= 8)
       {
-        case 8:
-          *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
-          *release_ddl_lock_function = &send_ddl_unlock_instance_backup;
+        *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
+        *release_ddl_lock_function = &send_ddl_unlock_instance_backup;
+        if (sync_thread_lock_mode == AUTO)
+        {
+          sync_thread_lock_mode = SNAPSHOT_CLONING;
+
+        }
+        else
+        {
+          *acquire_global_lock_function = &send_flush_table_with_read_lock;
+          *release_global_lock_function = &send_unlock_tables;
+        }
+      }
+      else if ( get_major() == 5 )
+      {
+        if (get_secondary() == 7)
+        {
+          if (no_backup_locks)
+          {
+            *acquire_ddl_lock_function = NULL;
+            *release_ddl_lock_function = NULL;
+          }
+          else
+          {
+            *acquire_ddl_lock_function = &send_percona57_backup_locks;
+            *release_ddl_lock_function = &send_unlock_tables;
+          }
 
           *acquire_global_lock_function = &send_flush_table_with_read_lock;
           *release_global_lock_function = &send_unlock_tables;
 
-          break;
-        case 5:
-          if (get_secondary() == 7)
-          {
-            if (no_backup_locks)
-            {
-              *acquire_ddl_lock_function = NULL;
-              *release_ddl_lock_function = NULL;
-            }
-            else
-            {
-              *acquire_ddl_lock_function = &send_percona57_backup_locks;
-              *release_ddl_lock_function = &send_unlock_tables;
-            }
+          *release_binlog_function = &send_unlock_binlogs;
 
-            *acquire_global_lock_function = &send_flush_table_with_read_lock;
-            *release_global_lock_function = &send_unlock_tables;
-
-            *release_binlog_function = &send_unlock_binlogs;
-
-            *conn = create_connection();
-          }
-          else
-          {
-            default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
-          }
-          break;
-        default:
+          *conn = create_connection();
+        }
+        else
+        {
           default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
-          break;
+        }
       }
+      else
+          default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
       break;
     case SERVER_TYPE_RDS:
       m_critical("We support LOCK_ALL and SAFE_NO_LOCK modes for RDS/Aurora. Select one of them to configure --sync-thread-lock-mode");
@@ -1406,6 +1411,9 @@ void start_dump(struct configuration *conf, GOptionContext *context)
       acquire_global_lock_function = &send_flush_table_with_read_lock;
       release_global_lock_function = &send_unlock_tables;
       break;
+    case SNAPSHOT_CLONING:
+      g_message("Using extended STWCS syntax with the optional FROM SESSION clause which doesn't need to lock the database to sync the threads");
+      break;
     case GTID:
       g_message("Using binlog_snapshot_gtid_executed which doesn't lock the database but uses best effort to sync the threads");
       break;
@@ -1572,22 +1580,46 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   trace("End Job Creation");
   // End Job Creation
 
-  // Get initial binlog position
-  get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
-
-  // Starting the chunk builder
-  start_chunk_builder(conf);
-
-  // Starting the workers threads
-  start_working_thread(conf);
-  g_async_queue_pop(conf->source_and_replica_status_queue);
-  g_async_queue_unref(conf->source_and_replica_status_queue);
-
-  // Get initial binlog position again to determine backup consistency
   gchar *source_log = NULL;
   gchar *source_pos = NULL;
   gchar *source_gtid = NULL;
-  get_binlog_position(conn, &source_log, &source_pos, &source_gtid);
+
+  if (sync_thread_lock_mode == SNAPSHOT_CLONING)
+  {
+    // Get initial binlog position
+    get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
+
+    m_query_critical(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
+
+    // Get binlog position again to determine correct binlog position
+    get_binlog_position(conn, &source_log, &source_pos, &source_gtid);
+
+    // Starting the chunk builder
+    start_chunk_builder(conf);
+
+    // Starting the workers threads
+    initialize_snapshot_cloning_session_id(mysql_thread_id(conn));
+    start_working_thread(conf);
+    g_async_queue_pop(conf->source_and_replica_status_queue);
+    g_async_queue_unref(conf->source_and_replica_status_queue);
+
+  }
+  else
+  {
+    // Get initial binlog position
+    get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
+
+    // Starting the chunk builder
+    start_chunk_builder(conf);
+
+    // Starting the workers threads
+    start_working_thread(conf);
+    g_async_queue_pop(conf->source_and_replica_status_queue);
+    g_async_queue_unref(conf->source_and_replica_status_queue);
+
+    // Get initial binlog position again to determine backup consistency
+    get_binlog_position(conn, &source_log, &source_pos, &source_gtid);
+  }
 
   if (g_strcmp0(source_log, initial_source_log) ||
       g_strcmp0(source_pos, initial_source_pos) ||
@@ -1603,6 +1635,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
       trace("Backup will be inconsistent %s %s %d || %s %s %d || %s %s %d", source_log, initial_source_log, g_strcmp0(source_log, initial_source_log), source_pos, initial_source_pos, g_strcmp0(source_pos, initial_source_pos), source_gtid, initial_source_gtid, g_strcmp0(source_gtid, initial_source_gtid));
       m_error("There are differences in the binlog position at the beginning of the backup and after syncing threads, so we cannot guarantee the backup to be consistent. Stopping backup due to the use of SAFE_NO_LOCK.");
     }
+    else
+      m_error("There are differences in the binlog position at the beginning of the backup and after syncing threads, so we cannot guarantee binlog position. Use a different --sync-thread-lock-mode");
   }
   else
   {
