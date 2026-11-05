@@ -205,10 +205,10 @@ void build_change_source_for_traditional(GString *traditional_change_source, str
 
 
   if (_source_ssl)
-    g_string_append_printf(traditional_change_source, "SOURCE_SSL = %d", _source_ssl);
+    g_string_append_printf(traditional_change_source, ", SOURCE_SSL = %d", _source_ssl);
 
   if (_auto_position>=0)
-    g_string_append_printf(traditional_change_source, "SOURCE_AUTO_POSITION = %d", _auto_position);
+    g_string_append_printf(traditional_change_source, ", SOURCE_AUTO_POSITION = %d", _auto_position);
 
   if (!for_channel_incompatibility){
     g_string_append(traditional_change_source," FOR CHANNEL '");
