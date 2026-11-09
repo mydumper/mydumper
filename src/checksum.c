@@ -23,6 +23,7 @@
 
 #include "checksum.h"
 #include "logging.h"
+#include "server_detect.h"
 
 enum checksum_modes checksum_mode = CHECKSUM_WARN;  // Issue #1975: Warn by default instead of fail
 
@@ -115,6 +116,21 @@ char *checksum_table(MYSQL *conn, char *database, char *table)
 
 char *checksum_table_structure(MYSQL *conn, char *database, char *table)
 {
+  /* MariaDB exposes JSON as LONGTEXT with a binary collation and JSON_VALID check. */
+  if (get_product() == SERVER_TYPE_MARIADB &&
+      (get_major() > 10 || (get_major() == 10 && get_secondary() >= 2)))
+    return generic_checksum(conn,
+        checksum_select_prefix
+        "SELECT CONCAT_WS(' ', c.column_name, c.ordinal_position, "
+        "CASE WHEN c.data_type='longtext' AND c.collation_name='utf8mb4_bin' AND EXISTS ("
+        "SELECT 1 FROM information_schema.check_constraints AS cc "
+        "WHERE cc.constraint_schema=c.table_schema AND cc.table_name=c.table_name "
+        "AND BINARY cc.check_clause=BINARY CONCAT('json_valid(`', REPLACE(c.column_name, '`', '``'), '`)')) "
+        "THEN 'json' ELSE c.data_type END) AS col, c.ordinal_position "
+        "FROM information_schema.columns AS c WHERE c.table_schema='%s' AND c.table_name='%s' "
+        ") AS a ORDER BY ordinal_position;",
+        0, database, table);
+
   return generic_checksum(conn,
       checksum_select_prefix "SELECT CONCAT_WS(' ', column_name, ordinal_position, data_type) AS col, ordinal_position FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s' ) AS a ORDER BY ordinal_position;",
       0, database, table);
