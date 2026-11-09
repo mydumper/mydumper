@@ -158,7 +158,7 @@ char *checksum_database_defaults(MYSQL *conn, char *database, char *table)
 char *checksum_table_indexes(MYSQL *conn, char *database, char *table)
 {
   return generic_checksum(conn,
-      checksum_select_prefix "SELECT CONCAT_WS(' ', INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) AS col, INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ) A ORDER BY col",
+      checksum_select_prefix "SELECT CONCAT_WS(' ', INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME,NON_UNIQUE,COALESCE(SUB_PART,0)) AS col, INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ) A ORDER BY col",
       0, database, table);
 }
 
