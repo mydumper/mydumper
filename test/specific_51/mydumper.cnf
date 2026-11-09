@@ -1,0 +1,5 @@
+[mydumper]
+regex=^specific_51_(source|target)\.
+outputdir=/tmp/data
+no-data
+schema-checksums
