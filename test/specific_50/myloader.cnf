@@ -1,6 +1,5 @@
 [myloader]
 directory=/tmp/data
-no-schemas
 no-data
 skip-post
 checksum=fail
