@@ -52,6 +52,9 @@ void m_store_result_row_free(struct M_ROW *mr)
   for (int i = 0; i < 3; i++) g_free(mr->row[i]);
   g_free(mr->row); g_free(mr);
 }
+int get_product(void) { return 0; }
+int get_major(void) { return 0; }
+int get_secondary(void) { return 0; }
 void trace(const char *fmt, ...) { (void)fmt; }
 void print_bool(const char *key, gboolean val) { (void)key; (void)val; }
 void m_error(const char *fmt, ...) { (void)fmt; g_assert_not_reached(); }

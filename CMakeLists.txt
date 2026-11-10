@@ -138,8 +138,13 @@ add_executable(test_checksum_routine test/unit/test_checksum_routine.c)
 target_link_libraries(test_checksum_routine ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
 add_test(NAME checksum_routine COMMAND test_checksum_routine)
 
+add_executable(test_trigger_checksum_flags test/unit/test_trigger_checksum_flags.c src/myloader/myloader_table.c)
+target_link_libraries(test_trigger_checksum_flags ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
+add_test(NAME trigger_checksum_flags COMMAND test_trigger_checksum_flags)
+add_test(NAME trigger_checksum_skip_index COMMAND test_trigger_checksum_flags skip-index)
+
 add_executable(test_checksum_missing test/unit/test_checksum_missing.c src/checksum.c)
-target_link_libraries(test_checksum_missing ${GLIB2_LIBRARIES})
+target_link_libraries(test_checksum_missing ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
 add_test(NAME checksum_missing COMMAND test_checksum_missing)
 
 # Unit test: --use-defer livelock

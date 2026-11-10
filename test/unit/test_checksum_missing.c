@@ -6,6 +6,14 @@
 #include "checksum.h"
 #include "logging.h"
 
+MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query, const char *fmt, ...)
+{
+  (void)conn; (void)query; (void)fmt;
+  g_assert_not_reached();
+}
+MYSQL_ROW STDCALL mysql_fetch_row(MYSQL_RES *result) { (void)result; g_assert_not_reached(); }
+void STDCALL mysql_free_result(MYSQL_RES *result) { (void)result; g_assert_not_reached(); }
+
 enum result_kind { NO_RESULT, NO_ROW, SQL_NULL, MATCH, MISMATCH };
 static enum result_kind result_kind;
 static guint queries, confirmed, warnings, criticals, finished, failed, missing;
@@ -38,6 +46,9 @@ void m_store_result_row_free(struct M_ROW *mr)
 
 void trace(const char *fmt, ...) { (void)fmt; }
 void print_bool(const char *key, gboolean val) { (void)key; (void)val; }
+int get_product(void) { return 0; }
+int get_major(void) { return 0; }
+int get_secondary(void) { return 0; }
 void m_error(const char *fmt, ...) { (void)fmt; g_assert_not_reached(); }
 gboolean machine_log_json_enabled(void) { return TRUE; }
 
