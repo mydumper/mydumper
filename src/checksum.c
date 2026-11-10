@@ -23,6 +23,7 @@
 
 #include "checksum.h"
 #include "logging.h"
+#include "server_detect.h"
 
 enum checksum_modes checksum_mode = CHECKSUM_WARN;  // Issue #1975: Warn by default instead of fail
 
@@ -96,7 +97,7 @@ static char *generic_checksum(MYSQL *conn, const gchar *query_template, ...)
   char *r = NULL;
   if (mr)
   {
-    if (mr->row)
+    if (mr->row && mr->row[column_number])
       r = g_strdup_printf("%s", mr->row[column_number]);
     m_store_result_row_free(mr);
   }
@@ -115,6 +116,21 @@ char *checksum_table(MYSQL *conn, char *database, char *table)
 
 char *checksum_table_structure(MYSQL *conn, char *database, char *table)
 {
+  /* MariaDB exposes JSON as LONGTEXT with a binary collation and JSON_VALID check. */
+  if (get_product() == SERVER_TYPE_MARIADB &&
+      (get_major() > 10 || (get_major() == 10 && get_secondary() >= 2)))
+    return generic_checksum(conn,
+        checksum_select_prefix
+        "SELECT CONCAT_WS(' ', c.column_name, c.ordinal_position, "
+        "CASE WHEN c.data_type='longtext' AND c.collation_name='utf8mb4_bin' AND EXISTS ("
+        "SELECT 1 FROM information_schema.check_constraints AS cc "
+        "WHERE cc.constraint_schema=c.table_schema AND cc.table_name=c.table_name "
+        "AND BINARY cc.check_clause=BINARY CONCAT('json_valid(`', REPLACE(c.column_name, '`', '``'), '`)')) "
+        "THEN 'json' ELSE c.data_type END) AS col, c.ordinal_position "
+        "FROM information_schema.columns AS c WHERE c.table_schema='%s' AND c.table_name='%s' "
+        ") AS a ORDER BY ordinal_position;",
+        0, database, table);
+
   return generic_checksum(conn,
       checksum_select_prefix "SELECT CONCAT_WS(' ', column_name, ordinal_position, data_type) AS col, ordinal_position FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s' ) AS a ORDER BY ordinal_position;",
       0, database, table);
@@ -259,7 +275,7 @@ char *checksum_database_defaults(MYSQL *conn, char *database, char *table)
 char *checksum_table_indexes(MYSQL *conn, char *database, char *table)
 {
   return generic_checksum(conn,
-      checksum_select_prefix "SELECT CONCAT_WS(' ', INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) AS col, INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ) A ORDER BY col",
+      checksum_select_prefix "SELECT CONCAT_WS(' ', INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME,NON_UNIQUE,COALESCE(SUB_PART,0)) AS col, INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ) A ORDER BY col",
       0, database, table);
 }
 
@@ -323,6 +339,14 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
   g_assert(checksum_mode != CHECKSUM_SKIP);
   emit_checksum_event(G_LOG_LEVEL_MESSAGE, "started", scope, checksum_type, _db, _table,
       dbt_checksum, checksum);
+  if (dbt_checksum && !checksum)
+  {
+    GLogLevelFlags level = checksum_mode == CHECKSUM_WARN ? G_LOG_LEVEL_WARNING : G_LOG_LEVEL_CRITICAL;
+    emit_checksum_event(level, "failed", scope, checksum_type, _db, _table, dbt_checksum, checksum);
+    g_log(G_LOG_DOMAIN, level, "%s could not be computed for %s%s%s (expected %s)",
+        message, _db, _table ? "." : "", _table ? _table : "", dbt_checksum);
+    return FALSE;
+  }
   if (dbt_checksum && checksum && g_ascii_strcasecmp(dbt_checksum, checksum))
   {
     emit_checksum_event(checksum_mode == CHECKSUM_WARN ? G_LOG_LEVEL_WARNING : G_LOG_LEVEL_CRITICAL,
