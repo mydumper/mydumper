@@ -38,6 +38,9 @@ void m_store_result_row_free(struct M_ROW *mr)
 
 void trace(const char *fmt, ...) { (void)fmt; }
 void print_bool(const char *key, gboolean val) { (void)key; (void)val; }
+int get_product(void) { return 0; }
+int get_major(void) { return 0; }
+int get_secondary(void) { return 0; }
 void m_error(const char *fmt, ...) { (void)fmt; g_assert_not_reached(); }
 gboolean machine_log_json_enabled(void) { return TRUE; }
 
