@@ -147,6 +147,9 @@ add_executable(test_checksum_missing test/unit/test_checksum_missing.c src/check
 target_link_libraries(test_checksum_missing ${GLIB2_LIBRARIES})
 add_test(NAME checksum_missing COMMAND test_checksum_missing)
 
+add_executable(test_checksum_view_server test/unit/test_checksum_view_server.c)
+target_link_libraries(test_checksum_view_server ${GLIB2_LIBRARIES} ${MYSQL_LIBRARIES})
+
 # Unit test: --use-defer livelock
 # Requires only GLib (no MySQL). Link with -DUSE_DEFER_FIX to test the fixed
 # code path; without it the test proves the bug (exits non-zero).
