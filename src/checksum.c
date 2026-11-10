@@ -214,6 +214,7 @@ static gchar *normalize_routine_definition(const gchar *sql, const gchar *mode)
   while (*p)
   {
     const gchar *start = p;
+    gboolean ordinary_comment = FALSE;
     if (*p == '\'' || *p == '"' || *p == '`')
     {
       p = routine_quote_end(p, no_backslash, ansi_quotes);
@@ -222,6 +223,7 @@ static gchar *normalize_routine_definition(const gchar *sql, const gchar *mode)
     }
     else if (*p == '#' || (p[0] == '-' && p[1] == '-' && g_ascii_isspace(p[2])))
     {
+      ordinary_comment = TRUE;
       while (*p && *p != '\n')
         p++;
       if (*p)
@@ -229,6 +231,7 @@ static gchar *normalize_routine_definition(const gchar *sql, const gchar *mode)
     }
     else if (p[0] == '/' && p[1] == '*')
     {
+      ordinary_comment = p[2] != '!' && p[2] != '+' && !(p[2] == 'M' && p[3] == '!');
       const gchar *end = strstr(p + 2, "*/");
       if (!end)
         goto invalid;
@@ -244,7 +247,24 @@ static gchar *normalize_routine_definition(const gchar *sql, const gchar *mode)
     }
     else
       p++;
-    g_string_append_len(normalized, start, p - start);
+    if (ordinary_comment)
+    {
+      /* The dump serializer adds a space before each newline, including comments. */
+      while (start < p)
+      {
+        if (g_ascii_isspace(*start))
+        {
+          gboolean newline = FALSE;
+          while (start < p && g_ascii_isspace(*start))
+            newline |= *start++ == '\n';
+          g_string_append_c(normalized, newline ? '\n' : ' ');
+        }
+        else
+          g_string_append_c(normalized, *start++);
+      }
+    }
+    else
+      g_string_append_len(normalized, start, p - start);
   }
   return g_string_free(normalized, FALSE);
 invalid:

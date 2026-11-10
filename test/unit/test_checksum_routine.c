@@ -97,12 +97,15 @@ static void test_normalization(void)
     {"CREATE PROCEDURE `p`()\nSELECT 'a\\',  1", "NO_BACKSLASH_ESCAPES", "SELECT 'a\\', 1"},
     {"CREATE PROCEDURE `p`()\nSELECT `a  b`", "", "SELECT `a  b`"},
     {"CREATE PROCEDURE `p`()\nBEGIN -- comment\nSELECT 1; END", "", "BEGIN -- comment\nSELECT 1; END"},
-    {"CREATE PROCEDURE `p`()\nSELECT /* keep  comment */ 1", "", "SELECT /* keep  comment */ 1"},
+    {"CREATE PROCEDURE `p`()\nSELECT /* keep  comment */ 1", "", "SELECT /* keep comment */ 1"},
     {"CREATE PROCEDURE `p`()\nSELECT 'unterminated", "", NULL},
     {"CREATE PROCEDURE `p`()\nSELECT /* unterminated", "", NULL},
     {"CREATE PROCEDURE `p`(\n IN x DECIMAL(10,2),\n IN y ENUM('a)b','c'))\n    MODIFIES SQL DATA\n    SQL SECURITY INVOKER\n    COMMENT 'multi\nline ''comment'''\nlabel1: BEGIN SELECT x; END", "", "label1: BEGIN SELECT x; END"},
     {"CREATE FUNCTION `f`() RETURNS int(11)\n    DETERMINISTIC\n    NO SQL\nRETURN 1", "", "RETURN 1"},
     {"CREATE PROCEDURE `p`()\nSELECT \"a  b\"", "ANSI_QUOTES", "SELECT \"a  b\""},
+    {"CREATE PROCEDURE `p`()\nSELECT /*! 'a  b' */ 1", "", "SELECT /*! 'a  b' */ 1"},
+    {"CREATE PROCEDURE `p`()\nSELECT /*M! 'a  b' */ 1", "", "SELECT /*M! 'a  b' */ 1"},
+    {"CREATE PROCEDURE `p`()\nSELECT /*+ MAX_EXECUTION_TIME(  1000 ) */ 1", "", "SELECT /*+ MAX_EXECUTION_TIME(  1000 ) */ 1"},
     {"CREATE TABLE `PROCEDURE` (n INT)", "", NULL},
   };
   for (guint i = 0; i < G_N_ELEMENTS(cases); i++)
@@ -117,6 +120,17 @@ static void test_normalization(void)
   value = quote_routine_identifier("a`b");
   g_assert_cmpstr(value, ==, "`a``b`");
   g_free(value);
+}
+
+static void test_dump_comment_spacing(void)
+{
+  const char *source = "CREATE PROCEDURE `p`()\nBEGIN\n# comment\n/* multi\nline */\nSELECT 'keep  spaces';\nEND";
+  gchar **lines = g_strsplit(source, "\n", -1);
+  gchar *dumped = g_strjoinv(" \n", lines);
+  gchar *before = normalize_routine_definition(source, "");
+  gchar *after = normalize_routine_definition(dumped, "");
+  g_assert_cmpstr(before, ==, after);
+  g_free(before); g_free(after); g_free(dumped); g_strfreev(lines);
 }
 
 static void test_missing_and_empty(void)
@@ -138,5 +152,6 @@ int main(int argc, char **argv)
   g_test_add_func("/routine/literals-and-definer", test_literals_and_definer);
   g_test_add_func("/routine/normalization", test_normalization);
   g_test_add_func("/routine/missing-and-empty", test_missing_and_empty);
+  g_test_add_func("/routine/dump-comment-spacing", test_dump_comment_spacing);
   return g_test_run();
 }
