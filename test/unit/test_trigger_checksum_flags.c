@@ -59,7 +59,7 @@ static void check(gboolean schemas, gboolean skip_index, gboolean skip_trigger, 
   struct db_table *table = NULL;
   g_assert_true(append_new_db_table(&table, &database, g_strdup(table_name), table_name, FALSE));
   g_assert_cmpint(table->checksum.skip_trigger, ==, table_override || !schemas || skip_trigger);
-  g_assert_cmpint(table->checksum.skip_index, ==, skip_index);
+  g_assert_cmpint(table->checksum.skip_index, ==, !schemas || skip_index);
   g_free(table->source_table_name);
   g_free(table->table_filename);
   g_mutex_free(table->mutex);
