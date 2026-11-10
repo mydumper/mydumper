@@ -23,8 +23,8 @@
 #include "common.h"
 
 #include "checksum.h"
-#include "logging.h"
 #include "server_detect.h"
+#include "logging.h"
 
 enum checksum_modes checksum_mode = CHECKSUM_WARN;  // Issue #1975: Warn by default instead of fail
 
@@ -140,7 +140,7 @@ char *checksum_table_structure(MYSQL *conn, char *database, char *table)
 /* Advance over one quoted SQL token, respecting the routine's creation mode. */
 static const gchar *routine_quote_end(const gchar *p, gboolean no_backslash, gboolean ansi_quotes)
 {
-  gchar quote = *p++;
+  gchar    quote = *p++;
   gboolean literal = quote == '\'' || (quote == '"' && !ansi_quotes);
   while (*p)
   {
@@ -161,8 +161,8 @@ static const gchar *routine_quote_end(const gchar *p, gboolean no_backslash, gbo
 static const gchar *routine_body(const gchar *sql, gboolean no_backslash, gboolean ansi_quotes)
 {
   const gchar *p = sql;
-  guint depth = 0;
-  gboolean parameters_done = FALSE;
+  guint        depth = 0;
+  gboolean     parameters_done = FALSE;
   while (*p)
   {
     if (*p == '\'' || *p == '"' || *p == '`')
@@ -192,7 +192,7 @@ static const gchar *routine_body(const gchar *sql, gboolean no_backslash, gboole
     const gchar *characteristics[] = {"LANGUAGE SQL", "DETERMINISTIC", "NOT DETERMINISTIC",
         "CONTAINS SQL", "NO SQL", "READS SQL DATA", "MODIFIES SQL DATA",
         "SQL SECURITY DEFINER", "SQL SECURITY INVOKER", "COMMENT"};
-    gboolean characteristic = FALSE;
+    gboolean     characteristic = FALSE;
     for (guint i = 0; i < G_N_ELEMENTS(characteristics); i++)
     {
       gsize len = strlen(characteristics[i]);
@@ -221,8 +221,8 @@ static const gchar *routine_body(const gchar *sql, gboolean no_backslash, gboole
 
 static gchar *normalize_routine_definition(const gchar *sql, const gchar *mode)
 {
-  gboolean no_backslash = strstr(mode, "NO_BACKSLASH_ESCAPES") != NULL;
-  gboolean ansi_quotes = strstr(mode, "ANSI_QUOTES") != NULL;
+  gboolean     no_backslash = strstr(mode, "NO_BACKSLASH_ESCAPES") != NULL;
+  gboolean     ansi_quotes = strstr(mode, "ANSI_QUOTES") != NULL;
   const gchar *p = routine_body(sql, no_backslash, ansi_quotes);
   if (!p)
     return NULL;
@@ -230,7 +230,7 @@ static gchar *normalize_routine_definition(const gchar *sql, const gchar *mode)
   while (*p)
   {
     const gchar *start = p;
-    gboolean ordinary_comment = FALSE;
+    gboolean     ordinary_comment = FALSE;
     if (*p == '\'' || *p == '"' || *p == '`')
     {
       p = routine_quote_end(p, no_backslash, ansi_quotes);
@@ -291,8 +291,8 @@ invalid:
 static gchar *quote_routine_identifier(const gchar *name)
 {
   gchar **parts = g_strsplit(name, "`", -1);
-  gchar *escaped = g_strjoinv("``", parts);
-  gchar *quoted = g_strdup_printf("`%s`", escaped);
+  gchar  *escaped = g_strjoinv("``", parts);
+  gchar  *quoted = g_strdup_printf("`%s`", escaped);
   g_strfreev(parts);
   g_free(escaped);
   return quoted;
@@ -310,9 +310,9 @@ char *checksum_process_structure(MYSQL *conn, char *database, char *table)
   if (!result)
     return NULL;
 
-  gchar *quoted_database = quote_routine_identifier(database);
-  guint32 checksum = 0;
-  gboolean valid = TRUE;
+  gchar    *quoted_database = quote_routine_identifier(database);
+  guint32   checksum = 0;
+  gboolean  valid = TRUE;
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(result)))
   {
@@ -321,8 +321,8 @@ char *checksum_process_structure(MYSQL *conn, char *database, char *table)
       valid = FALSE;
       break;
     }
-    gchar *quoted_name = quote_routine_identifier(row[1]);
-    gchar *show = g_strdup_printf("SHOW CREATE %s %s.%s", row[0], quoted_database, quoted_name);
+    gchar        *quoted_name = quote_routine_identifier(row[1]);
+    gchar        *show = g_strdup_printf("SHOW CREATE %s %s.%s", row[0], quoted_database, quoted_name);
     struct M_ROW *mr = m_store_result_single_row(conn, show, "Error reading routine for checksum (%s.%s)", database, row[1]);
     g_free(show);
     g_free(quoted_name);
