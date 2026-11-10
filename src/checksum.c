@@ -97,7 +97,7 @@ static char *generic_checksum(MYSQL *conn, const gchar *query_template, ...)
   char *r = NULL;
   if (mr)
   {
-    if (mr->row)
+    if (mr->row && mr->row[column_number])
       r = g_strdup_printf("%s", mr->row[column_number]);
     m_store_result_row_free(mr);
   }
@@ -238,6 +238,14 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
   g_assert(checksum_mode != CHECKSUM_SKIP);
   emit_checksum_event(G_LOG_LEVEL_MESSAGE, "started", scope, checksum_type, _db, _table,
       dbt_checksum, checksum);
+  if (dbt_checksum && !checksum)
+  {
+    GLogLevelFlags level = checksum_mode == CHECKSUM_WARN ? G_LOG_LEVEL_WARNING : G_LOG_LEVEL_CRITICAL;
+    emit_checksum_event(level, "failed", scope, checksum_type, _db, _table, dbt_checksum, checksum);
+    g_log(G_LOG_DOMAIN, level, "%s could not be computed for %s%s%s (expected %s)",
+        message, _db, _table ? "." : "", _table ? _table : "", dbt_checksum);
+    return FALSE;
+  }
   if (dbt_checksum && checksum && g_ascii_strcasecmp(dbt_checksum, checksum))
   {
     emit_checksum_event(checksum_mode == CHECKSUM_WARN ? G_LOG_LEVEL_WARNING : G_LOG_LEVEL_CRITICAL,
