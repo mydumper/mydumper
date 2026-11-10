@@ -1,0 +1,5 @@
+[myloader]
+directory=/tmp/data
+no-data
+skip-post
+checksum=fail
