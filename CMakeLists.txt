@@ -134,6 +134,10 @@ OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
 
 enable_testing()
 
+add_executable(test_checksum_routine test/unit/test_checksum_routine.c)
+target_link_libraries(test_checksum_routine ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
+add_test(NAME checksum_routine COMMAND test_checksum_routine)
+
 # Unit test: --use-defer livelock
 # Requires only GLib (no MySQL). Link with -DUSE_DEFER_FIX to test the fixed
 # code path; without it the test proves the bug (exits non-zero).
