@@ -35,8 +35,9 @@ void *m_coalesce_hash(GHashTable *hash, gchar *table_key, gchar *any_db_key, gch
   return value ? value : g_hash_table_lookup(hash, any_table_key);
 }
 
-static void check(gboolean routines, gboolean skip_index, gboolean skip_trigger, gboolean table_override)
+static void check(gboolean schema, gboolean routines, gboolean skip_index, gboolean skip_trigger, gboolean table_override)
 {
+  schema_checksums = schema;
   routine_checksums = routines;
   skip_index_checksums = skip_index;
   skip_trigger_checksums = skip_trigger;
@@ -58,8 +59,8 @@ static void check(gboolean routines, gboolean skip_index, gboolean skip_trigger,
   database.source_database = database.database_name_in_filename = database.target_database = database_name;
   struct db_table *table = NULL;
   g_assert_true(append_new_db_table(&table, &database, g_strdup(table_name), table_name, FALSE));
-  g_assert_cmpint(table->checksum.skip_trigger, ==, table_override || !routines || skip_trigger);
-  g_assert_cmpint(table->checksum.skip_index, ==, skip_index);
+  g_assert_cmpint(table->checksum.skip_trigger, ==, table_override || !schema || skip_trigger);
+  g_assert_cmpint(table->checksum.skip_index, ==, !schema || skip_index);
   g_free(table->source_table_name);
   g_free(table->table_filename);
   g_mutex_free(table->mutex);
@@ -74,17 +75,18 @@ int main(int argc, char **argv)
 {
   if (argc == 2 && !g_strcmp0(argv[1], "skip-index"))
   {
-    check(TRUE, TRUE, FALSE, FALSE);
+    check(TRUE, TRUE, TRUE, FALSE, FALSE);
     return 0;
   }
   /* Both regressions are covered before the remaining flag combinations. */
-  check(TRUE, FALSE, TRUE, FALSE);
-  check(TRUE, TRUE, FALSE, FALSE);
-  for (int routines = 0; routines <= 1; routines++)
-    for (int index = 0; index <= 1; index++)
-      for (int trigger = 0; trigger <= 1; trigger++)
-        for (int override = 0; override <= 1; override++)
-          check(routines, index, trigger, override);
-  g_print("18 trigger/index checksum flag cases passed.\n");
+  check(TRUE, TRUE, FALSE, TRUE, FALSE);
+  check(TRUE, TRUE, TRUE, FALSE, FALSE);
+  for (int schema = 0; schema <= 1; schema++)
+    for (int routines = 0; routines <= 1; routines++)
+      for (int index = 0; index <= 1; index++)
+        for (int trigger = 0; trigger <= 1; trigger++)
+          for (int override = 0; override <= 1; override++)
+            check(schema, routines, index, trigger, override);
+  g_print("34 trigger/index checksum flag cases passed.\n");
   return 0;
 }
