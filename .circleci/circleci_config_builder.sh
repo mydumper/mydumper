@@ -566,7 +566,7 @@ do
         default: false
       this_executor:
         type: string
-        default: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+        default: ${all_os[${os}_0]}
     executor: << parameters.this_executor >>
     resource_class: large
     steps:
