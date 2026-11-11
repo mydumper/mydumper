@@ -159,7 +159,8 @@ gboolean append_new_db_table(struct db_table **p_dbt, struct database *_database
         dbt->checksum.skip_schema = c ? c : (schema_checksums ? skip_table_checksums : TRUE);
       }
       c = GPOINTER_TO_INT(m_coalesce_hash(g_hash_table_lookup(conf_per_table, SKIP_INDEX_CHECKSUMS), config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key));
-      dbt->checksum.skip_index = c ? c : (schema_checksums ? skip_index_checksums : TRUE);
+      // Indexes are not created when --skip-indexes is used, so they cannot be verified
+      dbt->checksum.skip_index = c ? c : (skip_indexes || (schema_checksums ? skip_index_checksums : TRUE));
       c = GPOINTER_TO_INT(m_coalesce_hash(g_hash_table_lookup(conf_per_table, SKIP_TRIGGER_CHECKSUMS), config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key));
       dbt->checksum.skip_trigger = c ? c : (schema_checksums ? skip_trigger_checksums : TRUE);
       c = GPOINTER_TO_INT(m_coalesce_hash(g_hash_table_lookup(conf_per_table, SKIP_DATA_CHECKSUMS), config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key));
