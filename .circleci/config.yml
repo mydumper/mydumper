@@ -2644,12 +2644,16 @@ commands:
 
   prepare_el10_mysql80:
     steps:
-    - prepare_el_mysql80
+    - run: sudo yum install -y https://repo.mysql.com/mysql84-community-release-el10.rpm
+    - run: sudo rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2025
+    - run: sudo yum --disablerepo='mysql*' --enablerepo=mysql-8.4-lts-community install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
 
 
   prepare_el10_mysql84:
     steps:
-    - prepare_el_mysql84
+    - run: sudo yum install -y https://repo.mysql.com/mysql84-community-release-el10.rpm
+    - run: sudo rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2025
+    - run: sudo yum --disablerepo='mysql*' --enablerepo=mysql-8.4-lts-community install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
 
 
   prepare_el10_debian_default:
