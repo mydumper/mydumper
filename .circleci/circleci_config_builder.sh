@@ -379,7 +379,7 @@ cat <<EOF
           sudo apt-get update
           sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
 
-  prepare_apt_mysql80:
+  prepare_apt_mysql97:
     steps:
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-9.7-lts" | sudo debconf-set-selections
