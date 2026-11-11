@@ -134,6 +134,12 @@ OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
 
 enable_testing()
 
+add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c)
+target_compile_options(test_restore_connection_loss PRIVATE -ffunction-sections -fdata-sections)
+set_property(TARGET test_restore_connection_loss APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
+target_link_libraries(test_restore_connection_loss ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
+add_test(NAME restore_connection_loss COMMAND test_restore_connection_loss)
+
 add_executable(test_trigger_checksum_flags test/unit/test_trigger_checksum_flags.c src/myloader/myloader_table.c)
 target_link_libraries(test_trigger_checksum_flags ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 add_test(NAME trigger_checksum_flags COMMAND test_trigger_checksum_flags)
