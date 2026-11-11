@@ -404,7 +404,6 @@ cat <<EOF
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
-
   prepare_el7_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.11.11"
@@ -428,7 +427,31 @@ EOF
 
 for os in el7 el9 el10
 do
-    for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
+    for vendor in ${list_mysql_version[@]} 
+    do
+        echo "
+  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
+    - prepare_el_${all_vendors[${vendor}_0]}
+"
+    done
+done
+
+for vendor in ${list_mysql_version[@]} 
+do
+  echo "
+  prepare_el8_${all_vendors[${vendor}_0]}:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
+"
+done
+
+for os in el7 el9 el10
+do
+    for vendor in ${list_percona_version[@]}
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -438,7 +461,7 @@ do
     done
 done
 
-for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
+for vendor in ${list_percona_version[@]}
 do
   echo "
   prepare_el8_${all_vendors[${vendor}_0]}:
@@ -447,6 +470,8 @@ do
     - prepare_el_mysql80
 "
 done
+
+
 
 for os in el8 el9 el10
 do

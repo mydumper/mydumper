@@ -2696,7 +2696,6 @@ commands:
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
-
   prepare_el7_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.11.11"
@@ -2719,27 +2718,127 @@ commands:
 
   prepare_el7_mysql80:
     steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el7.rpm
     - prepare_el_mysql80
 
 
   prepare_el7_mysql84:
     steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el7.rpm
     - prepare_el_mysql84
 
 
   prepare_el7_mysql97:
     steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el7.rpm
     - prepare_el_mysql97
 
 
   prepare_el7_debian_default:
     steps:
+    - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el7.rpm
     - prepare_el_debian_default
 
 
   prepare_el7_ubuntu_default:
     steps:
+    - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el7.rpm
     - prepare_el_ubuntu_default
+
+
+  prepare_el9_mysql80:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el9.rpm
+    - prepare_el_mysql80
+
+
+  prepare_el9_mysql84:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el9.rpm
+    - prepare_el_mysql84
+
+
+  prepare_el9_mysql97:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el9.rpm
+    - prepare_el_mysql97
+
+
+  prepare_el9_debian_default:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el9.rpm
+    - prepare_el_debian_default
+
+
+  prepare_el9_ubuntu_default:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el9.rpm
+    - prepare_el_ubuntu_default
+
+
+  prepare_el10_mysql80:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el10.rpm
+    - prepare_el_mysql80
+
+
+  prepare_el10_mysql84:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el10.rpm
+    - prepare_el_mysql84
+
+
+  prepare_el10_mysql97:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el10.rpm
+    - prepare_el_mysql97
+
+
+  prepare_el10_debian_default:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el10.rpm
+    - prepare_el_debian_default
+
+
+  prepare_el10_ubuntu_default:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el10.rpm
+    - prepare_el_ubuntu_default
+
+
+  prepare_el8_mysql80:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el10.rpm
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
+
+
+  prepare_el8_mysql84:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el10.rpm
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
+
+
+  prepare_el8_mysql97:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el10.rpm
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
+
+
+  prepare_el8_debian_default:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el10.rpm
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
+
+
+  prepare_el8_ubuntu_default:
+    steps:
+    - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el10.rpm
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
 
 
   prepare_el7_percona57:
@@ -2757,31 +2856,6 @@ commands:
     - prepare_el_percona84
 
 
-  prepare_el9_mysql80:
-    steps:
-    - prepare_el_mysql80
-
-
-  prepare_el9_mysql84:
-    steps:
-    - prepare_el_mysql84
-
-
-  prepare_el9_mysql97:
-    steps:
-    - prepare_el_mysql97
-
-
-  prepare_el9_debian_default:
-    steps:
-    - prepare_el_debian_default
-
-
-  prepare_el9_ubuntu_default:
-    steps:
-    - prepare_el_ubuntu_default
-
-
   prepare_el9_percona57:
     steps:
     - prepare_el_percona57
@@ -2797,31 +2871,6 @@ commands:
     - prepare_el_percona84
 
 
-  prepare_el10_mysql80:
-    steps:
-    - prepare_el_mysql80
-
-
-  prepare_el10_mysql84:
-    steps:
-    - prepare_el_mysql84
-
-
-  prepare_el10_mysql97:
-    steps:
-    - prepare_el_mysql97
-
-
-  prepare_el10_debian_default:
-    steps:
-    - prepare_el_debian_default
-
-
-  prepare_el10_ubuntu_default:
-    steps:
-    - prepare_el_ubuntu_default
-
-
   prepare_el10_percona57:
     steps:
     - prepare_el_percona57
@@ -2835,36 +2884,6 @@ commands:
   prepare_el10_percona84:
     steps:
     - prepare_el_percona84
-
-
-  prepare_el8_mysql80:
-    steps:
-    - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
-
-
-  prepare_el8_mysql84:
-    steps:
-    - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
-
-
-  prepare_el8_mysql97:
-    steps:
-    - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
-
-
-  prepare_el8_debian_default:
-    steps:
-    - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
-
-
-  prepare_el8_ubuntu_default:
-    steps:
-    - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
 
 
   prepare_el8_percona57:

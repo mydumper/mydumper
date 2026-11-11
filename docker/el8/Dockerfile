@@ -23,6 +23,5 @@ RUN \
   wget https://r.mariadb.com/downloads/mariadb_repo_setup -O /tmp/mariadb_repo_setup
 
 RUN \
-  yum -y install https://repo.mysql.com/mysql84-community-release-el8.rpm && \
   rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2025 && \
   yum clean all
