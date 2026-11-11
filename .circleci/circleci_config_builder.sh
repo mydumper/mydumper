@@ -416,9 +416,15 @@ do
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
-    steps:
-    - prepare_el_${all_vendors[${vendor}_0]}
-"
+    steps:"
+        if [[ "$os" == "el10" && "$vendor" == mysql* ]]; then
+            echo "    - run: sudo yum install -y https://repo.mysql.com/mysql84-community-release-el10.rpm
+    - run: sudo rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2025
+    - run: sudo yum --disablerepo='mysql*' --enablerepo=mysql-8.4-lts-community install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client"
+        else
+            echo "    - prepare_el_${all_vendors[${vendor}_0]}"
+        fi
+        echo
     done
 done
 

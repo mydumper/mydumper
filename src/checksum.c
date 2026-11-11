@@ -18,6 +18,7 @@
 #include <glib.h>
 #include <mysql.h>
 #include <string.h>
+#include <zlib.h>
 
 #include "common.h"
 
@@ -136,11 +137,211 @@ char *checksum_table_structure(MYSQL *conn, char *database, char *table)
       0, database, table);
 }
 
+/* Advance over one quoted SQL token, respecting the routine's creation mode. */
+static const gchar *routine_quote_end(const gchar *p, gboolean no_backslash, gboolean ansi_quotes)
+{
+  gchar    quote = *p++;
+  gboolean literal = quote == '\'' || (quote == '"' && !ansi_quotes);
+  while (*p)
+  {
+    if (*p == '\\' && literal && !no_backslash && p[1])
+      p += 2;
+    else if (*p++ == quote)
+    {
+      if (*p != quote)
+        return p;
+      p++;
+    }
+  }
+  return NULL;
+}
+
+/* SHOW CREATE emits the signature and each characteristic on separate lines.
+ * Locate the body without relying on the lossy ROUTINE_DEFINITION field. */
+static const gchar *routine_body(const gchar *sql, gboolean no_backslash, gboolean ansi_quotes)
+{
+  const gchar *p = sql;
+  guint        depth = 0;
+  gboolean     parameters_done = FALSE;
+  while (*p)
+  {
+    if (*p == '\'' || *p == '"' || *p == '`')
+    {
+      p = routine_quote_end(p, no_backslash, ansi_quotes);
+      if (!p)
+        return NULL;
+      continue;
+    }
+    if (*p == '(')
+      depth++;
+    else if (*p == ')' && depth && --depth == 0)
+      parameters_done = TRUE;
+    else if (*p == '\n' && parameters_done && !depth)
+    {
+      p++;
+      break;
+    }
+    p++;
+  }
+  if (!parameters_done)
+    return NULL;
+  while (*p)
+  {
+    while (g_ascii_isspace(*p))
+      p++;
+    const gchar *characteristics[] = {"LANGUAGE SQL", "DETERMINISTIC", "NOT DETERMINISTIC",
+        "CONTAINS SQL", "NO SQL", "READS SQL DATA", "MODIFIES SQL DATA",
+        "SQL SECURITY DEFINER", "SQL SECURITY INVOKER", "COMMENT"};
+    gboolean     characteristic = FALSE;
+    for (guint i = 0; i < G_N_ELEMENTS(characteristics); i++)
+    {
+      gsize len = strlen(characteristics[i]);
+      if (!g_ascii_strncasecmp(p, characteristics[i], len) && g_ascii_isspace(p[len]))
+      {
+        characteristic = TRUE;
+        break;
+      }
+    }
+    if (!characteristic)
+      return *p ? p : NULL;
+    while (*p && *p != '\n')
+    {
+      if (*p == '\'' || *p == '"' || *p == '`')
+      {
+        p = routine_quote_end(p, no_backslash, ansi_quotes);
+        if (!p)
+          return NULL;
+      }
+      else
+        p++;
+    }
+  }
+  return NULL;
+}
+
+static gchar *normalize_routine_definition(const gchar *sql, const gchar *mode)
+{
+  gboolean     no_backslash = strstr(mode, "NO_BACKSLASH_ESCAPES") != NULL;
+  gboolean     ansi_quotes = strstr(mode, "ANSI_QUOTES") != NULL;
+  const gchar *p = routine_body(sql, no_backslash, ansi_quotes);
+  if (!p)
+    return NULL;
+  GString *normalized = g_string_new(NULL);
+  while (*p)
+  {
+    const gchar *start = p;
+    gboolean     ordinary_comment = FALSE;
+    if (*p == '\'' || *p == '"' || *p == '`')
+    {
+      p = routine_quote_end(p, no_backslash, ansi_quotes);
+      if (!p)
+        goto invalid;
+    }
+    else if (*p == '#' || (p[0] == '-' && p[1] == '-' && g_ascii_isspace(p[2])))
+    {
+      ordinary_comment = TRUE;
+      while (*p && *p != '\n')
+        p++;
+      if (*p)
+        p++;
+    }
+    else if (p[0] == '/' && p[1] == '*')
+    {
+      ordinary_comment = p[2] != '!' && p[2] != '+' && !(p[2] == 'M' && p[3] == '!');
+      const gchar *end = strstr(p + 2, "*/");
+      if (!end)
+        goto invalid;
+      p = end + 2;
+    }
+    else if (g_ascii_isspace(*p))
+    {
+      while (g_ascii_isspace(*p))
+        p++;
+      if (*p)
+        g_string_append_c(normalized, ' ');
+      continue;
+    }
+    else
+      p++;
+    if (ordinary_comment)
+    {
+      /* The dump serializer adds a space before each newline, including comments. */
+      while (start < p)
+      {
+        if (g_ascii_isspace(*start))
+        {
+          gboolean newline = FALSE;
+          while (start < p && g_ascii_isspace(*start))
+            newline |= *start++ == '\n';
+          g_string_append_c(normalized, newline ? '\n' : ' ');
+        }
+        else
+          g_string_append_c(normalized, *start++);
+      }
+    }
+    else
+      g_string_append_len(normalized, start, p - start);
+  }
+  return g_string_free(normalized, FALSE);
+invalid:
+  g_string_free(normalized, TRUE);
+  return NULL;
+}
+
+static gchar *quote_routine_identifier(const gchar *name)
+{
+  gchar **parts = g_strsplit(name, "`", -1);
+  gchar  *escaped = g_strjoinv("``", parts);
+  gchar  *quoted = g_strdup_printf("`%s`", escaped);
+  g_strfreev(parts);
+  g_free(escaped);
+  return quoted;
+}
+
 char *checksum_process_structure(MYSQL *conn, char *database, char *table)
 {
-  return generic_checksum(conn,
-      checksum_select_prefix "SELECT replace(ROUTINE_DEFINITION,' ','') AS col, ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.routines WHERE ROUTINE_SCHEMA='%s') AS a ORDER BY ROUTINE_TYPE, ROUTINE_NAME",
-      0, database, table);
+  (void)table;
+  GString *query = g_string_new("SELECT ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.routines WHERE ROUTINE_SCHEMA=X'");
+  for (const guchar *p = (const guchar *)database; *p; p++)
+    g_string_append_printf(query, "%02x", *p);
+  g_string_append(query, "' AND ROUTINE_TYPE IN ('PROCEDURE','FUNCTION') ORDER BY ROUTINE_TYPE, ROUTINE_NAME");
+  MYSQL_RES *result = m_store_result_critical(conn, query->str, "Error listing routines for checksum (%s)", database);
+  g_string_free(query, TRUE);
+  if (!result)
+    return NULL;
+
+  gchar    *quoted_database = quote_routine_identifier(database);
+  guint32   checksum = 0;
+  gboolean  valid = TRUE;
+  MYSQL_ROW row;
+  while ((row = mysql_fetch_row(result)))
+  {
+    if (!row[0] || !row[1] || (strcmp(row[0], "PROCEDURE") && strcmp(row[0], "FUNCTION")))
+    {
+      valid = FALSE;
+      break;
+    }
+    gchar        *quoted_name = quote_routine_identifier(row[1]);
+    gchar        *show = g_strdup_printf("SHOW CREATE %s %s.%s", row[0], quoted_database, quoted_name);
+    struct M_ROW *mr = m_store_result_single_row(conn, show, "Error reading routine for checksum (%s.%s)", database, row[1]);
+    g_free(show);
+    g_free(quoted_name);
+    gchar *definition = NULL;
+    if (mr && mr->row && mr->row[1] && mr->row[2])
+      definition = normalize_routine_definition(mr->row[2], mr->row[1]);
+    if (mr)
+      m_store_result_row_free(mr);
+    if (!definition)
+    {
+      valid = FALSE;
+      break;
+    }
+    checksum ^= (guint32)crc32(0, (const Bytef *)definition, strlen(definition));
+    g_free(definition);
+  }
+  g_free(quoted_database);
+  mysql_free_result(result);
+  return valid ? g_strdup_printf("%x", checksum) : NULL;
 }
 
 char *checksum_trigger_structure(MYSQL *conn, char *database, char *table)
