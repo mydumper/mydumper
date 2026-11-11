@@ -84,7 +84,7 @@ all_vendors[${vendor}_4]="mysqlclient"
 #_5: server command, when it differs from db_server_command
 
 
-list_mysql_version=( "mysql80" "mysql84" "mysql_97" "debian_default" "ubuntu_default")
+list_mysql_version=( "mysql80" "mysql84" "mysql97" "debian_default" "ubuntu_default")
 list_percona_version=( "percona57" "percona80" "percona84")
 list_mariadb_version=( "mariadb1011" "mariadb1006")
 list_all_vendors=( "${list_mysql_version[@]}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" )
