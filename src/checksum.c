@@ -22,8 +22,8 @@
 #include "common.h"
 
 #include "checksum.h"
-#include "logging.h"
 #include "server_detect.h"
+#include "logging.h"
 
 enum checksum_modes checksum_mode = CHECKSUM_WARN;  // Issue #1975: Warn by default instead of fail
 

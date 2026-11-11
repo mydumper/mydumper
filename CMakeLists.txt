@@ -135,7 +135,8 @@ OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
 enable_testing()
 
 add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c)
-target_compile_options(test_restore_connection_loss PRIVATE -ffunction-sections -fdata-sections)
+# Older CMake adds -rdynamic; hidden symbols let the linker discard untested code.
+target_compile_options(test_restore_connection_loss PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
 set_property(TARGET test_restore_connection_loss APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
 target_link_libraries(test_restore_connection_loss ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 add_test(NAME restore_connection_loss COMMAND test_restore_connection_loss)
