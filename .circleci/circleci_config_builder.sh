@@ -84,7 +84,7 @@ all_vendors[${vendor}_4]="mysqlclient"
 #_5: server command, when it differs from db_server_command
 
 
-list_mysql_version=( "mysql80" "mysql84" "debian_default" "ubuntu_default")
+list_mysql_version=( "mysql80" "mysql84" "mysql_97" "debian_default" "ubuntu_default")
 list_percona_version=( "percona57" "percona80" "percona84")
 list_mariadb_version=( "mariadb1011" "mariadb1006")
 list_all_vendors=( "${list_mysql_version[@]}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" )
@@ -323,6 +323,10 @@ commands:
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
 
+  prepare_el_mysql97:
+    steps:
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
+
   prepare_apt_debian_default:
     steps:
     - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
@@ -374,6 +378,15 @@ EOF
 cat <<EOF
           sudo apt-get update
           sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
+
+  prepare_apt_mysql80:
+    steps:
+    - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
+    - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-9.7-lts" | sudo debconf-set-selections
+    - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
+    - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
+    - run: sudo apt-get update
+    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev mysql-client
 
   prepare_apt_mariadb1006:
     steps:
