@@ -3327,7 +3327,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_mysql80
+      this_executor:
+        type: string
+        default: bionic_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3344,7 +3347,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_mysql84
+      this_executor:
+        type: string
+        default: bionic_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3361,7 +3367,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_debian_default
+      this_executor:
+        type: string
+        default: bionic_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3378,7 +3387,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_ubuntu_default
+      this_executor:
+        type: string
+        default: bionic_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3395,7 +3407,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_percona57
+      this_executor:
+        type: string
+        default: bionic_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3412,7 +3427,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_percona80
+      this_executor:
+        type: string
+        default: bionic_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3429,7 +3447,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_percona84
+      this_executor:
+        type: string
+        default: bionic_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3446,7 +3467,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_mariadb1011
+      this_executor:
+        type: string
+        default: bionic_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3463,7 +3487,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_mariadb1006
+      this_executor:
+        type: string
+        default: bionic_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3480,7 +3507,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_tidb
+      this_executor:
+        type: string
+        default: bionic_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3497,7 +3527,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_mysql80
+      this_executor:
+        type: string
+        default: focal_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3514,7 +3547,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_mysql84
+      this_executor:
+        type: string
+        default: focal_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3531,7 +3567,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_debian_default
+      this_executor:
+        type: string
+        default: focal_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3548,7 +3587,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_ubuntu_default
+      this_executor:
+        type: string
+        default: focal_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3565,7 +3607,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_percona57
+      this_executor:
+        type: string
+        default: focal_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3582,7 +3627,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_percona80
+      this_executor:
+        type: string
+        default: focal_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3599,7 +3647,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_percona84
+      this_executor:
+        type: string
+        default: focal_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3616,7 +3667,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_mariadb1011
+      this_executor:
+        type: string
+        default: focal_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3633,7 +3687,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_mariadb1006
+      this_executor:
+        type: string
+        default: focal_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3650,7 +3707,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_tidb
+      this_executor:
+        type: string
+        default: focal_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3667,7 +3727,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_mysql80
+      this_executor:
+        type: string
+        default: jammy_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3684,7 +3747,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_mysql84
+      this_executor:
+        type: string
+        default: jammy_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3701,7 +3767,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_debian_default
+      this_executor:
+        type: string
+        default: jammy_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3718,7 +3787,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_ubuntu_default
+      this_executor:
+        type: string
+        default: jammy_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3735,7 +3807,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_percona57
+      this_executor:
+        type: string
+        default: jammy_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3752,7 +3827,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_percona80
+      this_executor:
+        type: string
+        default: jammy_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3769,7 +3847,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_percona84
+      this_executor:
+        type: string
+        default: jammy_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3786,7 +3867,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_mariadb1011
+      this_executor:
+        type: string
+        default: jammy_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3803,7 +3887,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_mariadb1006
+      this_executor:
+        type: string
+        default: jammy_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3820,7 +3907,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_tidb
+      this_executor:
+        type: string
+        default: jammy_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3837,7 +3927,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: noble_mysql80
+      this_executor:
+        type: string
+        default: noble_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3854,7 +3947,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: noble_mysql84
+      this_executor:
+        type: string
+        default: noble_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3871,7 +3967,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: noble_debian_default
+      this_executor:
+        type: string
+        default: noble_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3888,7 +3987,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: noble_ubuntu_default
+      this_executor:
+        type: string
+        default: noble_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3905,7 +4007,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: noble_percona57
+      this_executor:
+        type: string
+        default: noble_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3922,7 +4027,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: noble_percona80
+      this_executor:
+        type: string
+        default: noble_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3939,7 +4047,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: noble_percona84
+      this_executor:
+        type: string
+        default: noble_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3956,7 +4067,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: noble_mariadb1011
+      this_executor:
+        type: string
+        default: noble_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3973,7 +4087,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: noble_mariadb1006
+      this_executor:
+        type: string
+        default: noble_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -3990,7 +4107,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: noble_tidb
+      this_executor:
+        type: string
+        default: noble_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4007,7 +4127,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: resolute_mysql80
+      this_executor:
+        type: string
+        default: resolute_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4024,7 +4147,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: resolute_mysql84
+      this_executor:
+        type: string
+        default: resolute_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4041,7 +4167,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: resolute_debian_default
+      this_executor:
+        type: string
+        default: resolute_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4058,7 +4187,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: resolute_ubuntu_default
+      this_executor:
+        type: string
+        default: resolute_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4075,7 +4207,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: resolute_percona57
+      this_executor:
+        type: string
+        default: resolute_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4092,7 +4227,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: resolute_percona80
+      this_executor:
+        type: string
+        default: resolute_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4109,7 +4247,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: resolute_percona84
+      this_executor:
+        type: string
+        default: resolute_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4126,7 +4267,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: resolute_mariadb1011
+      this_executor:
+        type: string
+        default: resolute_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4143,7 +4287,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: resolute_mariadb1006
+      this_executor:
+        type: string
+        default: resolute_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4160,7 +4307,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: resolute_tidb
+      this_executor:
+        type: string
+        default: resolute_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4177,7 +4327,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_mysql80
+      this_executor:
+        type: string
+        default: bullseye_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4194,7 +4347,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_mysql84
+      this_executor:
+        type: string
+        default: bullseye_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4211,7 +4367,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_debian_default
+      this_executor:
+        type: string
+        default: bullseye_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4228,7 +4387,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_ubuntu_default
+      this_executor:
+        type: string
+        default: bullseye_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4245,7 +4407,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_percona57
+      this_executor:
+        type: string
+        default: bullseye_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4262,7 +4427,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_percona80
+      this_executor:
+        type: string
+        default: bullseye_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4279,7 +4447,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_percona84
+      this_executor:
+        type: string
+        default: bullseye_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4296,7 +4467,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_mariadb1011
+      this_executor:
+        type: string
+        default: bullseye_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4313,7 +4487,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_mariadb1006
+      this_executor:
+        type: string
+        default: bullseye_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4330,7 +4507,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_tidb
+      this_executor:
+        type: string
+        default: bullseye_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4347,7 +4527,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bookworm_mysql80
+      this_executor:
+        type: string
+        default: bookworm_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4364,7 +4547,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bookworm_mysql84
+      this_executor:
+        type: string
+        default: bookworm_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4381,7 +4567,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bookworm_debian_default
+      this_executor:
+        type: string
+        default: bookworm_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4398,7 +4587,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bookworm_ubuntu_default
+      this_executor:
+        type: string
+        default: bookworm_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4415,7 +4607,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bookworm_percona57
+      this_executor:
+        type: string
+        default: bookworm_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4432,7 +4627,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bookworm_percona80
+      this_executor:
+        type: string
+        default: bookworm_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4449,7 +4647,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bookworm_percona84
+      this_executor:
+        type: string
+        default: bookworm_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4466,7 +4667,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bookworm_mariadb1011
+      this_executor:
+        type: string
+        default: bookworm_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4483,7 +4687,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bookworm_mariadb1006
+      this_executor:
+        type: string
+        default: bookworm_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4500,7 +4707,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bookworm_tidb
+      this_executor:
+        type: string
+        default: bookworm_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4517,7 +4727,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: trixie_mysql80
+      this_executor:
+        type: string
+        default: trixie_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4534,7 +4747,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: trixie_mysql84
+      this_executor:
+        type: string
+        default: trixie_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4551,7 +4767,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: trixie_debian_default
+      this_executor:
+        type: string
+        default: trixie_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4568,7 +4787,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: trixie_ubuntu_default
+      this_executor:
+        type: string
+        default: trixie_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4585,7 +4807,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: trixie_percona57
+      this_executor:
+        type: string
+        default: trixie_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4602,7 +4827,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: trixie_percona80
+      this_executor:
+        type: string
+        default: trixie_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4619,7 +4847,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: trixie_percona84
+      this_executor:
+        type: string
+        default: trixie_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4636,7 +4867,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: trixie_mariadb1011
+      this_executor:
+        type: string
+        default: trixie_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4653,7 +4887,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: trixie_mariadb1006
+      this_executor:
+        type: string
+        default: trixie_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4670,7 +4907,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: trixie_tidb
+      this_executor:
+        type: string
+        default: trixie_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4687,7 +4927,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el7_mysql80
+      this_executor:
+        type: string
+        default: el7_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4704,7 +4947,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el7_mysql84
+      this_executor:
+        type: string
+        default: el7_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4721,7 +4967,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el7_debian_default
+      this_executor:
+        type: string
+        default: el7_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4738,7 +4987,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el7_ubuntu_default
+      this_executor:
+        type: string
+        default: el7_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4755,7 +5007,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el7_percona57
+      this_executor:
+        type: string
+        default: el7_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4772,7 +5027,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el7_percona80
+      this_executor:
+        type: string
+        default: el7_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4789,7 +5047,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el7_percona84
+      this_executor:
+        type: string
+        default: el7_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4806,7 +5067,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el7_mariadb1011
+      this_executor:
+        type: string
+        default: el7_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4823,7 +5087,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el7_mariadb1006
+      this_executor:
+        type: string
+        default: el7_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4840,7 +5107,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el7_tidb
+      this_executor:
+        type: string
+        default: el7_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4857,7 +5127,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el8_mysql80
+      this_executor:
+        type: string
+        default: el8_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4874,7 +5147,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el8_mysql84
+      this_executor:
+        type: string
+        default: el8_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4891,7 +5167,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el8_debian_default
+      this_executor:
+        type: string
+        default: el8_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4908,7 +5187,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el8_ubuntu_default
+      this_executor:
+        type: string
+        default: el8_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4925,7 +5207,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el8_percona57
+      this_executor:
+        type: string
+        default: el8_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4942,7 +5227,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el8_percona80
+      this_executor:
+        type: string
+        default: el8_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4959,7 +5247,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el8_percona84
+      this_executor:
+        type: string
+        default: el8_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4976,7 +5267,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el8_mariadb1011
+      this_executor:
+        type: string
+        default: el8_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -4993,7 +5287,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el8_mariadb1006
+      this_executor:
+        type: string
+        default: el8_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5010,7 +5307,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el8_tidb
+      this_executor:
+        type: string
+        default: el8_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5027,7 +5327,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el9_mysql80
+      this_executor:
+        type: string
+        default: el9_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5044,7 +5347,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el9_mysql84
+      this_executor:
+        type: string
+        default: el9_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5061,7 +5367,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el9_debian_default
+      this_executor:
+        type: string
+        default: el9_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5078,7 +5387,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el9_ubuntu_default
+      this_executor:
+        type: string
+        default: el9_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5095,7 +5407,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el9_percona57
+      this_executor:
+        type: string
+        default: el9_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5112,7 +5427,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el9_percona80
+      this_executor:
+        type: string
+        default: el9_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5129,7 +5447,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el9_percona84
+      this_executor:
+        type: string
+        default: el9_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5146,7 +5467,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el9_mariadb1011
+      this_executor:
+        type: string
+        default: el9_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5163,7 +5487,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el9_mariadb1006
+      this_executor:
+        type: string
+        default: el9_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5180,7 +5507,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el9_tidb
+      this_executor:
+        type: string
+        default: el9_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5197,7 +5527,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el10_mysql80
+      this_executor:
+        type: string
+        default: el10_mysql80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5214,7 +5547,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el10_mysql84
+      this_executor:
+        type: string
+        default: el10_mysql84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5231,7 +5567,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el10_debian_default
+      this_executor:
+        type: string
+        default: el10_debian_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5248,7 +5587,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el10_ubuntu_default
+      this_executor:
+        type: string
+        default: el10_ubuntu_default
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5265,7 +5607,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el10_percona57
+      this_executor:
+        type: string
+        default: el10_percona57
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5282,7 +5627,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el10_percona80
+      this_executor:
+        type: string
+        default: el10_percona80
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5299,7 +5647,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el10_percona84
+      this_executor:
+        type: string
+        default: el10_percona84
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5316,7 +5667,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el10_mariadb1011
+      this_executor:
+        type: string
+        default: el10_mariadb1011
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5333,7 +5687,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el10_mariadb1006
+      this_executor:
+        type: string
+        default: el10_mariadb1006
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -5350,7 +5707,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: el10_tidb
+      this_executor:
+        type: string
+        default: el10_tidb
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -12674,12 +13034,16 @@ workflows:
     - compile_and_test_mydumper_in_trixie_debian_default
     - compile_and_test_mydumper_in_jammy_percona57:
         test: true
+        this_executor: jammy_percona57
     - compile_and_test_mydumper_in_jammy_percona80:
         test: true
+        this_executor: jammy_percona80
     - compile_and_test_mydumper_in_jammy_mariadb1011:
         test: true
+        this_executor: jammy_mariadb1011
     - compile_and_test_mydumper_in_noble_mysql84:
         test: true
+        this_executor: noble_mysql84
     - build_bionic_percona80_amd64:
         requires:
           - build_jammy_mysql80_amd64

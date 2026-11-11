@@ -564,7 +564,10 @@ do
       test:
         type: boolean
         default: false
-    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+      this_executor:
+        type: string
+        default: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
@@ -857,7 +860,8 @@ done
 for lt in ${!list_test[@]}
 do
 echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
-        test: true"
+        test: true
+        this_executor: ${list_test[${lt}]}"
 # Decomment next 5 lines if you want to ignore compilation
 if [ "build" = "$1" ]
 then
