@@ -211,7 +211,7 @@ list_compile=(
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"      "el9_mysql97"
-                       "el10_mysql80"       "el10_mariadb1011"                            "el10_mysql84"     "el10_mysql97"
+                                            "el10_mariadb1011"                            "el10_mysql84"     "el10_mysql97"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
   "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84"
                                             "trixie_percona84"                                                                   "trixie_debian_default"
@@ -433,6 +433,7 @@ do
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
+    - run: yum-config-manager --enable 'mysql\*${vendor}\*'
     - prepare_el_${all_vendors[${vendor}_0]}
 "
     done
