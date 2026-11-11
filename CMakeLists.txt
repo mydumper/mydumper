@@ -134,6 +134,10 @@ OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
 
 enable_testing()
 
+add_executable(test_checksum_view test/unit/test_checksum_view.c)
+target_link_libraries(test_checksum_view ${GLIB2_LIBRARIES})
+add_test(NAME checksum_view COMMAND test_checksum_view)
+
 add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c)
 # Older CMake adds -rdynamic; hidden symbols let the linker discard untested code.
 target_compile_options(test_restore_connection_loss PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
@@ -149,6 +153,9 @@ add_test(NAME trigger_checksum_skip_index COMMAND test_trigger_checksum_flags sk
 add_executable(test_checksum_missing test/unit/test_checksum_missing.c src/checksum.c)
 target_link_libraries(test_checksum_missing ${GLIB2_LIBRARIES})
 add_test(NAME checksum_missing COMMAND test_checksum_missing)
+
+add_executable(test_checksum_view_server test/unit/test_checksum_view_server.c)
+target_link_libraries(test_checksum_view_server ${GLIB2_LIBRARIES} ${MYSQL_LIBRARIES})
 
 # Unit test: --use-defer livelock
 # Requires only GLib (no MySQL). Link with -DUSE_DEFER_FIX to test the fixed
