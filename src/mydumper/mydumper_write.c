@@ -422,7 +422,8 @@ void finalize_write()
 
 gboolean is_hex_blob(MYSQL_FIELD field)
 {
-  return hex_blob && (field.type == MYSQL_TYPE_BLOB || (field.charsetnr == 63 && (field.type == MYSQL_TYPE_VAR_STRING || field.type == MYSQL_TYPE_STRING)));
+  /* MYSQL_TYPE_BLOB is shared by BLOB and TEXT: only binary (charsetnr 63) columns are hex encoded */
+  return hex_blob && field.charsetnr == 63 && (field.type == MYSQL_TYPE_BLOB || field.type == MYSQL_TYPE_VAR_STRING || field.type == MYSQL_TYPE_STRING);
 }
 
 static gboolean is_mariadb_uuid_field(const MYSQL_FIELD *field)
