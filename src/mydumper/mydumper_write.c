@@ -425,23 +425,6 @@ gboolean is_hex_blob(MYSQL_FIELD field)
   return hex_blob && (field.type == MYSQL_TYPE_BLOB || (field.charsetnr == 63 && (field.type == MYSQL_TYPE_VAR_STRING || field.type == MYSQL_TYPE_STRING)));
 }
 
-static gboolean is_mariadb_uuid_field(const MYSQL_FIELD *field)
-{
-#ifdef MARIADB_FIELD_ATTR_LAST
-  MARIADB_CONST_STRING type_name = {0};
-
-  if (mariadb_field_attr(&type_name, field, MARIADB_FIELD_ATTR_DATA_TYPE_NAME) != 0)
-    return FALSE;
-
-  return type_name.str != NULL &&
-         type_name.length == 4 &&
-         g_ascii_strncasecmp(type_name.str, "uuid", type_name.length) == 0;
-#else
-  (void)field;
-  return FALSE;
-#endif
-}
-
 GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint num_fields)
 {
   guint    i = 0;
@@ -750,8 +733,9 @@ gboolean write_header(struct table_job *tj)
   return TRUE;
 }
 
-static void write_load_data_column_into_string(MYSQL *conn, gchar *column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers)
+static void write_load_data_column_into_string(MYSQL *conn, gchar *column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers, gboolean is_uuid)
 {
+  (void)is_uuid;
   if (!column)
   {
     g_string_append(buffers.target_column, "\\N");
@@ -796,7 +780,7 @@ static void write_load_data_column_into_string(MYSQL *conn, gchar *column, MYSQL
     g_string_append(buffers.target_column, column);
 }
 
-static void write_sql_column_into_string(MYSQL *conn, gchar *column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers)
+static void write_sql_column_into_string(MYSQL *conn, gchar *column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers, gboolean is_uuid)
 {
   if (!column)
   {
@@ -825,7 +809,9 @@ static void write_sql_column_into_string(MYSQL *conn, gchar *column, MYSQL_FIELD
   {
     if (field.type == MYSQL_TYPE_JSON)
       g_string_append(buffers.target_column, "CONVERT(");
-    else if ((field.flags & BINARY_FLAG) && !is_mariadb_uuid_field(&field))
+    else if (is_uuid)
+      g_string_append(buffers.target_column, "_utf8mb4");
+    else if (field.flags & BINARY_FLAG)
       g_string_append(buffers.target_column, "_binary ");
     g_string_append_c(buffers.target_column, *fields_enclosed_by);
     // Perf: escape directly into the target buffer tail, avoiding the
@@ -845,7 +831,7 @@ static void write_sql_column_into_string(MYSQL *conn, gchar *column, MYSQL_FIELD
   }
 }
 
-static void write_column_into_string_with_terminated_by(MYSQL *conn, gchar *column_i, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar *, MYSQL_FIELD, gulong, struct thread_data_buffers), GList *anonymized_function_list, gchar *terminated_by)
+static void write_column_into_string_with_terminated_by(MYSQL *conn, gchar *column_i, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar *, MYSQL_FIELD, gulong, struct thread_data_buffers, gboolean), GList *anonymized_function_list, gchar *terminated_by, gboolean is_uuid)
 {
   struct function_pointer *f = anonymized_function_list ? anonymized_function_list->data : NULL;
   gchar                   *column = column_i;
@@ -858,7 +844,7 @@ static void write_column_into_string_with_terminated_by(MYSQL *conn, gchar *colu
     // every byte
     struct thread_data_buffers direct = buffers;
     direct.target_column = buffers.row;
-    write_column_into_string(conn, column_i, field, rlength, direct);
+    write_column_into_string(conn, column_i, field, rlength, direct, is_uuid);
     g_string_append(buffers.row, terminated_by);
     return;
   }
@@ -871,7 +857,7 @@ static void write_column_into_string_with_terminated_by(MYSQL *conn, gchar *colu
     if (f->is_pre)
     {
       // apply and constant as they alter the data
-      write_column_into_string(conn, column, field, rlength, buffers);
+      write_column_into_string(conn, column, field, rlength, buffers, is_uuid);
       trace("Buffer.column initial: %s with column: %s", buffers.column->str, column);
       f->function(buffers.column_mask, buffers.column->str, &rlength, f);
       trace("Buffer.column_mask changed: %s", buffers.column_mask->str);
@@ -882,9 +868,9 @@ static void write_column_into_string_with_terminated_by(MYSQL *conn, gchar *colu
     {
       trace("Buffer.column initial: %s with column: %s", buffers.column->str, column);
       if (f->function(buffers.column_mask, column, &rlength, f))
-        write_column_into_string(conn, buffers.column_mask->str, field, buffers.column_mask->len, buffers);
+        write_column_into_string(conn, buffers.column_mask->str, field, buffers.column_mask->len, buffers, is_uuid);
       else
-        write_column_into_string(conn, NULL, field, 0, buffers);
+        write_column_into_string(conn, NULL, field, 0, buffers, is_uuid);
       trace("Buffer.column final: %s and Buffer.column_mask: %s", buffers.column->str, buffers.column_mask->str);
     }
 
@@ -910,7 +896,7 @@ static void write_column_into_string_with_terminated_by(MYSQL *conn, gchar *colu
         else
         {
           g_string_set_size(buffers.column, 0);
-          write_column_into_string(conn, NULL, field, 0, buffers);
+          write_column_into_string(conn, NULL, field, 0, buffers, is_uuid);
         }
         trace("Buffer.column final: %s and Buffer.column_mask: %s", buffers.column->str, buffers.column_mask->str);
       }
@@ -927,16 +913,22 @@ static void write_column_into_string_with_terminated_by(MYSQL *conn, gchar *colu
   //    g_free(column);
 }
 
-void write_row_into_string(MYSQL *conn, struct db_table *dbt, MYSQL_ROW row, MYSQL_FIELD *fields, gulong *lengths, guint num_fields, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar *, MYSQL_FIELD, gulong, struct thread_data_buffers))
+static gboolean dbt_has_uuid_column(struct db_table *dbt, const MYSQL_FIELD *field)
+{
+  const gchar *field_name = field->org_name && field->org_name[0] ? field->org_name : field->name;
+  return dbt->uuid_fields && field_name && g_hash_table_contains(dbt->uuid_fields, field_name);
+}
+
+void write_row_into_string(MYSQL *conn, struct db_table *dbt, MYSQL_ROW row, MYSQL_FIELD *fields, gulong *lengths, guint num_fields, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar *, MYSQL_FIELD, gulong, struct thread_data_buffers, gboolean))
 {
   guint i = 0;
   g_string_append(buffers.row, lines_starting_by);
 
   for (i = 0; i < num_fields - 1; i++)
   {
-    write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string, dbt->anonymized_function ? g_hash_table_lookup(dbt->anonymized_function, fields[i].name) : NULL, fields_terminated_by);
+    write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string, dbt->anonymized_function ? g_hash_table_lookup(dbt->anonymized_function, fields[i].name) : NULL, fields_terminated_by, dbt_has_uuid_column(dbt, &fields[i]));
   }
-  write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string, dbt->anonymized_function ? g_hash_table_lookup(dbt->anonymized_function, fields[i].name) : NULL, lines_terminated_by);
+  write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string, dbt->anonymized_function ? g_hash_table_lookup(dbt->anonymized_function, fields[i].name) : NULL, lines_terminated_by, dbt_has_uuid_column(dbt, &fields[i]));
 }
 
 // Use atomic operation instead of mutex for lock-free row counting
@@ -1054,7 +1046,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job *tj
   gulong *lengths = NULL;
   guint64 num_rows = 0;
   guint64 num_rows_st = 0;
-  void (*write_column_into_string)(MYSQL *, gchar *, MYSQL_FIELD, gulong, struct thread_data_buffers) = write_sql_column_into_string;
+  void (*write_column_into_string)(MYSQL *, gchar *, MYSQL_FIELD, gulong, struct thread_data_buffers, gboolean) = write_sql_column_into_string;
   switch (output_format)
   {
     case LOAD_DATA:
