@@ -31,6 +31,7 @@
 #include "myloader/myloader.h"
 #include "myloader/myloader_common.h"
 #include "myloader/myloader_database.h"
+#include "myloader/myloader_encryption_utils.h"
 #include "myloader/myloader_global.h"
 #include "myloader/myloader_process.h"
 #include "myloader/myloader_process_filename.h"
@@ -282,6 +283,9 @@ gboolean release_idle_connection_if_possible()
 
 static int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter, guint offset_line, guint current_offset_line)
 {
+  // MariaDB does not know the ENCRYPTION table option (issue #2367)
+  if (get_product() == SERVER_TYPE_MARIADB)
+    remove_encryption_option_from_create_table(data);
   if (!dry_run)
   {
     guint en = mysql_real_query(cd->thrconn, data->str, data->len);
