@@ -23,6 +23,7 @@
 #include "myloader/myloader_global.h"
 #include "myloader/myloader_restore.h"
 #include "myloader/myloader_restore_job.h"
+#include "myloader_view.h"
 #include "myloader_worker_schema.h"
 #include "logging.h"
 
@@ -81,6 +82,32 @@ static void set_target_database(struct database *_database)
   gchar *target_database = get_target_database(_database->source_database);
   _database->target_defined = target_database != NULL;
   _database->target_database = target_database ? g_strdup(target_database) : newline_unprotect(_database->source_database);
+}
+
+void rewrite_view_statement(GString *sql, struct database *database, gboolean no_backslash_escapes)
+{
+  if (!target_db || !database)
+    return;
+  GHashTable *mapping = target_database_by_source;
+  if (single_target_database && !source_db)
+  {
+    /* A single -B can merge several dumped databases, but must not rename external schemas. */
+    mapping = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+    GHashTableIter iter;
+    gpointer       value;
+    g_mutex_lock(database_hash_mutex);
+    g_hash_table_iter_init(&iter, database_hash);
+    while (g_hash_table_iter_next(&iter, NULL, &value))
+    {
+      struct database *entry = value;
+      g_hash_table_insert(mapping, g_strdup(entry->source_database), g_strdup(entry->target_database));
+    }
+    g_mutex_unlock(database_hash_mutex);
+  }
+  rewrite_view_database_references(sql, database->source_database, database->target_database,
+      mapping, identifier_quote_character, no_backslash_escapes);
+  if (mapping != target_database_by_source)
+    g_hash_table_destroy(mapping);
 }
 
 static struct database *new_database(gchar *filename, gchar *source_database)
