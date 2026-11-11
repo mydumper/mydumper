@@ -335,7 +335,9 @@ void *monitor_ftwrl_thread(void *thread_id)
 
 gboolean sig_triggered(void *user_data, int signal)
 {
-  if (signal == SIGTERM)
+  /* Without a terminal on stdin and stdout nobody can answer the Y/N question
+     (and it would never reach a log file), so SIGINT acts as SIGTERM. */
+  if (signal == SIGTERM || (!daemon_mode && (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO))))
   {
     shutdown_triggered = TRUE;
   }
@@ -369,6 +371,7 @@ gboolean sig_triggered(void *user_data, int signal)
       else
       {
         fprintf(stdout, "%s: Ctrl+c detected! Are you sure you want to cancel(Y/N)?", datetimestr);
+        fflush(stdout);
       }
       g_free(datetimestr);
       for (i = 0; i < num_threads; i++)
@@ -406,7 +409,7 @@ gboolean sig_triggered(void *user_data, int signal)
 
           return TRUE;
         }
-        if (c == 'Y' || c == 'y')
+        if (c == 'Y' || c == 'y' || c == EOF)
         {
           datetimestr = m_date_time_new_now_local();
           if (machine_log_json)
@@ -444,6 +447,32 @@ gboolean sig_triggered_int(void *user_data)
 gboolean sig_triggered_term(void *user_data)
 {
   return sig_triggered(user_data, SIGTERM);
+}
+
+/* Pops from queue but gives up when a shutdown is requested, so the main thread
+   can release the locks instead of waiting for workers that were cancelled. */
+static gboolean pop_or_cancel(GAsyncQueue *queue)
+{
+  while (!shutdown_triggered)
+  {
+    if (g_async_queue_timeout_pop(queue, 500000) != NULL)
+      return TRUE;
+  }
+  return FALSE;
+}
+
+/* Called while the locks may be held and the workers can not be trusted to
+   finish: release everything, mark the dump as failed and leave metadata.partial
+   as it is. */
+static void cancel_dump(MYSQL *conn, MYSQL *second_conn)
+{
+  g_warning("Dump cancelled by signal; releasing locks. The dump is incomplete");
+  if (release_global_write_lock_function)
+    release_global_write_lock_function(conn);
+  if (release_ddl_lock_function != NULL)
+    release_ddl_lock_function(second_conn);
+  mysql_close(conn);
+  exit(EXIT_FAILURE);
 }
 
 static void *signal_thread(void *data)
@@ -1455,6 +1484,10 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     acquire_global_write_lock_function(conn);
   }
 
+  // The FLUSH may have waited for a long time, a signal could have arrived meanwhile
+  if (shutdown_triggered)
+    cancel_dump(conn, second_conn);
+
   // TODO: this should be deleted on future releases.
   server_version = mysql_get_server_version(conn);
   if (server_version < 40108)
@@ -1583,7 +1616,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
 
   // Starting the workers threads
   start_working_thread(conf);
-  g_async_queue_pop(conf->source_and_replica_status_queue);
+  if (!pop_or_cancel(conf->source_and_replica_status_queue))
+    cancel_dump(conn, second_conn);
   g_async_queue_unref(conf->source_and_replica_status_queue);
 
   // Get initial binlog position again to determine backup consistency
@@ -1687,7 +1721,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   {
     g_message("Waiting database finish");
   }
-  g_async_queue_pop(conf->db_ready);
+  if (!pop_or_cancel(conf->db_ready))
+    cancel_dump(conn, second_conn);
 
   // At this point all schema jobs are completed
 
@@ -1955,12 +1990,18 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     fclose(nufile);
   }
 
-  if (g_rename(metadata_partial_filename, metadata_filename))
+  if (shutdown_triggered)
+  {
+    g_warning("Dump cancelled by signal; the dump is incomplete, leaving %s as it is", metadata_partial_filename);
+    errors++;
+  }
+  else if (g_rename(metadata_partial_filename, metadata_filename))
     m_critical("We were not able to rename metadata file");
 
   if (stream)
   {
-    stream_queue_push(NULL, g_strdup(metadata_filename));
+    if (!shutdown_triggered)
+      stream_queue_push(NULL, g_strdup(metadata_filename));
     if (exec_command != NULL)
     {
       wait_exec_command_to_finish();
