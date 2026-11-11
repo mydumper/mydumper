@@ -33,6 +33,8 @@ GAsyncQueue *metadata_sync_queue = NULL;
 void initialize_directory()
 {
   metadata_sync_queue = g_async_queue_new();
+  /* Main and the directory producer must both wait for metadata configuration. */
+  g_async_queue_ref(metadata_sync_queue);
 }
 
 void wait_directory_to_process_metadata()
@@ -43,6 +45,7 @@ void wait_directory_to_process_metadata()
 
 void release_directory_metadata_lock()
 {
+  g_async_queue_push(metadata_sync_queue, GINT_TO_POINTER(1));
   g_async_queue_push(metadata_sync_queue, GINT_TO_POINTER(1));
   if (machine_log_json_enabled())
   {
@@ -74,6 +77,7 @@ void *process_directory(struct configuration *conf)
     // metadata needs to be processed at the begining, that is why we are pushing into the queue
     // before reading the whole directory and excluding it after.
     process_filename_push(g_strdup("metadata"));
+    wait_directory_to_process_metadata();
   }
   else
   {

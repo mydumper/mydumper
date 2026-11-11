@@ -838,7 +838,6 @@ guint process_result_statement(GAsyncQueue *get_insert_result_queue, struct stat
 
 int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database, enum restore_job_statement_type restore_job_statement_type)
 {
-  (void)restore_job_statement_type;
   FILE    *infile = NULL;
   gboolean eof = FALSE;
   GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
@@ -879,6 +878,8 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
       else if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], delimiter))
       {
         update_definer(data, replace_definer_str, skip_definer);
+        if (restore_job_statement_type == VIEW)
+          rewrite_view_statement(data, use_database, cd->thrconn->server_status & SERVER_STATUS_NO_BACKSLASH_ESCAPES);
         assign_statement(ir, td, td->dbt, data->str, preline, is_schema, OTHER);
         g_async_queue_push(cd->queue->restore, ir);
         ir = NULL;
@@ -981,6 +982,8 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
 
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n") && rep)
       {
+        if (restore_job_statement_type == VIEW)
+          rewrite_view_statement(data, use_database, cd->thrconn->server_status & SERVER_STATUS_NO_BACKSLASH_ESCAPES);
         if (g_str_has_prefix(data->str, "CREATE"))
         {
           if (skip_definer)

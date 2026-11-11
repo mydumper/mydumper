@@ -38,6 +38,7 @@ struct database
 };
 
 void             initialize_database();
+void             rewrite_view_statement(GString *sql, struct database *database, gboolean no_backslash_escapes);
 struct database *get_database_with_prefix(gchar *k, gchar *v);
 struct database *get_database(gchar *source_database);
 void             execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar *msg);
