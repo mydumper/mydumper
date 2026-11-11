@@ -21,6 +21,7 @@
 #include "myloader/myloader_control_job.h"
 #include "myloader/myloader_database.h"
 #include "myloader/myloader_global.h"
+#include "myloader/myloader_restore.h"
 #include "myloader/myloader_restore_job.h"
 #include "myloader/myloader_worker_loader_main.h"
 #include "logging.h"
@@ -56,6 +57,9 @@ gboolean process_index(struct thread_data *td)
   if (job->type == JOB_SHUTDOWN)
   {
     trace("index_queue -> %s", jtype2str(job->type));
+    // Normal shutdown follows all index jobs; cancellation can arrive earlier.
+    if (!shutdown_triggered)
+      set_connection_pool_idle_release(TRUE);
     return FALSE;
   }
 
@@ -114,6 +118,7 @@ void wait_index_worker_to_finish()
   {
     g_thread_join(index_threads[n]);
   }
+  set_connection_pool_idle_release(FALSE);
   trace("Indexes completed");
 }
 
