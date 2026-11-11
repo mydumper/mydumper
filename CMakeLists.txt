@@ -134,7 +134,7 @@ OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
 
 enable_testing()
 
-add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c)
+add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c src/myloader/myloader_encryption_utils.c)
 # Older CMake adds -rdynamic; hidden symbols let the linker discard untested code.
 target_compile_options(test_restore_connection_loss PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
 set_property(TARGET test_restore_connection_loss APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")

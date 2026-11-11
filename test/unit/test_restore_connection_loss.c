@@ -88,6 +88,7 @@ void execute_gstring(MYSQL *conn, GString *statements)
   (void)conn;
 }
 void     execute_aws_session_setup(MYSQL *conn) { (void)conn; }
+int      get_product(void) { return SERVER_TYPE_MYSQL; }
 gboolean should_ignore_error_code(guint code)
 {
   (void)code;
