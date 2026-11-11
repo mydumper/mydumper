@@ -384,7 +384,9 @@ static gboolean parse_create_table_from_file(struct db_table *dbt, gchar *filena
         }
         else
         {
-          g_string_append(create_table_statement, data->str);
+          // Honor --ignore-set also when no key optimization is done (e.g. --optimize-keys=SKIP)
+          if (!(g_str_has_prefix(data->str, "/*!") && should_ignore_set_statement(data)))
+            g_string_append(create_table_statement, data->str);
         }
         g_string_set_size(data, 0);
       }

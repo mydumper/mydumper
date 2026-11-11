@@ -1,0 +1,4 @@
+[mydumper]
+database=specific_53
+outputdir=/tmp/data
+schema-checksums

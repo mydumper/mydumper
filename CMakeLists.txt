@@ -138,6 +138,13 @@ add_executable(test_checksum_routine test/unit/test_checksum_routine.c)
 target_link_libraries(test_checksum_routine ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
 add_test(NAME checksum_routine COMMAND test_checksum_routine)
 
+add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c)
+# Older CMake adds -rdynamic; hidden symbols let the linker discard untested code.
+target_compile_options(test_restore_connection_loss PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
+set_property(TARGET test_restore_connection_loss APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
+target_link_libraries(test_restore_connection_loss ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
+add_test(NAME restore_connection_loss COMMAND test_restore_connection_loss)
+
 add_executable(test_trigger_checksum_flags test/unit/test_trigger_checksum_flags.c src/myloader/myloader_table.c)
 target_link_libraries(test_trigger_checksum_flags ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 add_test(NAME trigger_checksum_flags COMMAND test_trigger_checksum_flags)

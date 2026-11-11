@@ -318,16 +318,21 @@ static int restore_data_in_gstring_by_statement(struct connection_data *cd, GStr
 
       if (mysql_errno(cd->thrconn) != 0 && !should_ignore_error_code(mysql_errno(cd->thrconn)))
       {
+        /* Ping and reconnect overwrite the error that caused the restore to fail. */
+        guint  original_errno = mysql_errno(cd->thrconn);
+        gulong original_connection_id = cd->connection_id;
+        gchar  original_error[MYSQL_ERRMSG_SIZE], original_sqlstate[6];
+        g_strlcpy(original_error, mysql_error(cd->thrconn), sizeof(original_error));
+        g_strlcpy(original_sqlstate, mysql_sqlstate(cd->thrconn), sizeof(original_sqlstate));
         if (mysql_ping(cd->thrconn))
         {
-          reconnect_connection_data(cd);
           if (!is_schema && commit_count > 1)
           {
             if (machine_log_json_enabled())
             {
               gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
-              gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
-              gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(cd->thrconn));
+              gchar *connection_id = g_strdup_printf("%lu", original_connection_id);
+              gchar *mysql_errno_text = g_strdup_printf("%u", original_errno);
               machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,
                   "MESSAGE", "restore connection lost",
                   "EVENT", "restore_sql",
@@ -336,7 +341,7 @@ static int restore_data_in_gstring_by_statement(struct connection_data *cd, GStr
                   "THREAD_ID", thread_id,
                   "CONNECTION_ID", connection_id,
                   "MYSQL_ERRNO", mysql_errno_text,
-                  "SQLSTATE", mysql_sqlstate(cd->thrconn),
+                  "SQLSTATE", original_sqlstate,
                   "RETRYABLE", "false",
                   "FATAL", "true",
                   NULL);
@@ -344,10 +349,13 @@ static int restore_data_in_gstring_by_statement(struct connection_data *cd, GStr
               g_free(connection_id);
               g_free(mysql_errno_text);
             }
-            g_critical("Thread %ld using connection %ld - ERROR %d: Lost connection error. %s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+            /* Stop before reconnecting: replaying only this statement loses the transaction. */
+            g_warning("Thread %ld using connection %ld - ERROR %u (SQLSTATE %s): %s. Stopping restore: connection lost during an active transaction (lines %u-%u)",
+                cd->thread_id, original_connection_id, original_errno, original_sqlstate, original_error, offset_line, current_offset_line);
             errors++;
-            return 2;
+            exit(EXIT_FAILURE);
           }
+          reconnect_connection_data(cd);
         }
 
         g_atomic_int_inc(&(detailed_errors.retries));
