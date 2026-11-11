@@ -45,6 +45,7 @@ guint64           max_transaction_size = DEFAULT_MAX_TRANSACTION_SIZE;
 gboolean          skip_definer = FALSE;
 gchar            *replace_definer = NULL;
 GAsyncQueue      *connection_pool = NULL;
+static gboolean   release_idle_connections = FALSE;  // Protected by the connection_pool lock.
 GAsyncQueue      *restore_queues = NULL;
 GAsyncQueue      *free_results_queue = NULL;
 int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *, enum restore_job_statement_type restore_job_statement_type) = NULL;
@@ -167,6 +168,44 @@ void initialize_restore()
     replace_definer_str = g_strdup_printf("DEFINER=%s", replace_definer);
 }
 
+static void close_idle_connection(struct connection_data *cd)
+{
+  if (cd->thrconn != NULL)
+  {
+    trace("Closing idle connection: %ld", cd->connection_id);
+    mysql_close(cd->thrconn);
+    cd->thrconn = NULL;
+    cd->connection_id = 0;
+    cd->current_database = NULL;
+  }
+}
+
+static void return_connection_to_pool(struct connection_data *cd)
+{
+  g_async_queue_lock(connection_pool);
+  if (release_idle_connections)
+    close_idle_connection(cd);
+  g_async_queue_push_unlocked(connection_pool, cd);
+  g_async_queue_unlock(connection_pool);
+}
+
+void set_connection_pool_idle_release(gboolean release)
+{
+  g_async_queue_lock(connection_pool);
+  release_idle_connections = release;
+  if (release)
+  {
+    gint available = g_async_queue_length_unlocked(connection_pool);
+    for (gint i = 0; i < available; i++)
+    {
+      struct connection_data *cd = g_async_queue_try_pop_unlocked(connection_pool);
+      close_idle_connection(cd);
+      g_async_queue_push_unlocked(connection_pool, cd);
+    }
+  }
+  g_async_queue_unlock(connection_pool);
+}
+
 struct connection_data *new_connection_data(MYSQL *thrconn)
 {
   struct connection_data *cd = g_new(struct connection_data, 1);
@@ -187,7 +226,7 @@ struct connection_data *new_connection_data(MYSQL *thrconn)
   execute_aws_session_setup(cd->thrconn);
   if (aws_session_commands != NULL && aws_session_commands->len > 0)
     execute_gstring(cd->thrconn, aws_session_commands);
-  g_async_queue_push(connection_pool, cd);
+  return_connection_to_pool(cd);
   return cd;
 }
 struct io_restore_result *new_io_restore_result()
@@ -267,15 +306,7 @@ gboolean release_idle_connection_if_possible()
   if (cd == NULL)
     return FALSE;
 
-  if (cd->thrconn != NULL)
-  {
-    trace("Closing idle connection: %ld", cd->connection_id);
-    mysql_close(cd->thrconn);
-    cd->thrconn = NULL;
-    cd->connection_id = 0;
-    cd->current_database = NULL;
-  }
-
+  close_idle_connection(cd);
   g_async_queue_push(connection_pool, cd);
   return TRUE;
 }
@@ -683,7 +714,7 @@ void *restore_thread(MYSQL *thrconn)
       }
     }
     trace("Returning connection to pool: %ld", cd->connection_id);
-    g_async_queue_push(connection_pool, cd);
+    return_connection_to_pool(cd);
   }
   //  g_mutex_unlock(cd->in_use);
   return NULL;

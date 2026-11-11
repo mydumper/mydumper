@@ -141,6 +141,12 @@ set_property(TARGET test_restore_connection_loss APPEND_STRING PROPERTY LINK_FLA
 target_link_libraries(test_restore_connection_loss ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 add_test(NAME restore_connection_loss COMMAND test_restore_connection_loss)
 
+add_executable(test_index_tail_connections test/unit/test_index_tail_connections.c)
+target_compile_options(test_index_tail_connections PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
+set_property(TARGET test_index_tail_connections APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
+target_link_libraries(test_index_tail_connections ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
+add_test(NAME index_tail_connections COMMAND test_index_tail_connections)
+
 add_executable(test_trigger_checksum_flags test/unit/test_trigger_checksum_flags.c src/myloader/myloader_table.c)
 target_link_libraries(test_trigger_checksum_flags ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 add_test(NAME trigger_checksum_flags COMMAND test_trigger_checksum_flags)
