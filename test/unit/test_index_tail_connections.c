@@ -28,7 +28,7 @@ void table_unlock(struct db_table *dbt) { (void)dbt; }
 
 static void idle_sessions_at_index_shutdown(void)
 {
-  struct connection_data slots[3] = {0};
+  struct connection_data slots[3] = {{0}};
   struct thread_data     td = {0};
   struct control_job     shutdown = {.type = JOB_SHUTDOWN};
   connection_pool = g_async_queue_new();
