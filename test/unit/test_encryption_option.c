@@ -15,6 +15,10 @@ int main(void)
   const gchar *dep = "CREATE TABLE IF NOT EXISTS `v`(\n`id` int\n) ENGINE=MEMORY ENCRYPTION='N';\n";
   check(dep, TRUE, "CREATE TABLE IF NOT EXISTS `v`(\n`id` int\n) ENGINE=MEMORY;\n");
   check("CREATE TABLE `v`(`id` int) ENGINE=MEMORY ENCRYPTION='N';", TRUE, "CREATE TABLE `v`(`id` int) ENGINE=MEMORY;");
+  /* as passed by restore_data_in_gstring_extended: split on ";\n", no terminator */
+  check("CREATE TABLE IF NOT EXISTS `v`(\n`id` int\n) ENGINE=MEMORY ENCRYPTION='N'", TRUE,
+        "CREATE TABLE IF NOT EXISTS `v`(\n`id` int\n) ENGINE=MEMORY");
+  check("CREATE TABLE `t`(`id` int) ENGINE=InnoDB ENCRYPTION='Y'", FALSE, "CREATE TABLE `t`(`id` int) ENGINE=InnoDB ENCRYPTION='Y'");
   /* untouched: no option, other statements, versioned comment, other value */
   check("CREATE TABLE `t`(`id` int) ENGINE=InnoDB;\n", FALSE, "CREATE TABLE `t`(`id` int) ENGINE=InnoDB;\n");
   check("CREATE TABLE `t`(`id` int) ENGINE=InnoDB /*!80016 ENCRYPTION='N' */;\n", FALSE, "CREATE TABLE `t`(`id` int) ENGINE=InnoDB /*!80016 ENCRYPTION='N' */;\n");
