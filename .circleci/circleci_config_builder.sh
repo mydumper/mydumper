@@ -20,6 +20,12 @@ all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 
+vendor=mysql97
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_1]="mysql:9.7"
+all_vendors[${vendor}_3]="mysqlclient"
+all_vendors[${vendor}_4]="mysqlclient"
+
 vendor=percona57
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:5.7"
@@ -200,20 +206,20 @@ list_compile=(
   "focal_percona57"    "focal_percona80"    #"focal_mariadb1011"    "focal_mariadb1006"
 # jammy is in the tests list 
 #                                                                                          "noble_mysql84" This is already on the list of test
-                                                                                                             "noble_ubuntu_default"
-                                                                                                             "resolute_ubuntu_default"
+                                                                                                                                 "noble_ubuntu_default"
+                                                                                                             "resolute_mysql97"  "resolute_ubuntu_default"
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
-                       "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
-                       "el10_mysql80"       "el10_mariadb1011"                            "el10_mysql84"
+                       "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"      "el9_mysql97"
+                       "el10_mysql80"       "el10_mariadb1011"                            "el10_mysql84"     "el10_mysql97"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
   "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84"
-                                            "trixie_percona84"                                               "trixie_debian_default"
+                                            "trixie_percona84"                                                                   "trixie_debian_default"
 
 )
 
 list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" # "jammy_mariadb1006" 
-                                                                                        "noble_mysql84")
+                                                                                        "noble_mysql84"   )
 
 echo "---
 version: 2.1
