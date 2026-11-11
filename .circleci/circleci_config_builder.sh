@@ -225,11 +225,20 @@ executors:"
 
 # EXECUTORS
 
-
-
+## BUILDER EXECUTORS: only the builder image, used for building packages
 for os in ${list_all_os[@]}
 do
-## EXECUTORS BY VENDOR
+    echo "
+  ${all_os[${os}_0]}:
+    docker:
+    - image: mydumper/mydumper-builder-${all_os[${os}_0]}
+    working_directory: /tmp/src/mydumper"
+done
+
+## TEST EXECUTORS: builder image + primary and replica database images,
+## used by compile_and_test_mydumper_in_* jobs
+for os in ${list_all_os[@]}
+do
     for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]} tidb
     do
         echo "
@@ -275,18 +284,6 @@ do
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
     done
-## SINGLE EXECUTOR: used just for building 
-                echo "
-  ${all_os[${os}_0]}:
-    docker:
-    - image: mydumper/mydumper-builder-${all_os[${os}_0]}
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
-    working_directory: /tmp/src/mydumper"
 done
 
 # COMMANDS
@@ -557,7 +554,7 @@ jobs:
 
 EOF
 
-for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
+for os in ${list_ubuntu_os[@]} ${list_debian_os[@]} ${list_el_os[@]}
 do
     for vendor in ${list_all_vendors[@]} tidb
     do
@@ -567,39 +564,7 @@ do
       test:
         type: boolean
         default: false
-      e:
-        type: string
-        default: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-EOF
-    done
-done
-
-for os in ${list_el_os[@]}
-do
-    for vendor in ${list_all_vendors[@]} tidb
-    do
-        cat <<EOF
-  compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: ${all_os[${os}_0]}
-    executor: << parameters.e >>
+    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     resource_class: large
     steps:
     - checkout
@@ -892,8 +857,7 @@ done
 for lt in ${!list_test[@]}
 do
 echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
-        test: true
-        e: ${list_test[${lt}]}"
+        test: true"
 # Decomment next 5 lines if you want to ignore compilation
 if [ "build" = "$1" ]
 then
