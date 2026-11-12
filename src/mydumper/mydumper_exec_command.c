@@ -50,26 +50,27 @@ void         exec_this_command(gchar **c_arg, struct filename_queue_element *sqe
   }
   else
   {
-    gchar *_key = NULL;
+    gchar *_key = g_strdup_printf("%d", childpid);
     g_mutex_lock(exec_mutex);
-    _key = g_strdup_printf("%d", childpid);
     g_hash_table_insert(pid_file_table, g_strdup(_key), sqe);
     g_mutex_unlock(exec_mutex);
-    g_free(_key);
     int wstatus;
-    int waitchildpid = wait(&wstatus);
+    /* Wait only for our own child: wait(2) could reap a child that belongs
+       to another exec thread (or to a compression process). */
+    while (waitpid(childpid, &wstatus, 0) < 0 && errno == EINTR)
+      ;
     // TODO: do we want to keep the file depending og the wstatus ??
     if (no_delete == FALSE)
     {
-      _key = g_strdup_printf("%d", waitchildpid);
       g_mutex_lock(exec_mutex);
-      struct filename_queue_element *sqe2 = g_hash_table_lookup(pid_file_table, g_strdup(_key));
+      struct filename_queue_element *sqe2 = g_hash_table_lookup(pid_file_table, _key);
       g_mutex_unlock(exec_mutex);
       if (sqe2 != NULL)
       {
         remove(sqe2->filename);
-        if (g_hash_table_contains(pid_file_table, _key))
-          g_hash_table_remove(pid_file_table, _key);
+        g_mutex_lock(exec_mutex);
+        g_hash_table_remove(pid_file_table, _key);
+        g_mutex_unlock(exec_mutex);
         if (sqe2->done)
           g_async_queue_push(sqe2->done, GINT_TO_POINTER(1));
       }
@@ -77,8 +78,8 @@ void         exec_this_command(gchar **c_arg, struct filename_queue_element *sqe
       {
         g_error("pid not found: %s", _key);
       }
-      g_free(_key);
     }
+    g_free(_key);
   }
 }
 
