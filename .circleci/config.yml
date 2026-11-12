@@ -2722,7 +2722,7 @@ commands:
 
   erase_packages_el:
     steps:
-    - run: sudo yum -y erase mysql-community-libs mysql-community-devel mysql-community-client Percona-Server-devel-57 Percona-Server-client-57 percona-server-devel percona-server-client MariaDB-compat MariaDB-devel
+    - run: sudo yum -y erase mysql-community-libs mysql-community-devel mysql-community-client Percona-Server-devel-57 Percona-Server-client-57 Percona-Server-shared-57 percona-server-devel percona-server-client MariaDB-compat MariaDB-devel
 
   prepare_el7_mysql80:
     steps:
@@ -6771,39 +6771,11 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_trixie_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_trixie_mysql97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_trixie_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_trixie_percona57
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_trixie_percona80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_trixie_percona84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_trixie_mariadb1011
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_trixie_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:

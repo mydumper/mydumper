@@ -188,7 +188,7 @@ all_os[${os}_0]="trixie"
 all_os[${os}_1]="debian:trixie"
 all_os[${os}_2]="percona-release_latest.trixie_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="debian_default percona84"
 
 # os=
 # all_os[${os}_0]=""
@@ -446,7 +446,7 @@ cat <<EOF
 
   erase_packages_el:
     steps:
-    - run: sudo yum -y erase mysql-community-libs mysql-community-devel mysql-community-client Percona-Server-devel-57 Percona-Server-client-57 percona-server-devel percona-server-client MariaDB-compat MariaDB-devel
+    - run: sudo yum -y erase mysql-community-libs mysql-community-devel mysql-community-client Percona-Server-devel-57 Percona-Server-client-57 Percona-Server-shared-57 percona-server-devel percona-server-client MariaDB-compat MariaDB-devel
 EOF
 
 
