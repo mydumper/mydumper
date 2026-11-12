@@ -437,6 +437,7 @@ do
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable '${all_vendors[${vendor}_7]}'
     - prepare_el_${all_vendors[${vendor}_0]}
 "
@@ -449,6 +450,7 @@ do
   prepare_el8_${all_vendors[${vendor}_0]}:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable '${all_vendors[${vendor}_7]}'
     - prepare_el_mysql80
 "

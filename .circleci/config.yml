@@ -2719,6 +2719,7 @@ commands:
   prepare_el7_mysql80:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el7.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.0*'
     - prepare_el_mysql80
 
@@ -2726,6 +2727,7 @@ commands:
   prepare_el7_mysql84:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el7.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.4*'
     - prepare_el_mysql84
 
@@ -2733,6 +2735,7 @@ commands:
   prepare_el7_mysql97:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el7.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*9.7*'
     - prepare_el_mysql97
 
@@ -2740,6 +2743,7 @@ commands:
   prepare_el7_debian_default:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el7.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
     - prepare_el_debian_default
 
@@ -2747,6 +2751,7 @@ commands:
   prepare_el7_ubuntu_default:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el7.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
     - prepare_el_ubuntu_default
 
@@ -2754,6 +2759,7 @@ commands:
   prepare_el9_mysql80:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el9.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.0*'
     - prepare_el_mysql80
 
@@ -2761,6 +2767,7 @@ commands:
   prepare_el9_mysql84:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el9.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.4*'
     - prepare_el_mysql84
 
@@ -2768,6 +2775,7 @@ commands:
   prepare_el9_mysql97:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el9.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*9.7*'
     - prepare_el_mysql97
 
@@ -2775,6 +2783,7 @@ commands:
   prepare_el9_debian_default:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el9.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
     - prepare_el_debian_default
 
@@ -2782,6 +2791,7 @@ commands:
   prepare_el9_ubuntu_default:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el9.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
     - prepare_el_ubuntu_default
 
@@ -2789,6 +2799,7 @@ commands:
   prepare_el10_mysql80:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el10.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.0*'
     - prepare_el_mysql80
 
@@ -2796,6 +2807,7 @@ commands:
   prepare_el10_mysql84:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el10.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.4*'
     - prepare_el_mysql84
 
@@ -2803,6 +2815,7 @@ commands:
   prepare_el10_mysql97:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el10.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*9.7*'
     - prepare_el_mysql97
 
@@ -2810,6 +2823,7 @@ commands:
   prepare_el10_debian_default:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el10.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
     - prepare_el_debian_default
 
@@ -2817,6 +2831,7 @@ commands:
   prepare_el10_ubuntu_default:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el10.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
     - prepare_el_ubuntu_default
 
@@ -2824,6 +2839,7 @@ commands:
   prepare_el8_mysql80:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el10.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.0*'
     - prepare_el_mysql80
 
@@ -2831,6 +2847,7 @@ commands:
   prepare_el8_mysql84:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el10.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.4*'
     - prepare_el_mysql80
 
@@ -2838,6 +2855,7 @@ commands:
   prepare_el8_mysql97:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el10.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*9.7*'
     - prepare_el_mysql80
 
@@ -2845,6 +2863,7 @@ commands:
   prepare_el8_debian_default:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el10.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
     - prepare_el_mysql80
 
@@ -2852,6 +2871,7 @@ commands:
   prepare_el8_ubuntu_default:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el10.rpm
+    - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
     - prepare_el_mysql80
 
