@@ -2841,6 +2841,7 @@ commands:
     - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.0*'
+    - run: sudo dnf module disable mysql
     - prepare_el_mysql80
 
 
@@ -2849,6 +2850,7 @@ commands:
     - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.4*'
+    - run: sudo dnf module disable mysql
     - prepare_el_mysql80
 
 
@@ -2857,6 +2859,7 @@ commands:
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*9.7*'
+    - run: sudo dnf module disable mysql
     - prepare_el_mysql80
 
 
@@ -2865,6 +2868,7 @@ commands:
     - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
+    - run: sudo dnf module disable mysql
     - prepare_el_mysql80
 
 
@@ -2873,6 +2877,7 @@ commands:
     - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
+    - run: sudo dnf module disable mysql
     - prepare_el_mysql80
 
 
@@ -2924,19 +2929,19 @@ commands:
   prepare_el8_percona57:
     steps:
     - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
+    - prepare_el_percona80
 
 
   prepare_el8_percona80:
     steps:
     - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
+    - prepare_el_percona80
 
 
   prepare_el8_percona84:
     steps:
     - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
+    - prepare_el_percona80
 
 
   prepare_el8_mariadb1011:
