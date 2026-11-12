@@ -635,6 +635,48 @@ EOF
     done
 done
 
+
+
+
+for os in ${list_ubuntu_os[@]} ${list_debian_os[@]} ${list_el_os[@]}
+do
+  cat <<EOF
+  compile_and_test_mydumper_in_${all_os[${os}_0]}:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: ${all_os[${os}_0]}
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+EOF
+    for vendor in ${list_all_vendors[@]} tidb
+    do
+        cat <<EOF
+    - checkout
+    - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+EOF
+    done
+    cat <<EOF
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+EOF
+done
+
+
+
+
+
+
+
 for arch in ${list_arch[@]}
 do
     for os in ${list_el_os[@]}

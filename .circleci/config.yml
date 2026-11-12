@@ -6315,6 +6315,726 @@ jobs:
          paths:
            - .
 
+  compile_and_test_mydumper_in_bionic:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: bionic
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_bionic_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bionic_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bionic_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bionic_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bionic_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bionic_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bionic_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bionic_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bionic_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bionic_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bionic_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_focal:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: focal
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_focal_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_focal_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_focal_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_focal_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_focal_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_focal_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_focal_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_focal_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_focal_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_focal_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_focal_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_jammy:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: jammy
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_jammy_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_jammy_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_jammy_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_jammy_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_jammy_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_jammy_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_jammy_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_jammy_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_jammy_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_jammy_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_jammy_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_noble:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: noble
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_noble_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_noble_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_noble_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_noble_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_noble_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_noble_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_noble_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_noble_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_noble_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_noble_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_noble_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_resolute:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: resolute
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_resolute_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_resolute_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_resolute_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_resolute_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_resolute_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_resolute_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_resolute_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_resolute_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_resolute_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_resolute_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_resolute_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_bullseye:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: bullseye
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_bullseye_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bullseye_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bullseye_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bullseye_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bullseye_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bullseye_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bullseye_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bullseye_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bullseye_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bullseye_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bullseye_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_bookworm:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: bookworm
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_bookworm_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bookworm_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bookworm_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bookworm_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bookworm_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bookworm_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bookworm_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bookworm_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bookworm_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bookworm_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_bookworm_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_trixie:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: trixie
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_trixie_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_trixie_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_trixie_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_trixie_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_trixie_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_trixie_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_trixie_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_trixie_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_trixie_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_trixie_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_trixie_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_el7:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: el7
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_el7_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el7_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el7_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el7_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el7_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el7_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el7_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el7_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el7_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el7_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el7_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_el8:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: el8
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_el8_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el8_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el8_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el8_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el8_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el8_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el8_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el8_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el8_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el8_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el8_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_el9:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: el9
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_el9_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el9_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el9_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el9_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el9_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el9_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el9_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el9_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el9_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el9_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el9_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_el10:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: el10
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+    - checkout
+    - prepare_el10_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el10_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el10_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el10_debian_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el10_ubuntu_default
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el10_percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el10_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el10_percona84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el10_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el10_mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - checkout
+    - prepare_el10_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
   build_el7_mysql80_aarch64:
     executor: el7
     resource_class: arm.medium
