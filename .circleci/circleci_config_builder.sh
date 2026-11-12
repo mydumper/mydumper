@@ -14,6 +14,7 @@ all_vendors[${vendor}_1]="mysql:8.0"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 all_vendors[${vendor}_7]="mysql*8.0*"
+all_vendors[${vendor}_8]="MySQL 8[.]0[.]"
 
 vendor=mysql84
 all_vendors[${vendor}_0]="$vendor"
@@ -21,6 +22,7 @@ all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 all_vendors[${vendor}_7]="mysql*8.4*"
+all_vendors[${vendor}_8]="MySQL 8[.]4[.]"
 
 vendor=mysql97
 all_vendors[${vendor}_0]="$vendor"
@@ -28,24 +30,28 @@ all_vendors[${vendor}_1]="mysql:9.7"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 all_vendors[${vendor}_7]="mysql*9*7*"
+all_vendors[${vendor}_8]="MySQL 9[.]7[.]"
 
 vendor=percona57
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:5.7"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
+all_vendors[${vendor}_8]="MySQL 5[.]7[.]"
 
 vendor=percona80
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:8"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
+all_vendors[${vendor}_8]="MySQL 8[.]0[.]"
 
 vendor=percona84
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona/percona-server:8.4"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
+all_vendors[${vendor}_8]="MySQL 8[.]4[.]"
 
 vendor=mariadb1006
 all_vendors[${vendor}_0]="$vendor"
@@ -53,6 +59,7 @@ all_vendors[${vendor}_1]="mariadb:10.6"
 all_vendors[${vendor}_2]="mariadb-10.6"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
+all_vendors[${vendor}_8]="MariaDB 10[.]6[.]"
 
 vendor=mariadb1011
 all_vendors[${vendor}_0]="$vendor"
@@ -60,24 +67,28 @@ all_vendors[${vendor}_1]="mariadb:10.11"
 all_vendors[${vendor}_2]="mariadb-10.11"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
+all_vendors[${vendor}_8]="MariaDB 10[.]11[.]"
 
 vendor=tidb
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="pingcap/tidb"
 all_vendors[${vendor}_5]="mysqld"
 all_vendors[${vendor}_6]="mysqld"
+all_vendors[${vendor}_8]="MySQL 5[.]7[.]"
 
 vendor=debian_default
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
+all_vendors[${vendor}_8]="(MySQL|MariaDB) [0-9]"
 
 vendor=ubuntu_default
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
+all_vendors[${vendor}_8]="MySQL [0-9]"
 
 #_0: name
 #_1: docker image
@@ -87,6 +98,7 @@ all_vendors[${vendor}_4]="mysqlclient"
 #_5: server command, when it differs from db_server_command
 #_6: replica server command, when it differs from db_server_command
 #_7: repository regex for yum-config-manager used on EL
+#_8: regex expected after "built against " in mydumper/myloader --version
 
 list_mysql_version=( "mysql80" "mysql84" "mysql97" "debian_default" "ubuntu_default")
 list_percona_version=( "percona57" "percona80" "percona84")
@@ -422,7 +434,7 @@ cat <<EOF
 
   erase_packages_apt:
     steps:
-    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
 
   prepare_el7_mariadb1011:
     steps:
@@ -591,6 +603,10 @@ cat <<EOF
       CMAKED:
         default: ""
         type: string
+      expected_version:
+        description: Regex that must follow "built against " in --version, empty to skip the check
+        default: ""
+        type: string
     steps:
     - run:
         command: |
@@ -602,15 +618,31 @@ cat <<EOF
         name: Run unit tests
         command: ctest --output-on-failure
     - run: sudo make install
-    - run: ./mydumper --version
+    - run:
+        name: Check client library reported by --version
+        command: |
+          for bin in ./mydumper ./myloader
+          do
+            out=\$(\$bin --version)
+            echo "\$out"
+            if [ -n '<< parameters.expected_version >>' ] && ! echo "\$out" | grep -Eq 'built against << parameters.expected_version >>'
+            then
+              echo "ERROR: \$bin expected to be built against '<< parameters.expected_version >>'"
+              exit 1
+            fi
+          done
 
   compile_and_test_mydumper:
     parameters:
       test:
         type: boolean
         default: true
+      expected_version:
+        default: ""
+        type: string
     steps:
-    - compile
+    - compile:
+        expected_version: << parameters.expected_version >>
     - when:
         condition: << parameters.test >>
         steps:
@@ -663,6 +695,7 @@ do
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '${all_vendors[${vendor}_8]}'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -697,6 +730,7 @@ EOF
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '${all_vendors[${vendor}_8]}'
 EOF
     done
     cat <<EOF
@@ -736,6 +770,7 @@ echo "    - set_env_vars
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a\"
+        expected_version: '${all_vendors[${vendor}_8]}'
     - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}/
@@ -789,6 +824,7 @@ echo "    - set_env_vars
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}:FILEPATH=/usr/lib/${all_arch[${arch}_rpm]}-linux-gnu/lib${all_vendors[${vendor}_4]}.a\"
+        expected_version: '${all_vendors[${vendor}_8]}'
     - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>

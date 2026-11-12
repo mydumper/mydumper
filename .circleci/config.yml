@@ -2698,7 +2698,7 @@ commands:
 
   erase_packages_apt:
     steps:
-    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
 
   prepare_el7_mariadb1011:
     steps:
@@ -3766,6 +3766,10 @@ commands:
       CMAKED:
         default: ""
         type: string
+      expected_version:
+        description: Regex that must follow "built against " in --version, empty to skip the check
+        default: ""
+        type: string
     steps:
     - run:
         command: |
@@ -3777,15 +3781,31 @@ commands:
         name: Run unit tests
         command: ctest --output-on-failure
     - run: sudo make install
-    - run: ./mydumper --version
+    - run:
+        name: Check client library reported by --version
+        command: |
+          for bin in ./mydumper ./myloader
+          do
+            out=$($bin --version)
+            echo "$out"
+            if [ -n '<< parameters.expected_version >>' ] && ! echo "$out" | grep -Eq 'built against << parameters.expected_version >>'
+            then
+              echo "ERROR: $bin expected to be built against '<< parameters.expected_version >>'"
+              exit 1
+            fi
+          done
 
   compile_and_test_mydumper:
     parameters:
       test:
         type: boolean
         default: true
+      expected_version:
+        default: ""
+        type: string
     steps:
-    - compile
+    - compile:
+        expected_version: << parameters.expected_version >>
     - when:
         condition: << parameters.test >>
         steps:
@@ -3831,6 +3851,7 @@ jobs:
     - prepare_bionic_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -3851,6 +3872,7 @@ jobs:
     - prepare_bionic_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -3871,6 +3893,7 @@ jobs:
     - prepare_bionic_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -3891,6 +3914,7 @@ jobs:
     - prepare_bionic_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -3911,6 +3935,7 @@ jobs:
     - prepare_bionic_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -3931,6 +3956,7 @@ jobs:
     - prepare_bionic_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -3951,6 +3977,7 @@ jobs:
     - prepare_bionic_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -3971,6 +3998,7 @@ jobs:
     - prepare_bionic_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -3991,6 +4019,7 @@ jobs:
     - prepare_bionic_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4011,6 +4040,7 @@ jobs:
     - prepare_bionic_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4031,6 +4061,7 @@ jobs:
     - prepare_bionic_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4051,6 +4082,7 @@ jobs:
     - prepare_focal_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4071,6 +4103,7 @@ jobs:
     - prepare_focal_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4091,6 +4124,7 @@ jobs:
     - prepare_focal_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4111,6 +4145,7 @@ jobs:
     - prepare_focal_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4131,6 +4166,7 @@ jobs:
     - prepare_focal_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4151,6 +4187,7 @@ jobs:
     - prepare_focal_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4171,6 +4208,7 @@ jobs:
     - prepare_focal_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4191,6 +4229,7 @@ jobs:
     - prepare_focal_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4211,6 +4250,7 @@ jobs:
     - prepare_focal_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4231,6 +4271,7 @@ jobs:
     - prepare_focal_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4251,6 +4292,7 @@ jobs:
     - prepare_focal_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4271,6 +4313,7 @@ jobs:
     - prepare_jammy_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4291,6 +4334,7 @@ jobs:
     - prepare_jammy_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4311,6 +4355,7 @@ jobs:
     - prepare_jammy_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4331,6 +4376,7 @@ jobs:
     - prepare_jammy_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4351,6 +4397,7 @@ jobs:
     - prepare_jammy_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4371,6 +4418,7 @@ jobs:
     - prepare_jammy_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4391,6 +4439,7 @@ jobs:
     - prepare_jammy_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4411,6 +4460,7 @@ jobs:
     - prepare_jammy_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4431,6 +4481,7 @@ jobs:
     - prepare_jammy_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4451,6 +4502,7 @@ jobs:
     - prepare_jammy_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4471,6 +4523,7 @@ jobs:
     - prepare_jammy_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4491,6 +4544,7 @@ jobs:
     - prepare_noble_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4511,6 +4565,7 @@ jobs:
     - prepare_noble_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4531,6 +4586,7 @@ jobs:
     - prepare_noble_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4551,6 +4607,7 @@ jobs:
     - prepare_noble_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4571,6 +4628,7 @@ jobs:
     - prepare_noble_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4591,6 +4649,7 @@ jobs:
     - prepare_noble_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4611,6 +4670,7 @@ jobs:
     - prepare_noble_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4631,6 +4691,7 @@ jobs:
     - prepare_noble_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4651,6 +4712,7 @@ jobs:
     - prepare_noble_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4671,6 +4733,7 @@ jobs:
     - prepare_noble_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4691,6 +4754,7 @@ jobs:
     - prepare_noble_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4711,6 +4775,7 @@ jobs:
     - prepare_resolute_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4731,6 +4796,7 @@ jobs:
     - prepare_resolute_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4751,6 +4817,7 @@ jobs:
     - prepare_resolute_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4771,6 +4838,7 @@ jobs:
     - prepare_resolute_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4791,6 +4859,7 @@ jobs:
     - prepare_resolute_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4811,6 +4880,7 @@ jobs:
     - prepare_resolute_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4831,6 +4901,7 @@ jobs:
     - prepare_resolute_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4851,6 +4922,7 @@ jobs:
     - prepare_resolute_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4871,6 +4943,7 @@ jobs:
     - prepare_resolute_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4891,6 +4964,7 @@ jobs:
     - prepare_resolute_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4911,6 +4985,7 @@ jobs:
     - prepare_resolute_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4931,6 +5006,7 @@ jobs:
     - prepare_bullseye_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4951,6 +5027,7 @@ jobs:
     - prepare_bullseye_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4971,6 +5048,7 @@ jobs:
     - prepare_bullseye_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4991,6 +5069,7 @@ jobs:
     - prepare_bullseye_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5011,6 +5090,7 @@ jobs:
     - prepare_bullseye_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5031,6 +5111,7 @@ jobs:
     - prepare_bullseye_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5051,6 +5132,7 @@ jobs:
     - prepare_bullseye_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5071,6 +5153,7 @@ jobs:
     - prepare_bullseye_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5091,6 +5174,7 @@ jobs:
     - prepare_bullseye_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5111,6 +5195,7 @@ jobs:
     - prepare_bullseye_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5131,6 +5216,7 @@ jobs:
     - prepare_bullseye_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5151,6 +5237,7 @@ jobs:
     - prepare_bookworm_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5171,6 +5258,7 @@ jobs:
     - prepare_bookworm_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5191,6 +5279,7 @@ jobs:
     - prepare_bookworm_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5211,6 +5300,7 @@ jobs:
     - prepare_bookworm_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5231,6 +5321,7 @@ jobs:
     - prepare_bookworm_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5251,6 +5342,7 @@ jobs:
     - prepare_bookworm_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5271,6 +5363,7 @@ jobs:
     - prepare_bookworm_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5291,6 +5384,7 @@ jobs:
     - prepare_bookworm_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5311,6 +5405,7 @@ jobs:
     - prepare_bookworm_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5331,6 +5426,7 @@ jobs:
     - prepare_bookworm_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5351,6 +5447,7 @@ jobs:
     - prepare_bookworm_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5371,6 +5468,7 @@ jobs:
     - prepare_trixie_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5391,6 +5489,7 @@ jobs:
     - prepare_trixie_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5411,6 +5510,7 @@ jobs:
     - prepare_trixie_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5431,6 +5531,7 @@ jobs:
     - prepare_trixie_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5451,6 +5552,7 @@ jobs:
     - prepare_trixie_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5471,6 +5573,7 @@ jobs:
     - prepare_trixie_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5491,6 +5594,7 @@ jobs:
     - prepare_trixie_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5511,6 +5615,7 @@ jobs:
     - prepare_trixie_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5531,6 +5636,7 @@ jobs:
     - prepare_trixie_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5551,6 +5657,7 @@ jobs:
     - prepare_trixie_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5571,6 +5678,7 @@ jobs:
     - prepare_trixie_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5591,6 +5699,7 @@ jobs:
     - prepare_el7_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5611,6 +5720,7 @@ jobs:
     - prepare_el7_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5631,6 +5741,7 @@ jobs:
     - prepare_el7_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5651,6 +5762,7 @@ jobs:
     - prepare_el7_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5671,6 +5783,7 @@ jobs:
     - prepare_el7_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5691,6 +5804,7 @@ jobs:
     - prepare_el7_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5711,6 +5825,7 @@ jobs:
     - prepare_el7_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5731,6 +5846,7 @@ jobs:
     - prepare_el7_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5751,6 +5867,7 @@ jobs:
     - prepare_el7_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5771,6 +5888,7 @@ jobs:
     - prepare_el7_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5791,6 +5909,7 @@ jobs:
     - prepare_el7_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5811,6 +5930,7 @@ jobs:
     - prepare_el8_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5831,6 +5951,7 @@ jobs:
     - prepare_el8_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5851,6 +5972,7 @@ jobs:
     - prepare_el8_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5871,6 +5993,7 @@ jobs:
     - prepare_el8_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5891,6 +6014,7 @@ jobs:
     - prepare_el8_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5911,6 +6035,7 @@ jobs:
     - prepare_el8_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5931,6 +6056,7 @@ jobs:
     - prepare_el8_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5951,6 +6077,7 @@ jobs:
     - prepare_el8_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5971,6 +6098,7 @@ jobs:
     - prepare_el8_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5991,6 +6119,7 @@ jobs:
     - prepare_el8_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6011,6 +6140,7 @@ jobs:
     - prepare_el8_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6031,6 +6161,7 @@ jobs:
     - prepare_el9_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6051,6 +6182,7 @@ jobs:
     - prepare_el9_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6071,6 +6203,7 @@ jobs:
     - prepare_el9_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6091,6 +6224,7 @@ jobs:
     - prepare_el9_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6111,6 +6245,7 @@ jobs:
     - prepare_el9_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6131,6 +6266,7 @@ jobs:
     - prepare_el9_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6151,6 +6287,7 @@ jobs:
     - prepare_el9_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6171,6 +6308,7 @@ jobs:
     - prepare_el9_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6191,6 +6329,7 @@ jobs:
     - prepare_el9_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6211,6 +6350,7 @@ jobs:
     - prepare_el9_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6231,6 +6371,7 @@ jobs:
     - prepare_el9_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6251,6 +6392,7 @@ jobs:
     - prepare_el10_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6271,6 +6413,7 @@ jobs:
     - prepare_el10_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6291,6 +6434,7 @@ jobs:
     - prepare_el10_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6311,6 +6455,7 @@ jobs:
     - prepare_el10_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6331,6 +6476,7 @@ jobs:
     - prepare_el10_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6351,6 +6497,7 @@ jobs:
     - prepare_el10_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6371,6 +6518,7 @@ jobs:
     - prepare_el10_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6391,6 +6539,7 @@ jobs:
     - prepare_el10_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6411,6 +6560,7 @@ jobs:
     - prepare_el10_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6431,6 +6581,7 @@ jobs:
     - prepare_el10_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6451,6 +6602,7 @@ jobs:
     - prepare_el10_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6471,10 +6623,12 @@ jobs:
     - prepare_bionic_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_bionic_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6495,18 +6649,22 @@ jobs:
     - prepare_focal_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_focal_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - checkout
     - prepare_focal_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_focal_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6527,42 +6685,52 @@ jobs:
     - prepare_jammy_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_jammy_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_jammy_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - checkout
     - prepare_jammy_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - checkout
     - prepare_jammy_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - checkout
     - prepare_jammy_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_jammy_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_jammy_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_jammy_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - checkout
     - prepare_jammy_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6583,34 +6751,42 @@ jobs:
     - prepare_noble_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_noble_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_noble_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - checkout
     - prepare_noble_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_noble_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_noble_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_noble_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - checkout
     - prepare_noble_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6631,34 +6807,42 @@ jobs:
     - prepare_resolute_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_resolute_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - checkout
     - prepare_resolute_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL [0-9]'
     - checkout
     - prepare_resolute_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_resolute_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_resolute_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_resolute_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - checkout
     - prepare_resolute_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6679,38 +6863,47 @@ jobs:
     - prepare_bullseye_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_bullseye_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_bullseye_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - checkout
     - prepare_bullseye_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - checkout
     - prepare_bullseye_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_bullseye_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_bullseye_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_bullseye_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - checkout
     - prepare_bullseye_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6731,30 +6924,37 @@ jobs:
     - prepare_bookworm_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_bookworm_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - checkout
     - prepare_bookworm_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - checkout
     - prepare_bookworm_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_bookworm_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_bookworm_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_bookworm_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6775,10 +6975,12 @@ jobs:
     - prepare_trixie_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - checkout
     - prepare_trixie_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6799,14 +7001,17 @@ jobs:
     - prepare_el7_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_el7_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_el7_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6827,26 +7032,32 @@ jobs:
     - prepare_el8_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_el8_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_el8_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_el8_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_el8_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - checkout
     - prepare_el8_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6867,26 +7078,32 @@ jobs:
     - prepare_el9_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_el9_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - checkout
     - prepare_el9_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_el9_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_el9_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - checkout
     - prepare_el9_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6907,26 +7124,32 @@ jobs:
     - prepare_el10_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
     - checkout
     - prepare_el10_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - checkout
     - prepare_el10_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 5[.]7[.]'
     - checkout
     - prepare_el10_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MySQL 8[.]0[.]'
     - checkout
     - prepare_el10_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]11[.]'
     - checkout
     - prepare_el10_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6945,6 +7168,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mysql80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_aarch64/
@@ -6966,6 +7190,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mysql84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_aarch64/
@@ -6987,6 +7212,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mysql97_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql97_aarch64/
@@ -7008,6 +7234,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_debian_default_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_debian_default_aarch64/
@@ -7029,6 +7256,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_ubuntu_default_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_ubuntu_default_aarch64/
@@ -7050,6 +7278,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_aarch64/
@@ -7071,6 +7300,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_aarch64/
@@ -7092,6 +7322,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona84_aarch64/
@@ -7113,6 +7344,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_aarch64/
@@ -7134,6 +7366,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1006_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_aarch64/
@@ -7155,6 +7388,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mysql80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_aarch64/
@@ -7176,6 +7410,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mysql84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_aarch64/
@@ -7197,6 +7432,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mysql97_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql97_aarch64/
@@ -7218,6 +7454,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_debian_default_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_debian_default_aarch64/
@@ -7239,6 +7476,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_ubuntu_default_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_ubuntu_default_aarch64/
@@ -7260,6 +7498,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_aarch64/
@@ -7281,6 +7520,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_aarch64/
@@ -7302,6 +7542,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona84_aarch64/
@@ -7323,6 +7564,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_aarch64/
@@ -7344,6 +7586,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1006_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_aarch64/
@@ -7365,6 +7608,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mysql80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_aarch64/
@@ -7386,6 +7630,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mysql84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_aarch64/
@@ -7407,6 +7652,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mysql97_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql97_aarch64/
@@ -7428,6 +7674,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_debian_default_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_debian_default_aarch64/
@@ -7449,6 +7696,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_ubuntu_default_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_ubuntu_default_aarch64/
@@ -7470,6 +7718,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_aarch64/
@@ -7491,6 +7740,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_aarch64/
@@ -7512,6 +7762,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona84_aarch64/
@@ -7533,6 +7784,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_aarch64/
@@ -7554,6 +7806,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1006_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_aarch64/
@@ -7575,6 +7828,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mysql80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mysql80_aarch64/
@@ -7596,6 +7850,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mysql84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mysql84_aarch64/
@@ -7617,6 +7872,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mysql97_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mysql97_aarch64/
@@ -7638,6 +7894,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_debian_default_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_debian_default_aarch64/
@@ -7659,6 +7916,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_ubuntu_default_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_ubuntu_default_aarch64/
@@ -7680,6 +7938,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona57_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona57_aarch64/
@@ -7701,6 +7960,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona80_aarch64/
@@ -7722,6 +7982,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona84_aarch64/
@@ -7743,6 +8004,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mariadb1011_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mariadb1011_aarch64/
@@ -7764,6 +8026,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mariadb1006_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mariadb1006_aarch64/
@@ -7785,6 +8048,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mysql80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_x86_64/
@@ -7806,6 +8070,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mysql84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_x86_64/
@@ -7827,6 +8092,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mysql97_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql97_x86_64/
@@ -7848,6 +8114,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_debian_default_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_debian_default_x86_64/
@@ -7869,6 +8136,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_ubuntu_default_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_ubuntu_default_x86_64/
@@ -7890,6 +8158,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_x86_64/
@@ -7911,6 +8180,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_x86_64/
@@ -7932,6 +8202,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona84_x86_64/
@@ -7953,6 +8224,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_x86_64/
@@ -7974,6 +8246,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1006_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_x86_64/
@@ -7995,6 +8268,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mysql80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_x86_64/
@@ -8016,6 +8290,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mysql84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_x86_64/
@@ -8037,6 +8312,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mysql97_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql97_x86_64/
@@ -8058,6 +8334,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_debian_default_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_debian_default_x86_64/
@@ -8079,6 +8356,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_ubuntu_default_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_ubuntu_default_x86_64/
@@ -8100,6 +8378,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_x86_64/
@@ -8121,6 +8400,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_x86_64/
@@ -8142,6 +8422,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona84_x86_64/
@@ -8163,6 +8444,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_x86_64/
@@ -8184,6 +8466,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1006_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_x86_64/
@@ -8205,6 +8488,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mysql80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_x86_64/
@@ -8226,6 +8510,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mysql84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_x86_64/
@@ -8247,6 +8532,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mysql97_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql97_x86_64/
@@ -8268,6 +8554,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_debian_default_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_debian_default_x86_64/
@@ -8289,6 +8576,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_ubuntu_default_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_ubuntu_default_x86_64/
@@ -8310,6 +8598,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_x86_64/
@@ -8331,6 +8620,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_x86_64/
@@ -8352,6 +8642,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona84_x86_64/
@@ -8373,6 +8664,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_x86_64/
@@ -8394,6 +8686,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1006_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_x86_64/
@@ -8415,6 +8708,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mysql80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mysql80_x86_64/
@@ -8436,6 +8730,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mysql84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mysql84_x86_64/
@@ -8457,6 +8752,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mysql97_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mysql97_x86_64/
@@ -8478,6 +8774,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_debian_default_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_debian_default_x86_64/
@@ -8499,6 +8796,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_ubuntu_default_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_ubuntu_default_x86_64/
@@ -8520,6 +8818,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona57_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona57_x86_64/
@@ -8541,6 +8840,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona80_x86_64/
@@ -8562,6 +8862,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona84_x86_64/
@@ -8583,6 +8884,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mariadb1011_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mariadb1011_x86_64/
@@ -8604,6 +8906,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mariadb1006_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mariadb1006_x86_64/
@@ -8630,6 +8933,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8669,6 +8973,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8708,6 +9013,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8747,6 +9053,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8786,6 +9093,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8825,6 +9133,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8864,6 +9173,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8903,6 +9213,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8942,6 +9253,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8981,6 +9293,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9020,6 +9333,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9059,6 +9373,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9098,6 +9413,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9137,6 +9453,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9176,6 +9493,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9215,6 +9533,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9254,6 +9573,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9293,6 +9613,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9332,6 +9653,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9371,6 +9693,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9410,6 +9733,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9449,6 +9773,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9488,6 +9813,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9527,6 +9853,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9566,6 +9893,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9605,6 +9933,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9644,6 +9973,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9683,6 +10013,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9722,6 +10053,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9761,6 +10093,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9800,6 +10133,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9839,6 +10173,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9878,6 +10213,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9917,6 +10253,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9956,6 +10293,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9995,6 +10333,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10034,6 +10373,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10073,6 +10413,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10112,6 +10453,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10151,6 +10493,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10190,6 +10533,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10229,6 +10573,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10268,6 +10613,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10307,6 +10653,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10346,6 +10693,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10385,6 +10733,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10424,6 +10773,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10463,6 +10813,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10502,6 +10853,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10541,6 +10893,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10580,6 +10933,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10619,6 +10973,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10658,6 +11013,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10697,6 +11053,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10736,6 +11093,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10775,6 +11133,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10814,6 +11173,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10853,6 +11213,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10892,6 +11253,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10931,6 +11293,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10970,6 +11333,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11009,6 +11373,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11048,6 +11413,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11087,6 +11453,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11126,6 +11493,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11165,6 +11533,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11204,6 +11573,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11243,6 +11613,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11282,6 +11653,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11321,6 +11693,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11360,6 +11733,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11399,6 +11773,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11438,6 +11813,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11477,6 +11853,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11516,6 +11893,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11555,6 +11933,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11594,6 +11973,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11633,6 +12013,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11672,6 +12053,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11711,6 +12093,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11750,6 +12133,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11789,6 +12173,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11828,6 +12213,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11867,6 +12253,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11906,6 +12293,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11945,6 +12333,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11984,6 +12373,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12023,6 +12413,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12062,6 +12453,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12101,6 +12493,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12140,6 +12533,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12179,6 +12573,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12218,6 +12613,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12257,6 +12653,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12296,6 +12693,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12335,6 +12733,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12374,6 +12773,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12413,6 +12813,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12452,6 +12853,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12491,6 +12893,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12528,6 +12931,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12571,6 +12975,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12610,6 +13015,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12649,6 +13055,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12688,6 +13095,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12727,6 +13135,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12766,6 +13175,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12805,6 +13215,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12844,6 +13255,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12883,6 +13295,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12922,6 +13335,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12961,6 +13375,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13000,6 +13415,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13039,6 +13455,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13078,6 +13495,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13117,6 +13535,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13156,6 +13575,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13195,6 +13615,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13234,6 +13655,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13273,6 +13695,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13312,6 +13735,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13351,6 +13775,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13390,6 +13815,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13429,6 +13855,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13468,6 +13895,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13507,6 +13935,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13546,6 +13975,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13585,6 +14015,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13624,6 +14055,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13663,6 +14095,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13702,6 +14135,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13741,6 +14175,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13780,6 +14215,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13819,6 +14255,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13858,6 +14295,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13897,6 +14335,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13936,6 +14375,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13975,6 +14415,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14014,6 +14455,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14053,6 +14495,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14092,6 +14535,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14131,6 +14575,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14170,6 +14615,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14209,6 +14655,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14248,6 +14695,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14287,6 +14735,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14326,6 +14775,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14365,6 +14815,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14404,6 +14855,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14443,6 +14895,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14482,6 +14935,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14521,6 +14975,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14560,6 +15015,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL 9[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14599,6 +15055,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: '(MySQL|MariaDB) [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14638,6 +15095,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        expected_version: 'MySQL [0-9]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14677,6 +15135,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14716,6 +15175,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14755,6 +15215,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        expected_version: 'MySQL 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14794,6 +15255,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]11[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14833,6 +15295,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+        expected_version: 'MariaDB 10[.]6[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
