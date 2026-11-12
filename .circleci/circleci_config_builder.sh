@@ -111,72 +111,84 @@ all_os[${os}_0]="bionic"
 all_os[${os}_1]="cimg/base:current-18.04"
 all_os[${os}_2]="percona-release_latest.bionic_all.deb"
 all_os[${os}_3]="false"
+all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=focal
 all_os[${os}_0]="focal"
 all_os[${os}_1]="cimg/base:stable-20.04"
 all_os[${os}_2]="percona-release_latest.focal_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=jammy
 all_os[${os}_0]="jammy"
 all_os[${os}_1]="cimg/base:current-22.04"
 all_os[${os}_2]="percona-release_latest.jammy_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=noble
 all_os[${os}_0]="noble"
 all_os[${os}_1]="cimg/base:current-24.04"
 all_os[${os}_2]="percona-release_latest.noble_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=resolute
 all_os[${os}_0]="resolute"
 all_os[${os}_1]="cimg/base:current-26.04"
 all_os[${os}_2]="percona-release_latest.resolute_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=el7
 all_os[${os}_0]="el7"
 all_os[${os}_1]="centos:7"
 
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=el8
 all_os[${os}_0]="el8"
 all_os[${os}_1]="almalinux:8"
 
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=el9
 all_os[${os}_0]="el9"
 all_os[${os}_1]="almalinux:9"
 
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=el10
 all_os[${os}_0]="el10"
 all_os[${os}_1]="almalinux:10"
 
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=bullseye
 all_os[${os}_0]="bullseye"
 all_os[${os}_1]="debian:bullseye"
 all_os[${os}_2]="percona-release_latest.bullseye_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=bookworm
 all_os[${os}_0]="bookworm"
 all_os[${os}_1]="debian:bookworm"
 all_os[${os}_2]="percona-release_latest.bookworm_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=trixie
 all_os[${os}_0]="trixie"
 all_os[${os}_1]="debian:trixie"
 all_os[${os}_2]="percona-release_latest.trixie_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 # os=
 # all_os[${os}_0]=""
@@ -653,7 +665,7 @@ do
     resource_class: large
     steps:
 EOF
-    for vendor in ${list_all_vendors[@]} tidb
+    for vendor in ${all_os[${os}_4]}
     do
         cat <<EOF
     - checkout

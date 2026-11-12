@@ -6366,10 +6366,6 @@ jobs:
     - prepare_bionic_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
-    - checkout
-    - prepare_bionic_tidb
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6424,10 +6420,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_focal_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_focal_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6486,10 +6478,6 @@ jobs:
     - prepare_jammy_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
-    - checkout
-    - prepare_jammy_tidb
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6544,10 +6532,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_noble_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_noble_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6606,10 +6590,6 @@ jobs:
     - prepare_resolute_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
-    - checkout
-    - prepare_resolute_tidb
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6643,10 +6623,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_bullseye_ubuntu_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_bullseye_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6664,10 +6640,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_bullseye_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_bullseye_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6703,10 +6675,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_bookworm_ubuntu_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_bookworm_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6724,10 +6692,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_bookworm_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_bookworm_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6763,10 +6727,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_trixie_ubuntu_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_trixie_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6784,10 +6744,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_trixie_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_trixie_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6819,14 +6775,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_el7_debian_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_el7_ubuntu_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_el7_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6844,10 +6792,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_el7_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_el7_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6879,14 +6823,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_el8_debian_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_el8_ubuntu_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_el8_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6904,10 +6840,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_el8_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_el8_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6939,14 +6871,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_el9_debian_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_el9_ubuntu_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_el9_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6964,10 +6888,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_el9_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_el9_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6999,14 +6919,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_el10_debian_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_el10_ubuntu_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_el10_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -7024,10 +6936,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_el10_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_el10_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
