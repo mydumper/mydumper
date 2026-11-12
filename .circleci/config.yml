@@ -2723,6 +2723,7 @@ commands:
 
   erase_packages_el:
     steps:
+    - run: sudo yum -y erase $(rpm -qa | egrep -i "percona|mysql|mariadb") 
     - run: sudo yum -y erase mysql-community-common mysql-community-client-plugins mysql-community-libs mysql-community-devel mysql-community-client Percona-Server-devel-57 Percona-Server-client-57 Percona-Server-shared-57 percona-server-devel percona-server-client MariaDB-compat MariaDB-devel
 
   prepare_el7_mysql80:
