@@ -111,14 +111,14 @@ all_os[${os}_0]="bionic"
 all_os[${os}_1]="cimg/base:current-18.04"
 all_os[${os}_2]="percona-release_latest.bionic_all.deb"
 all_os[${os}_3]="false"
-all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql80 ubuntu_default percona57 percona80"
 
 os=focal
 all_os[${os}_0]="focal"
 all_os[${os}_1]="cimg/base:stable-20.04"
 all_os[${os}_2]="percona-release_latest.focal_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql80 ubuntu_default percona57 percona80"
 
 os=jammy
 all_os[${os}_0]="jammy"
@@ -132,14 +132,14 @@ all_os[${os}_0]="noble"
 all_os[${os}_1]="cimg/base:current-24.04"
 all_os[${os}_2]="percona-release_latest.noble_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql80 mysql84 ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=resolute
 all_os[${os}_0]="resolute"
 all_os[${os}_1]="cimg/base:current-26.04"
 all_os[${os}_2]="percona-release_latest.resolute_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql84 mysql97 ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=el7
 all_os[${os}_0]="el7"

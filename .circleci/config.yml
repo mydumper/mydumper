@@ -6331,18 +6331,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_bionic_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_bionic_mysql97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_bionic_debian_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_bionic_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6352,18 +6340,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_bionic_percona80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_bionic_percona84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_bionic_mariadb1011
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_bionic_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6387,18 +6363,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_focal_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_focal_mysql97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_focal_debian_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_focal_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6408,18 +6372,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_focal_percona80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_focal_percona84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_focal_mariadb1011
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_focal_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6503,14 +6455,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_noble_mysql97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_noble_debian_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_noble_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6551,19 +6495,11 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_resolute_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
     - prepare_resolute_mysql97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_resolute_debian_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
