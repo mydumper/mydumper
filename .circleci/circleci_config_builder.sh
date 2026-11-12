@@ -573,6 +573,12 @@ cat <<EOF
     - run: percona-release setup -y ps80
     - run: yum -y install libasan gdb screen time percona-server-devel percona-server-client
 
+  prepare_el_percona84:
+    steps:
+    - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
+    - run: percona-release setup -y ps84-lts
+    - run: yum -y install libasan gdb screen time percona-server-devel percona-server-client
+
   compile:
     parameters:
       CMAKED:
