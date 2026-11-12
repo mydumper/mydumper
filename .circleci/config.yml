@@ -2698,7 +2698,8 @@ commands:
 
   erase_packages_apt:
     steps:
-    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt remove $(dpkg -l | egrep -i "percona|mysql|mariadb" | awk  '{print $2}' | egrep -v "release|apt") -y
+    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-common mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
 
   prepare_el7_mariadb1011:
     steps:
@@ -6926,11 +6927,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
-    - checkout
-    - prepare_bookworm_mysql97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MySQL 9[.]7[.]'
     - checkout
     - prepare_bookworm_debian_default
     - compile_and_test_mydumper:

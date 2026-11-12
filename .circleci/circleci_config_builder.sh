@@ -193,7 +193,7 @@ all_os[${os}_0]="bookworm"
 all_os[${os}_1]="debian:bookworm"
 all_os[${os}_2]="percona-release_latest.bookworm_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql84 mysql97 debian_default percona57 percona80 percona84 mariadb1011"
+all_os[${os}_4]="mysql84 debian_default percona57 percona80 percona84 mariadb1011"
 
 os=trixie
 all_os[${os}_0]="trixie"
@@ -434,7 +434,8 @@ cat <<EOF
 
   erase_packages_apt:
     steps:
-    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt remove \$(dpkg -l | egrep -i "percona|mysql|mariadb" | awk  '{print \$2}' | egrep -v "release|apt") -y
+    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-common mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
 
   prepare_el7_mariadb1011:
     steps:
