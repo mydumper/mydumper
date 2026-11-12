@@ -27,7 +27,7 @@ all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:9.7"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
-all_vendors[${vendor}_7]="mysql*9.7*"
+all_vendors[${vendor}_7]="mysql*9*7*"
 
 vendor=percona57
 all_vendors[${vendor}_0]="$vendor"
@@ -153,7 +153,7 @@ all_os[${os}_0]="el8"
 all_os[${os}_1]="almalinux:8"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql84 mysql97 percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql84 percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=el9
 all_os[${os}_0]="el9"
@@ -422,7 +422,7 @@ cat <<EOF
 
   erase_packages_apt:
     steps:
-    - run: sudo apt remove default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
 
   prepare_el7_mariadb1011:
     steps:

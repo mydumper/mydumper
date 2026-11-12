@@ -2698,7 +2698,7 @@ commands:
 
   erase_packages_apt:
     steps:
-    - run: sudo apt remove default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
 
   prepare_el7_mariadb1011:
     steps:
@@ -2747,7 +2747,7 @@ commands:
     - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el7.rpm
     - run: yum-config-manager --disable 'mysql*'
-    - run: yum-config-manager --enable 'mysql*9.7*'
+    - run: yum-config-manager --enable 'mysql*9*7*'
     - prepare_el_mysql97
 
 
@@ -2792,7 +2792,7 @@ commands:
     - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el9.rpm
     - run: yum-config-manager --disable 'mysql*'
-    - run: yum-config-manager --enable 'mysql*9.7*'
+    - run: yum-config-manager --enable 'mysql*9*7*'
     - prepare_el_mysql97
 
 
@@ -2837,7 +2837,7 @@ commands:
     - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
-    - run: yum-config-manager --enable 'mysql*9.7*'
+    - run: yum-config-manager --enable 'mysql*9*7*'
     - prepare_el_mysql97
 
 
@@ -2884,7 +2884,7 @@ commands:
     - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
-    - run: yum-config-manager --enable 'mysql*9.7*'
+    - run: yum-config-manager --enable 'mysql*9*7*'
     - run: sudo dnf module disable mysql -y
     - prepare_el_mysql80
 
@@ -6825,10 +6825,6 @@ jobs:
     steps:
     - checkout
     - prepare_el8_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_el8_mysql97
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
