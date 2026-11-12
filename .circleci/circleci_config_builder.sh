@@ -146,7 +146,7 @@ all_os[${os}_0]="el7"
 all_os[${os}_1]="centos:7"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql84 mysql97 percona57 percona80"
+all_os[${os}_4]="mysql84 percona57 percona80"
 
 os=el8
 all_os[${os}_0]="el8"
@@ -946,28 +946,29 @@ workflows:
   mydumper:
     jobs:'
 
-for lc in ${!list_compile[@]}
-do
 
-if [ "build" = "$1" ]
-then
 
-echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}:"
-# Decomment next 5 lines if you want to ignore compilation and add : to previous line
-echo '        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/'
-else
-echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
-fi
-done
+#for lc in ${!list_compile[@]}
+#do
+
+#  if [ "build" = "$1" ]
+#  then
+
+#    echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}:"
+#    echo '        filters:
+#          branches:
+#            ignore: /.*/
+#          tags:
+#            only: /^v\d+\.\d+\.\d+-\d+$/'
+#  else
+#    echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
+#  fi
+#done
 
 
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]} ${list_el_os[@]}
 do
-echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}"
+  echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}"
 done
 
 
@@ -977,7 +978,6 @@ do
 echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
         test: true
         this_executor: ${list_test[${lt}]}"
-# Decomment next 5 lines if you want to ignore compilation
 if [ "build" = "$1" ]
 then
 echo '        filters:

@@ -6767,10 +6767,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - checkout
-    - prepare_el7_mysql97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_el7_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -14976,39 +14972,6 @@ workflows:
 
   mydumper:
     jobs:
-    - compile_and_test_mydumper_in_bionic_percona57
-    - compile_and_test_mydumper_in_bionic_percona80
-    - compile_and_test_mydumper_in_focal_percona57
-    - compile_and_test_mydumper_in_focal_percona80
-    - compile_and_test_mydumper_in_noble_ubuntu_default
-    - compile_and_test_mydumper_in_resolute_mysql97
-    - compile_and_test_mydumper_in_resolute_ubuntu_default
-    - compile_and_test_mydumper_in_el7_percona57
-    - compile_and_test_mydumper_in_el7_percona80
-    - compile_and_test_mydumper_in_el7_mysql84
-    - compile_and_test_mydumper_in_el8_percona57
-    - compile_and_test_mydumper_in_el8_percona80
-    - compile_and_test_mydumper_in_el8_mariadb1011
-    - compile_and_test_mydumper_in_el8_mariadb1006
-    - compile_and_test_mydumper_in_el8_mysql84
-    - compile_and_test_mydumper_in_el9_percona80
-    - compile_and_test_mydumper_in_el9_mariadb1011
-    - compile_and_test_mydumper_in_el9_mariadb1006
-    - compile_and_test_mydumper_in_el9_mysql84
-    - compile_and_test_mydumper_in_el9_mysql97
-    - compile_and_test_mydumper_in_el10_mariadb1011
-    - compile_and_test_mydumper_in_el10_mysql84
-    - compile_and_test_mydumper_in_el10_mysql97
-    - compile_and_test_mydumper_in_bullseye_percona57
-    - compile_and_test_mydumper_in_bullseye_percona80
-    - compile_and_test_mydumper_in_bullseye_mariadb1011
-    - compile_and_test_mydumper_in_bullseye_mariadb1006
-    - compile_and_test_mydumper_in_bookworm_percona57
-    - compile_and_test_mydumper_in_bookworm_percona80
-    - compile_and_test_mydumper_in_bookworm_mariadb1011
-    - compile_and_test_mydumper_in_bookworm_mysql84
-    - compile_and_test_mydumper_in_trixie_percona84
-    - compile_and_test_mydumper_in_trixie_debian_default
     - compile_and_test_mydumper_in_bionic
     - compile_and_test_mydumper_in_focal
     - compile_and_test_mydumper_in_jammy
