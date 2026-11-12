@@ -37,21 +37,21 @@ all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:5.7"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
-all_vendors[${vendor}_8]="MySQL 5[.]7[.]"
+all_vendors[${vendor}_8]="(MySQL|Percona) 5[.]7[.]"
 
 vendor=percona80
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:8"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
-all_vendors[${vendor}_8]="MySQL 8[.]0[.]"
+all_vendors[${vendor}_8]="(MySQL|Percona) 8[.]0[.]"
 
 vendor=percona84
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona/percona-server:8.4"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
-all_vendors[${vendor}_8]="MySQL 8[.]4[.]"
+all_vendors[${vendor}_8]="(MySQL|Percona) 8[.]4[.]"
 
 vendor=mariadb1006
 all_vendors[${vendor}_0]="$vendor"
@@ -74,7 +74,7 @@ all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="pingcap/tidb"
 all_vendors[${vendor}_5]="mysqld"
 all_vendors[${vendor}_6]="mysqld"
-all_vendors[${vendor}_8]="MySQL 5[.]7[.]"
+all_vendors[${vendor}_8]="(MySQL|Percona) 5[.]7[.]"
 
 vendor=debian_default
 all_vendors[${vendor}_0]="$vendor"

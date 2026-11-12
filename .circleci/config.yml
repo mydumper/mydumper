@@ -3956,7 +3956,7 @@ jobs:
     - prepare_bionic_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -3977,7 +3977,7 @@ jobs:
     - prepare_bionic_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -3998,7 +3998,7 @@ jobs:
     - prepare_bionic_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4061,7 +4061,7 @@ jobs:
     - prepare_bionic_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4187,7 +4187,7 @@ jobs:
     - prepare_focal_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4208,7 +4208,7 @@ jobs:
     - prepare_focal_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4229,7 +4229,7 @@ jobs:
     - prepare_focal_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4292,7 +4292,7 @@ jobs:
     - prepare_focal_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4418,7 +4418,7 @@ jobs:
     - prepare_jammy_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4439,7 +4439,7 @@ jobs:
     - prepare_jammy_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4460,7 +4460,7 @@ jobs:
     - prepare_jammy_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4523,7 +4523,7 @@ jobs:
     - prepare_jammy_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4649,7 +4649,7 @@ jobs:
     - prepare_noble_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4670,7 +4670,7 @@ jobs:
     - prepare_noble_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4691,7 +4691,7 @@ jobs:
     - prepare_noble_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4754,7 +4754,7 @@ jobs:
     - prepare_noble_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4880,7 +4880,7 @@ jobs:
     - prepare_resolute_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4901,7 +4901,7 @@ jobs:
     - prepare_resolute_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4922,7 +4922,7 @@ jobs:
     - prepare_resolute_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -4985,7 +4985,7 @@ jobs:
     - prepare_resolute_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5111,7 +5111,7 @@ jobs:
     - prepare_bullseye_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5132,7 +5132,7 @@ jobs:
     - prepare_bullseye_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5153,7 +5153,7 @@ jobs:
     - prepare_bullseye_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5216,7 +5216,7 @@ jobs:
     - prepare_bullseye_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5342,7 +5342,7 @@ jobs:
     - prepare_bookworm_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5363,7 +5363,7 @@ jobs:
     - prepare_bookworm_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5384,7 +5384,7 @@ jobs:
     - prepare_bookworm_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5447,7 +5447,7 @@ jobs:
     - prepare_bookworm_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5573,7 +5573,7 @@ jobs:
     - prepare_trixie_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5594,7 +5594,7 @@ jobs:
     - prepare_trixie_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5615,7 +5615,7 @@ jobs:
     - prepare_trixie_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5678,7 +5678,7 @@ jobs:
     - prepare_trixie_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5804,7 +5804,7 @@ jobs:
     - prepare_el7_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5825,7 +5825,7 @@ jobs:
     - prepare_el7_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5846,7 +5846,7 @@ jobs:
     - prepare_el7_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -5909,7 +5909,7 @@ jobs:
     - prepare_el7_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6035,7 +6035,7 @@ jobs:
     - prepare_el8_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6056,7 +6056,7 @@ jobs:
     - prepare_el8_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6077,7 +6077,7 @@ jobs:
     - prepare_el8_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6140,7 +6140,7 @@ jobs:
     - prepare_el8_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6266,7 +6266,7 @@ jobs:
     - prepare_el9_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6287,7 +6287,7 @@ jobs:
     - prepare_el9_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6308,7 +6308,7 @@ jobs:
     - prepare_el9_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6371,7 +6371,7 @@ jobs:
     - prepare_el9_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6497,7 +6497,7 @@ jobs:
     - prepare_el10_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6518,7 +6518,7 @@ jobs:
     - prepare_el10_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6539,7 +6539,7 @@ jobs:
     - prepare_el10_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6602,7 +6602,7 @@ jobs:
     - prepare_el10_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6623,12 +6623,12 @@ jobs:
     - prepare_bionic_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_bionic_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6659,12 +6659,12 @@ jobs:
     - prepare_focal_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_focal_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -6710,17 +6710,17 @@ jobs:
     - prepare_jammy_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_jammy_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
     - prepare_jammy_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - checkout
     - prepare_jammy_mariadb1011
     - compile_and_test_mydumper:
@@ -6766,17 +6766,17 @@ jobs:
     - prepare_noble_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_noble_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
     - prepare_noble_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - checkout
     - prepare_noble_mariadb1011
     - compile_and_test_mydumper:
@@ -6822,17 +6822,17 @@ jobs:
     - prepare_resolute_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_resolute_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
     - prepare_resolute_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - checkout
     - prepare_resolute_mariadb1011
     - compile_and_test_mydumper:
@@ -6883,17 +6883,17 @@ jobs:
     - prepare_bullseye_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_bullseye_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
     - prepare_bullseye_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - checkout
     - prepare_bullseye_mariadb1011
     - compile_and_test_mydumper:
@@ -6939,17 +6939,17 @@ jobs:
     - prepare_bookworm_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_bookworm_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
     - prepare_bookworm_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - checkout
     - prepare_bookworm_mariadb1011
     - compile_and_test_mydumper:
@@ -6980,7 +6980,7 @@ jobs:
     - prepare_trixie_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -7006,12 +7006,12 @@ jobs:
     - prepare_el7_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_el7_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -7037,17 +7037,17 @@ jobs:
     - prepare_el8_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_el8_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
     - prepare_el8_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - checkout
     - prepare_el8_mariadb1011
     - compile_and_test_mydumper:
@@ -7088,12 +7088,12 @@ jobs:
     - prepare_el9_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_el9_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
     - prepare_el9_mariadb1011
     - compile_and_test_mydumper:
@@ -7134,12 +7134,12 @@ jobs:
     - prepare_el10_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - checkout
     - prepare_el10_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
     - prepare_el10_mariadb1011
     - compile_and_test_mydumper:
@@ -7278,7 +7278,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_aarch64/
@@ -7300,7 +7300,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_aarch64/
@@ -7322,7 +7322,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona84_aarch64/
@@ -7498,7 +7498,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_aarch64/
@@ -7520,7 +7520,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_aarch64/
@@ -7542,7 +7542,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona84_aarch64/
@@ -7718,7 +7718,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_aarch64/
@@ -7740,7 +7740,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_aarch64/
@@ -7762,7 +7762,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona84_aarch64/
@@ -7938,7 +7938,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona57_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona57_aarch64/
@@ -7960,7 +7960,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona80_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona80_aarch64/
@@ -7982,7 +7982,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona84_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona84_aarch64/
@@ -8158,7 +8158,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_x86_64/
@@ -8180,7 +8180,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_x86_64/
@@ -8202,7 +8202,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona84_x86_64/
@@ -8378,7 +8378,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_x86_64/
@@ -8400,7 +8400,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_x86_64/
@@ -8422,7 +8422,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona84_x86_64/
@@ -8598,7 +8598,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_x86_64/
@@ -8620,7 +8620,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_x86_64/
@@ -8642,7 +8642,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona84_x86_64/
@@ -8818,7 +8818,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona57_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona57_x86_64/
@@ -8840,7 +8840,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona80_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona80_x86_64/
@@ -8862,7 +8862,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_percona84_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona84_x86_64/
@@ -9133,7 +9133,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9173,7 +9173,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9213,7 +9213,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9533,7 +9533,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9573,7 +9573,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9613,7 +9613,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9933,7 +9933,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9973,7 +9973,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10013,7 +10013,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10333,7 +10333,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10373,7 +10373,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10413,7 +10413,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10733,7 +10733,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10773,7 +10773,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10813,7 +10813,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11133,7 +11133,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11173,7 +11173,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11213,7 +11213,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11533,7 +11533,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11573,7 +11573,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11613,7 +11613,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11933,7 +11933,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11973,7 +11973,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12013,7 +12013,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12333,7 +12333,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12373,7 +12373,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12413,7 +12413,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12733,7 +12733,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12773,7 +12773,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -12813,7 +12813,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13135,7 +13135,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13175,7 +13175,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13215,7 +13215,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13535,7 +13535,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13575,7 +13575,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13615,7 +13615,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13935,7 +13935,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -13975,7 +13975,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14015,7 +14015,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14335,7 +14335,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14375,7 +14375,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14415,7 +14415,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14735,7 +14735,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14775,7 +14775,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -14815,7 +14815,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -15135,7 +15135,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 5[.]7[.]'
+        expected_version: '(MySQL|Percona) 5[.]7[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -15175,7 +15175,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]0[.]'
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -15215,7 +15215,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
