@@ -457,6 +457,7 @@ do
     done
 done
 
+os="el8"
 for vendor in ${list_mysql_version[@]} 
 do
   echo "

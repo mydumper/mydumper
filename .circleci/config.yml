@@ -2853,7 +2853,7 @@ commands:
 
   prepare_el8_mysql80:
     steps:
-    - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el10.rpm
+    - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.0*'
     - run: sudo dnf module disable mysql -y
@@ -2862,7 +2862,7 @@ commands:
 
   prepare_el8_mysql84:
     steps:
-    - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el10.rpm
+    - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.4*'
     - run: sudo dnf module disable mysql -y
@@ -2871,7 +2871,7 @@ commands:
 
   prepare_el8_mysql97:
     steps:
-    - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el10.rpm
+    - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*9.7*'
     - run: sudo dnf module disable mysql -y
@@ -2880,7 +2880,7 @@ commands:
 
   prepare_el8_debian_default:
     steps:
-    - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el10.rpm
+    - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
     - run: sudo dnf module disable mysql -y
@@ -2889,7 +2889,7 @@ commands:
 
   prepare_el8_ubuntu_default:
     steps:
-    - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el10.rpm
+    - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
     - run: sudo dnf module disable mysql -y
