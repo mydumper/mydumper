@@ -451,7 +451,6 @@ do
     - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable '${all_vendors[${vendor}_7]}'
-    - run: sudo dnf module disable mysql -y
     - prepare_el_${all_vendors[${vendor}_0]}
 "
     done
