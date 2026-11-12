@@ -2716,8 +2716,13 @@ commands:
     - run: sudo yum install -y libasan gdb screen time MariaDB-devel
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 
+  erase_packages_el:
+    steps:
+    - run: sudo yum -y erase mysql-community-libs mysql-community-devel mysql-community-client Percona-Server-devel-57 Percona-Server-client-57 percona-server-devel percona-server-client MariaDB-compat MariaDB-devel
+
   prepare_el7_mysql80:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el7.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.0*'
@@ -2726,6 +2731,7 @@ commands:
 
   prepare_el7_mysql84:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el7.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.4*'
@@ -2734,6 +2740,7 @@ commands:
 
   prepare_el7_mysql97:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el7.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*9.7*'
@@ -2742,6 +2749,7 @@ commands:
 
   prepare_el7_debian_default:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el7.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
@@ -2750,6 +2758,7 @@ commands:
 
   prepare_el7_ubuntu_default:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el7.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
@@ -2758,6 +2767,7 @@ commands:
 
   prepare_el9_mysql80:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el9.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.0*'
@@ -2766,6 +2776,7 @@ commands:
 
   prepare_el9_mysql84:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el9.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.4*'
@@ -2774,6 +2785,7 @@ commands:
 
   prepare_el9_mysql97:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el9.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*9.7*'
@@ -2782,6 +2794,7 @@ commands:
 
   prepare_el9_debian_default:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el9.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
@@ -2790,6 +2803,7 @@ commands:
 
   prepare_el9_ubuntu_default:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el9.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
@@ -2798,6 +2812,7 @@ commands:
 
   prepare_el10_mysql80:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.0*'
@@ -2806,6 +2821,7 @@ commands:
 
   prepare_el10_mysql84:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.4*'
@@ -2814,6 +2830,7 @@ commands:
 
   prepare_el10_mysql97:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*9.7*'
@@ -2822,6 +2839,7 @@ commands:
 
   prepare_el10_debian_default:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
@@ -2830,6 +2848,7 @@ commands:
 
   prepare_el10_ubuntu_default:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el10.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
@@ -2838,6 +2857,7 @@ commands:
 
   prepare_el8_mysql80:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql80-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.0*'
@@ -2847,6 +2867,7 @@ commands:
 
   prepare_el8_mysql84:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql84-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*8.4*'
@@ -2856,6 +2877,7 @@ commands:
 
   prepare_el8_mysql97:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//mysql97-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable 'mysql*9.7*'
@@ -2865,6 +2887,7 @@ commands:
 
   prepare_el8_debian_default:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//debian_default-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
@@ -2874,6 +2897,7 @@ commands:
 
   prepare_el8_ubuntu_default:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//ubuntu_default-community-release-el8.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable ''
@@ -2883,94 +2907,112 @@ commands:
 
   prepare_el7_percona57:
     steps:
+    - erase_packages_el
     - prepare_el_percona57
 
 
   prepare_el7_percona80:
     steps:
+    - erase_packages_el
     - prepare_el_percona80
 
 
   prepare_el7_percona84:
     steps:
+    - erase_packages_el
     - prepare_el_percona84
 
 
   prepare_el9_percona57:
     steps:
+    - erase_packages_el
     - prepare_el_percona57
 
 
   prepare_el9_percona80:
     steps:
+    - erase_packages_el
     - prepare_el_percona80
 
 
   prepare_el9_percona84:
     steps:
+    - erase_packages_el
     - prepare_el_percona84
 
 
   prepare_el10_percona57:
     steps:
+    - erase_packages_el
     - prepare_el_percona57
 
 
   prepare_el10_percona80:
     steps:
+    - erase_packages_el
     - prepare_el_percona80
 
 
   prepare_el10_percona84:
     steps:
+    - erase_packages_el
     - prepare_el_percona84
 
 
   prepare_el8_percona57:
     steps:
+    - erase_packages_el
     - run: sudo dnf module disable mysql -y
-    - prepare_el_percona80
+    - prepare_el_percona57
 
 
   prepare_el8_percona80:
     steps:
+    - erase_packages_el
     - run: sudo dnf module disable mysql -y
     - prepare_el_percona80
 
 
   prepare_el8_percona84:
     steps:
+    - erase_packages_el
     - run: sudo dnf module disable mysql -y
-    - prepare_el_percona80
+    - prepare_el_percona84
 
 
   prepare_el8_mariadb1011:
     steps:
+    - erase_packages_el
     - prepare_el_mariadb1011
 
 
   prepare_el8_mariadb1006:
     steps:
+    - erase_packages_el
     - prepare_el_mariadb1006
 
 
   prepare_el9_mariadb1011:
     steps:
+    - erase_packages_el
     - prepare_el_mariadb1011
 
 
   prepare_el9_mariadb1006:
     steps:
+    - erase_packages_el
     - prepare_el_mariadb1006
 
 
   prepare_el10_mariadb1011:
     steps:
+    - erase_packages_el
     - prepare_el_mariadb1011
 
 
   prepare_el10_mariadb1006:
     steps:
+    - erase_packages_el
     - prepare_el_mariadb1006
 
 

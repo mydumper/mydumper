@@ -439,7 +439,14 @@ cat <<EOF
     - prepare_mariadb1011
     - run: sudo yum install -y libasan gdb screen time MariaDB-devel
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
+
+  erase_packages_el:
+    steps:
+    - run: sudo yum -y erase mysql-community-libs mysql-community-devel mysql-community-client Percona-Server-devel-57 Percona-Server-client-57 percona-server-devel percona-server-client MariaDB-compat MariaDB-devel
 EOF
+
+
+
 
 for os in el7 el9 el10
 do
@@ -448,6 +455,7 @@ do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable '${all_vendors[${vendor}_7]}'
@@ -462,6 +470,7 @@ do
   echo "
   prepare_el8_${all_vendors[${vendor}_0]}:
     steps:
+    - erase_packages_el
     - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable '${all_vendors[${vendor}_7]}'
@@ -477,6 +486,7 @@ do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - erase_packages_el
     - prepare_el_${all_vendors[${vendor}_0]}
 "
     done
@@ -487,12 +497,11 @@ do
   echo "
   prepare_el8_${all_vendors[${vendor}_0]}:
     steps:
+    - erase_packages_el
     - run: sudo dnf module disable mysql -y
-    - prepare_el_percona80
+    - prepare_el_${all_vendors[${vendor}_0]}
 "
 done
-
-
 
 for os in el8 el9 el10
 do
@@ -501,6 +510,7 @@ do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - erase_packages_el
     - prepare_el_${all_vendors[${vendor}_0]}
 "
     done
