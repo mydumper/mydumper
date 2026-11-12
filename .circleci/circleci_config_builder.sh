@@ -13,18 +13,21 @@ all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.0"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
+all_vendors[${vendor}_5]="mysql*8.0*"
 
 vendor=mysql84
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
+all_vendors[${vendor}_5]="mysql*8.4*"
 
 vendor=mysql97
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:9.7"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
+all_vendors[${vendor}_5]="mysql*9.7*"
 
 vendor=percona57
 all_vendors[${vendor}_0]="$vendor"
@@ -433,7 +436,7 @@ do
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
-    - run: yum-config-manager --enable 'mysql\*${vendor}\*'
+    - run: yum-config-manager --enable '${all_vendors[${vendor}_5]}'
     - prepare_el_${all_vendors[${vendor}_0]}
 "
     done
@@ -445,6 +448,7 @@ do
   prepare_el8_${all_vendors[${vendor}_0]}:
     steps:
     - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
+    - run: yum-config-manager --enable '${all_vendors[${vendor}_5]}'
     - run: sudo dnf module disable mysql -y
     - prepare_el_mysql80
 "
