@@ -14,7 +14,7 @@ RUN \
 RUN \
   yum -y install epel-release && \
   yum -y install wget curl && \
-  yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel pcre2-devel openssl-devel libzstd-devel sudo && \
+  yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel pcre2-devel openssl-devel libzstd-devel sudo yum-utils && \
   yum clean all
 
 RUN \
