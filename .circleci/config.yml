@@ -15137,6 +15137,18 @@ workflows:
     - compile_and_test_mydumper_in_bookworm_mysql84
     - compile_and_test_mydumper_in_trixie_percona84
     - compile_and_test_mydumper_in_trixie_debian_default
+    - compile_and_test_mydumper_in_bionic
+    - compile_and_test_mydumper_in_focal
+    - compile_and_test_mydumper_in_jammy
+    - compile_and_test_mydumper_in_noble
+    - compile_and_test_mydumper_in_resolute
+    - compile_and_test_mydumper_in_bullseye
+    - compile_and_test_mydumper_in_bookworm
+    - compile_and_test_mydumper_in_trixie
+    - compile_and_test_mydumper_in_el7
+    - compile_and_test_mydumper_in_el8
+    - compile_and_test_mydumper_in_el9
+    - compile_and_test_mydumper_in_el10
     - compile_and_test_mydumper_in_jammy_percona57:
         test: true
         this_executor: jammy_percona57

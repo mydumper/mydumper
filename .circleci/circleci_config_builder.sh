@@ -951,6 +951,14 @@ echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
 fi
 done
 
+
+for os in ${list_ubuntu_os[@]} ${list_debian_os[@]} ${list_el_os[@]}
+do
+echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}"
+done
+
+
+
 for lt in ${!list_test[@]}
 do
 echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
