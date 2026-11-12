@@ -111,7 +111,7 @@ all_os[${os}_0]="bionic"
 all_os[${os}_1]="cimg/base:current-18.04"
 all_os[${os}_2]="percona-release_latest.bionic_all.deb"
 all_os[${os}_3]="false"
-all_os[${os}_4]="mysql80 ubuntu_default percona57 percona80"
+all_os[${os}_4]="percona57 percona80"
 
 os=focal
 all_os[${os}_0]="focal"
@@ -181,7 +181,7 @@ all_os[${os}_0]="bookworm"
 all_os[${os}_1]="debian:bookworm"
 all_os[${os}_2]="percona-release_latest.bookworm_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql84 mysql97 debian_default percona57 percona80 percona84 mariadb1011"
 
 os=trixie
 all_os[${os}_0]="trixie"
@@ -420,6 +420,10 @@ cat <<EOF
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
+  erase_packages_apt:
+    steps:
+    - run: sudo apt remove default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+
   prepare_el7_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.11.11"
@@ -526,6 +530,7 @@ do
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -536,6 +541,7 @@ do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_${all_vendors[${vendor}_0]}
@@ -548,6 +554,7 @@ echo "
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_${all_vendors[${vendor}_0]}

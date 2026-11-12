@@ -2696,6 +2696,10 @@ commands:
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
+  erase_packages_apt:
+    steps:
+    - run: sudo apt remove default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-client mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+
   prepare_el7_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.11.11"
@@ -3018,6 +3022,7 @@ commands:
 
   prepare_bionic_tidb:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3025,6 +3030,7 @@ commands:
 
   prepare_bionic_percona57:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3032,6 +3038,7 @@ commands:
 
   prepare_bionic_percona80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80
@@ -3039,6 +3046,7 @@ commands:
 
   prepare_bionic_percona84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84
@@ -3046,6 +3054,7 @@ commands:
 
   prepare_bionic_mysql80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80
@@ -3053,6 +3062,7 @@ commands:
 
   prepare_bionic_mysql84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84
@@ -3060,6 +3070,7 @@ commands:
 
   prepare_bionic_mysql97:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97
@@ -3067,6 +3078,7 @@ commands:
 
   prepare_bionic_debian_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default
@@ -3074,6 +3086,7 @@ commands:
 
   prepare_bionic_ubuntu_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default
@@ -3081,6 +3094,7 @@ commands:
 
   prepare_bionic_mariadb1011:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
@@ -3089,6 +3103,7 @@ commands:
 
   prepare_bionic_mariadb1006:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
@@ -3097,6 +3112,7 @@ commands:
 
   prepare_focal_tidb:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3104,6 +3120,7 @@ commands:
 
   prepare_focal_percona57:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3111,6 +3128,7 @@ commands:
 
   prepare_focal_percona80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80
@@ -3118,6 +3136,7 @@ commands:
 
   prepare_focal_percona84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84
@@ -3125,6 +3144,7 @@ commands:
 
   prepare_focal_mysql80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80
@@ -3132,6 +3152,7 @@ commands:
 
   prepare_focal_mysql84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84
@@ -3139,6 +3160,7 @@ commands:
 
   prepare_focal_mysql97:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97
@@ -3146,6 +3168,7 @@ commands:
 
   prepare_focal_debian_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default
@@ -3153,6 +3176,7 @@ commands:
 
   prepare_focal_ubuntu_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default
@@ -3160,6 +3184,7 @@ commands:
 
   prepare_focal_mariadb1011:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
@@ -3168,6 +3193,7 @@ commands:
 
   prepare_focal_mariadb1006:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
@@ -3176,6 +3202,7 @@ commands:
 
   prepare_jammy_tidb:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3183,6 +3210,7 @@ commands:
 
   prepare_jammy_percona57:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3190,6 +3218,7 @@ commands:
 
   prepare_jammy_percona80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80
@@ -3197,6 +3226,7 @@ commands:
 
   prepare_jammy_percona84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84
@@ -3204,6 +3234,7 @@ commands:
 
   prepare_jammy_mysql80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80
@@ -3211,6 +3242,7 @@ commands:
 
   prepare_jammy_mysql84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84
@@ -3218,6 +3250,7 @@ commands:
 
   prepare_jammy_mysql97:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97
@@ -3225,6 +3258,7 @@ commands:
 
   prepare_jammy_debian_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default
@@ -3232,6 +3266,7 @@ commands:
 
   prepare_jammy_ubuntu_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default
@@ -3239,6 +3274,7 @@ commands:
 
   prepare_jammy_mariadb1011:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
@@ -3247,6 +3283,7 @@ commands:
 
   prepare_jammy_mariadb1006:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
@@ -3255,6 +3292,7 @@ commands:
 
   prepare_noble_tidb:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3262,6 +3300,7 @@ commands:
 
   prepare_noble_percona57:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3269,6 +3308,7 @@ commands:
 
   prepare_noble_percona80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80
@@ -3276,6 +3316,7 @@ commands:
 
   prepare_noble_percona84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84
@@ -3283,6 +3324,7 @@ commands:
 
   prepare_noble_mysql80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80
@@ -3290,6 +3332,7 @@ commands:
 
   prepare_noble_mysql84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84
@@ -3297,6 +3340,7 @@ commands:
 
   prepare_noble_mysql97:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97
@@ -3304,6 +3348,7 @@ commands:
 
   prepare_noble_debian_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default
@@ -3311,6 +3356,7 @@ commands:
 
   prepare_noble_ubuntu_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default
@@ -3318,6 +3364,7 @@ commands:
 
   prepare_noble_mariadb1011:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
@@ -3326,6 +3373,7 @@ commands:
 
   prepare_noble_mariadb1006:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
@@ -3334,6 +3382,7 @@ commands:
 
   prepare_resolute_tidb:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3341,6 +3390,7 @@ commands:
 
   prepare_resolute_percona57:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3348,6 +3398,7 @@ commands:
 
   prepare_resolute_percona80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80
@@ -3355,6 +3406,7 @@ commands:
 
   prepare_resolute_percona84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84
@@ -3362,6 +3414,7 @@ commands:
 
   prepare_resolute_mysql80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80
@@ -3369,6 +3422,7 @@ commands:
 
   prepare_resolute_mysql84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84
@@ -3376,6 +3430,7 @@ commands:
 
   prepare_resolute_mysql97:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97
@@ -3383,6 +3438,7 @@ commands:
 
   prepare_resolute_debian_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default
@@ -3390,6 +3446,7 @@ commands:
 
   prepare_resolute_ubuntu_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default
@@ -3397,6 +3454,7 @@ commands:
 
   prepare_resolute_mariadb1011:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
@@ -3405,6 +3463,7 @@ commands:
 
   prepare_resolute_mariadb1006:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
@@ -3413,6 +3472,7 @@ commands:
 
   prepare_bullseye_tidb:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3420,6 +3480,7 @@ commands:
 
   prepare_bullseye_percona57:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3427,6 +3488,7 @@ commands:
 
   prepare_bullseye_percona80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80
@@ -3434,6 +3496,7 @@ commands:
 
   prepare_bullseye_percona84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84
@@ -3441,6 +3504,7 @@ commands:
 
   prepare_bullseye_mysql80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80
@@ -3448,6 +3512,7 @@ commands:
 
   prepare_bullseye_mysql84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84
@@ -3455,6 +3520,7 @@ commands:
 
   prepare_bullseye_mysql97:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97
@@ -3462,6 +3528,7 @@ commands:
 
   prepare_bullseye_debian_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default
@@ -3469,6 +3536,7 @@ commands:
 
   prepare_bullseye_ubuntu_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default
@@ -3476,6 +3544,7 @@ commands:
 
   prepare_bullseye_mariadb1011:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
@@ -3484,6 +3553,7 @@ commands:
 
   prepare_bullseye_mariadb1006:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
@@ -3492,6 +3562,7 @@ commands:
 
   prepare_bookworm_tidb:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3499,6 +3570,7 @@ commands:
 
   prepare_bookworm_percona57:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3506,6 +3578,7 @@ commands:
 
   prepare_bookworm_percona80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80
@@ -3513,6 +3586,7 @@ commands:
 
   prepare_bookworm_percona84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84
@@ -3520,6 +3594,7 @@ commands:
 
   prepare_bookworm_mysql80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80
@@ -3527,6 +3602,7 @@ commands:
 
   prepare_bookworm_mysql84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84
@@ -3534,6 +3610,7 @@ commands:
 
   prepare_bookworm_mysql97:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97
@@ -3541,6 +3618,7 @@ commands:
 
   prepare_bookworm_debian_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default
@@ -3548,6 +3626,7 @@ commands:
 
   prepare_bookworm_ubuntu_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default
@@ -3555,6 +3634,7 @@ commands:
 
   prepare_bookworm_mariadb1011:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
@@ -3563,6 +3643,7 @@ commands:
 
   prepare_bookworm_mariadb1006:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
@@ -3571,6 +3652,7 @@ commands:
 
   prepare_trixie_tidb:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3578,6 +3660,7 @@ commands:
 
   prepare_trixie_percona57:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57
@@ -3585,6 +3668,7 @@ commands:
 
   prepare_trixie_percona80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80
@@ -3592,6 +3676,7 @@ commands:
 
   prepare_trixie_percona84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84
@@ -3599,6 +3684,7 @@ commands:
 
   prepare_trixie_mysql80:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80
@@ -3606,6 +3692,7 @@ commands:
 
   prepare_trixie_mysql84:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84
@@ -3613,6 +3700,7 @@ commands:
 
   prepare_trixie_mysql97:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97
@@ -3620,6 +3708,7 @@ commands:
 
   prepare_trixie_debian_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default
@@ -3627,6 +3716,7 @@ commands:
 
   prepare_trixie_ubuntu_default:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default
@@ -3634,6 +3724,7 @@ commands:
 
   prepare_trixie_mariadb1011:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
@@ -3642,6 +3733,7 @@ commands:
 
   prepare_trixie_mariadb1006:
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
@@ -6375,14 +6467,6 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_bionic_ubuntu_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_bionic_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6643,10 +6727,6 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_bookworm_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6672,10 +6752,6 @@ jobs:
         test: << parameters.test >>
     - checkout
     - prepare_bookworm_mariadb1011
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
-    - prepare_bookworm_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
