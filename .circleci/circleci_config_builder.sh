@@ -146,7 +146,7 @@ all_os[${os}_0]="el7"
 all_os[${os}_1]="centos:7"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql80 mysql84 mysql97 percona57 percona80"
 
 os=el8
 all_os[${os}_0]="el8"
