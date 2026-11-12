@@ -146,28 +146,28 @@ all_os[${os}_0]="el7"
 all_os[${os}_1]="centos:7"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 percona57 percona80"
+all_os[${os}_4]="mysql84 mysql97 percona57 percona80"
 
 os=el8
 all_os[${os}_0]="el8"
 all_os[${os}_1]="almalinux:8"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql84 mysql97 percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=el9
 all_os[${os}_0]="el9"
 all_os[${os}_1]="almalinux:9"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 percona57 percona80 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql84 mysql97 percona57 percona80 mariadb1011 mariadb1006"
 
 os=el10
 all_os[${os}_0]="el10"
 all_os[${os}_1]="almalinux:10"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 percona57 percona80 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql84 mysql97 percona57 percona80 mariadb1011 mariadb1006"
 
 os=bullseye
 all_os[${os}_0]="bullseye"

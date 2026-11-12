@@ -6763,10 +6763,6 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_el7_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6798,10 +6794,6 @@ jobs:
     executor: << parameters.this_executor >>
     resource_class: large
     steps:
-    - checkout
-    - prepare_el8_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
     - checkout
     - prepare_el8_mysql84
     - compile_and_test_mydumper:
@@ -6847,10 +6839,6 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - checkout
     - prepare_el9_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6890,10 +6878,6 @@ jobs:
     executor: << parameters.this_executor >>
     resource_class: large
     steps:
-    - checkout
-    - prepare_el10_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
     - checkout
     - prepare_el10_mysql84
     - compile_and_test_mydumper:
