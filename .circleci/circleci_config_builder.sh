@@ -612,6 +612,7 @@ cat <<EOF
         command: |
           source /etc/profile.d/sh.local || true
     - run: rm -f CMakeCache.txt
+    - run: make clean
     - run: cmake . <<parameters.CMAKED>>
     - run: make VERBOSE=1
     - run:
