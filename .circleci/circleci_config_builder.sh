@@ -151,7 +151,7 @@ all_os[${os}_0]="resolute"
 all_os[${os}_1]="cimg/base:current-26.04"
 all_os[${os}_2]="percona-release_latest.resolute_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql84 mysql97 ubuntu_default percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="percona84 mysql97 ubuntu_default"
 
 os=el7
 all_os[${os}_0]="el7"

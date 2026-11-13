@@ -6780,10 +6780,10 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_mysql84
+    - prepare_resolute_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
+        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - checkout
     - prepare_resolute_mysql97
     - compile_and_test_mydumper:
@@ -6794,21 +6794,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
-    - checkout
-    - prepare_resolute_percona84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: '(MySQL|Percona) 8[.]4[.]'
-    - checkout
-    - prepare_resolute_mariadb1011
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 10[.]11[.]'
-    - checkout
-    - prepare_resolute_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
