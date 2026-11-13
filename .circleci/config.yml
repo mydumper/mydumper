@@ -3118,7 +3118,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bionic_percona57:
@@ -3131,7 +3131,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bionic_percona80:
@@ -3144,7 +3144,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bionic_percona84:
@@ -3157,7 +3157,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bionic_mysql80:
@@ -3170,7 +3170,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bionic_mysql84:
@@ -3183,7 +3183,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bionic_mysql97:
@@ -3196,7 +3196,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bionic_debian_default:
@@ -3209,7 +3209,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bionic_ubuntu_default:
@@ -3222,7 +3222,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bionic_mariadb1011:
@@ -3236,7 +3236,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bionic_mariadb1006:
@@ -3250,7 +3250,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_tidb:
@@ -3263,7 +3263,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_percona57:
@@ -3276,7 +3276,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_percona80:
@@ -3289,7 +3289,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_percona84:
@@ -3302,7 +3302,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_mysql80:
@@ -3315,7 +3315,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_mysql84:
@@ -3328,7 +3328,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_mysql97:
@@ -3341,7 +3341,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_debian_default:
@@ -3354,7 +3354,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_ubuntu_default:
@@ -3367,7 +3367,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_mariadb1011:
@@ -3381,7 +3381,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_focal_mariadb1006:
@@ -3395,7 +3395,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_tidb:
@@ -3408,7 +3408,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_percona57:
@@ -3421,7 +3421,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_percona80:
@@ -3434,7 +3434,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_percona84:
@@ -3447,7 +3447,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_mysql80:
@@ -3460,7 +3460,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_mysql84:
@@ -3473,7 +3473,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_mysql97:
@@ -3486,7 +3486,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_debian_default:
@@ -3499,7 +3499,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_ubuntu_default:
@@ -3512,7 +3512,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_mariadb1011:
@@ -3526,7 +3526,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_jammy_mariadb1006:
@@ -3540,7 +3540,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_tidb:
@@ -3553,7 +3553,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_percona57:
@@ -3566,7 +3566,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_percona80:
@@ -3579,7 +3579,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_percona84:
@@ -3592,7 +3592,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_mysql80:
@@ -3605,7 +3605,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_mysql84:
@@ -3618,7 +3618,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_mysql97:
@@ -3631,7 +3631,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_debian_default:
@@ -3644,7 +3644,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_ubuntu_default:
@@ -3657,7 +3657,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_mariadb1011:
@@ -3671,7 +3671,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_noble_mariadb1006:
@@ -3685,7 +3685,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_tidb:
@@ -3698,7 +3698,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_percona57:
@@ -3711,7 +3711,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_percona80:
@@ -3724,7 +3724,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_percona84:
@@ -3737,7 +3737,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_mysql80:
@@ -3750,7 +3750,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_mysql84:
@@ -3763,7 +3763,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_mysql97:
@@ -3776,7 +3776,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_debian_default:
@@ -3789,7 +3789,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_ubuntu_default:
@@ -3802,7 +3802,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_mariadb1011:
@@ -3816,7 +3816,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_resolute_mariadb1006:
@@ -3830,7 +3830,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_tidb:
@@ -3843,7 +3843,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_percona57:
@@ -3856,7 +3856,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_percona80:
@@ -3869,7 +3869,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_percona84:
@@ -3882,7 +3882,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_mysql80:
@@ -3895,7 +3895,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_mysql84:
@@ -3908,7 +3908,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_mysql97:
@@ -3921,7 +3921,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_debian_default:
@@ -3934,7 +3934,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_ubuntu_default:
@@ -3947,7 +3947,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_mariadb1011:
@@ -3961,7 +3961,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bullseye_mariadb1006:
@@ -3975,7 +3975,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_tidb:
@@ -3988,7 +3988,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_percona57:
@@ -4001,7 +4001,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_percona80:
@@ -4014,7 +4014,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_percona84:
@@ -4027,7 +4027,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_mysql80:
@@ -4040,7 +4040,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_mysql84:
@@ -4053,7 +4053,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_mysql97:
@@ -4066,7 +4066,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_debian_default:
@@ -4079,7 +4079,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_ubuntu_default:
@@ -4092,7 +4092,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_mariadb1011:
@@ -4106,7 +4106,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_bookworm_mariadb1006:
@@ -4120,7 +4120,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_tidb:
@@ -4133,7 +4133,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_percona57:
@@ -4146,7 +4146,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_percona80:
@@ -4159,7 +4159,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_percona84:
@@ -4172,7 +4172,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_mysql80:
@@ -4185,7 +4185,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql80:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_mysql84:
@@ -4198,7 +4198,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql84:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_mysql97:
@@ -4211,7 +4211,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_mysql97:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_debian_default:
@@ -4224,7 +4224,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_debian_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_ubuntu_default:
@@ -4237,7 +4237,7 @@ commands:
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_ubuntu_default:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_mariadb1011:
@@ -4251,7 +4251,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
 
   prepare_trixie_mariadb1006:
@@ -4265,7 +4265,7 @@ commands:
     - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 
   prepare_el_percona57:
     parameters:

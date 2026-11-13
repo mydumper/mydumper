@@ -638,7 +638,7 @@ do
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_percona57:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 "
     # For Percona and MySQL will be the standar apt preparation
     for vendor in ${list_percona_version[@]} ${list_mysql_version[@]}
@@ -654,7 +654,7 @@ echo "
     - prepare_apt
     - run: sudo apt-get update
     - prepare_apt_${all_vendors[${vendor}_0]}:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 "
     done
 
@@ -673,7 +673,7 @@ echo "
     - run: sudo apt-get update
     - prepare_${all_vendors[${vendor}_0]}
     - prepare_apt_${all_vendors[${vendor}_0]}:
-      - test: << parameters.test >>
+        test: << parameters.test >>
 "
     done
 done
