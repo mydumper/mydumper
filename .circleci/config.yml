@@ -2615,16 +2615,40 @@ commands:
 #    - run: yum-config-manager --disable mariadb-maxscale || true
 
   prepare_el_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-community-client
 
   prepare_el_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-community-client
 
   prepare_el_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-community-client
 
   prepare_apt_debian_default:
     steps:
@@ -2635,23 +2659,51 @@ commands:
     - run: sudo apt-get install -y  default-libmysqlclient-dev
 
   prepare_apt_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo percona-release setup -y ps57
     - run: sudo apt-get install -y gdb screen time libperconaserverclient20 libperconaserverclient20-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y percona-server-client-5.7
 
   prepare_apt_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y percona-server-client
 
   prepare_apt_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
     - run: sudo percona-release setup -y ps-84-lts
     - run: sudo apt-get install -y gdb screen time libperconaserverclient24 libperconaserverclient24-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y percona-server-client
 
   prepare_apt_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.0-lts" | sudo debconf-set-selections
@@ -2659,8 +2711,16 @@ commands:
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mysql-client
 
   prepare_apt_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run:
         command: |
@@ -2670,8 +2730,16 @@ commands:
           echo "3" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
           sudo apt-get update
           sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mysql-client
 
   prepare_apt_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-9.7-lts" | sudo debconf-set-selections
@@ -2679,11 +2747,27 @@ commands:
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mysql-client
 
   prepare_apt_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: false
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mariadb-client
 
   prepare_el_mariadb1006:
     steps:
@@ -2692,9 +2776,17 @@ commands:
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 
   prepare_apt_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mariadb-client
 
   erase_packages_apt:
     steps:
@@ -3021,725 +3113,1169 @@ commands:
 
 
   prepare_bionic_tidb:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_bionic_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_bionic_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona80
+    - prepare_apt_percona80:
+      - test: << parameters.test >>
 
 
   prepare_bionic_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona84
+    - prepare_apt_percona84:
+      - test: << parameters.test >>
 
 
   prepare_bionic_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql80
+    - prepare_apt_mysql80:
+      - test: << parameters.test >>
 
 
   prepare_bionic_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql84
+    - prepare_apt_mysql84:
+      - test: << parameters.test >>
 
 
   prepare_bionic_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql97
+    - prepare_apt_mysql97:
+      - test: << parameters.test >>
 
 
   prepare_bionic_debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_debian_default
+    - prepare_apt_debian_default:
+      - test: << parameters.test >>
 
 
   prepare_bionic_ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_ubuntu_default
+    - prepare_apt_ubuntu_default:
+      - test: << parameters.test >>
 
 
   prepare_bionic_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
-    - prepare_apt_mariadb1011
+    - prepare_apt_mariadb1011:
+      - test: << parameters.test >>
 
 
   prepare_bionic_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
-    - prepare_apt_mariadb1006
+    - prepare_apt_mariadb1006:
+      - test: << parameters.test >>
 
 
   prepare_focal_tidb:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_focal_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_focal_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona80
+    - prepare_apt_percona80:
+      - test: << parameters.test >>
 
 
   prepare_focal_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona84
+    - prepare_apt_percona84:
+      - test: << parameters.test >>
 
 
   prepare_focal_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql80
+    - prepare_apt_mysql80:
+      - test: << parameters.test >>
 
 
   prepare_focal_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql84
+    - prepare_apt_mysql84:
+      - test: << parameters.test >>
 
 
   prepare_focal_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql97
+    - prepare_apt_mysql97:
+      - test: << parameters.test >>
 
 
   prepare_focal_debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_debian_default
+    - prepare_apt_debian_default:
+      - test: << parameters.test >>
 
 
   prepare_focal_ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_ubuntu_default
+    - prepare_apt_ubuntu_default:
+      - test: << parameters.test >>
 
 
   prepare_focal_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
-    - prepare_apt_mariadb1011
+    - prepare_apt_mariadb1011:
+      - test: << parameters.test >>
 
 
   prepare_focal_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
-    - prepare_apt_mariadb1006
+    - prepare_apt_mariadb1006:
+      - test: << parameters.test >>
 
 
   prepare_jammy_tidb:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_jammy_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_jammy_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona80
+    - prepare_apt_percona80:
+      - test: << parameters.test >>
 
 
   prepare_jammy_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona84
+    - prepare_apt_percona84:
+      - test: << parameters.test >>
 
 
   prepare_jammy_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql80
+    - prepare_apt_mysql80:
+      - test: << parameters.test >>
 
 
   prepare_jammy_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql84
+    - prepare_apt_mysql84:
+      - test: << parameters.test >>
 
 
   prepare_jammy_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql97
+    - prepare_apt_mysql97:
+      - test: << parameters.test >>
 
 
   prepare_jammy_debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_debian_default
+    - prepare_apt_debian_default:
+      - test: << parameters.test >>
 
 
   prepare_jammy_ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_ubuntu_default
+    - prepare_apt_ubuntu_default:
+      - test: << parameters.test >>
 
 
   prepare_jammy_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
-    - prepare_apt_mariadb1011
+    - prepare_apt_mariadb1011:
+      - test: << parameters.test >>
 
 
   prepare_jammy_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
-    - prepare_apt_mariadb1006
+    - prepare_apt_mariadb1006:
+      - test: << parameters.test >>
 
 
   prepare_noble_tidb:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_noble_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_noble_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona80
+    - prepare_apt_percona80:
+      - test: << parameters.test >>
 
 
   prepare_noble_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona84
+    - prepare_apt_percona84:
+      - test: << parameters.test >>
 
 
   prepare_noble_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql80
+    - prepare_apt_mysql80:
+      - test: << parameters.test >>
 
 
   prepare_noble_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql84
+    - prepare_apt_mysql84:
+      - test: << parameters.test >>
 
 
   prepare_noble_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql97
+    - prepare_apt_mysql97:
+      - test: << parameters.test >>
 
 
   prepare_noble_debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_debian_default
+    - prepare_apt_debian_default:
+      - test: << parameters.test >>
 
 
   prepare_noble_ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_ubuntu_default
+    - prepare_apt_ubuntu_default:
+      - test: << parameters.test >>
 
 
   prepare_noble_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
-    - prepare_apt_mariadb1011
+    - prepare_apt_mariadb1011:
+      - test: << parameters.test >>
 
 
   prepare_noble_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
-    - prepare_apt_mariadb1006
+    - prepare_apt_mariadb1006:
+      - test: << parameters.test >>
 
 
   prepare_resolute_tidb:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_resolute_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_resolute_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona80
+    - prepare_apt_percona80:
+      - test: << parameters.test >>
 
 
   prepare_resolute_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona84
+    - prepare_apt_percona84:
+      - test: << parameters.test >>
 
 
   prepare_resolute_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql80
+    - prepare_apt_mysql80:
+      - test: << parameters.test >>
 
 
   prepare_resolute_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql84
+    - prepare_apt_mysql84:
+      - test: << parameters.test >>
 
 
   prepare_resolute_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql97
+    - prepare_apt_mysql97:
+      - test: << parameters.test >>
 
 
   prepare_resolute_debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_debian_default
+    - prepare_apt_debian_default:
+      - test: << parameters.test >>
 
 
   prepare_resolute_ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_ubuntu_default
+    - prepare_apt_ubuntu_default:
+      - test: << parameters.test >>
 
 
   prepare_resolute_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
-    - prepare_apt_mariadb1011
+    - prepare_apt_mariadb1011:
+      - test: << parameters.test >>
 
 
   prepare_resolute_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
-    - prepare_apt_mariadb1006
+    - prepare_apt_mariadb1006:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_tidb:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona80
+    - prepare_apt_percona80:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona84
+    - prepare_apt_percona84:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql80
+    - prepare_apt_mysql80:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql84
+    - prepare_apt_mysql84:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql97
+    - prepare_apt_mysql97:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_debian_default
+    - prepare_apt_debian_default:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_ubuntu_default
+    - prepare_apt_ubuntu_default:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
-    - prepare_apt_mariadb1011
+    - prepare_apt_mariadb1011:
+      - test: << parameters.test >>
 
 
   prepare_bullseye_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
-    - prepare_apt_mariadb1006
+    - prepare_apt_mariadb1006:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_tidb:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona80
+    - prepare_apt_percona80:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona84
+    - prepare_apt_percona84:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql80
+    - prepare_apt_mysql80:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql84
+    - prepare_apt_mysql84:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql97
+    - prepare_apt_mysql97:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_debian_default
+    - prepare_apt_debian_default:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_ubuntu_default
+    - prepare_apt_ubuntu_default:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
-    - prepare_apt_mariadb1011
+    - prepare_apt_mariadb1011:
+      - test: << parameters.test >>
 
 
   prepare_bookworm_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
-    - prepare_apt_mariadb1006
+    - prepare_apt_mariadb1006:
+      - test: << parameters.test >>
 
 
   prepare_trixie_tidb:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_trixie_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 
 
   prepare_trixie_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona80
+    - prepare_apt_percona80:
+      - test: << parameters.test >>
 
 
   prepare_trixie_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona84
+    - prepare_apt_percona84:
+      - test: << parameters.test >>
 
 
   prepare_trixie_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql80
+    - prepare_apt_mysql80:
+      - test: << parameters.test >>
 
 
   prepare_trixie_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql84
+    - prepare_apt_mysql84:
+      - test: << parameters.test >>
 
 
   prepare_trixie_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_mysql97
+    - prepare_apt_mysql97:
+      - test: << parameters.test >>
 
 
   prepare_trixie_debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_debian_default
+    - prepare_apt_debian_default:
+      - test: << parameters.test >>
 
 
   prepare_trixie_ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_ubuntu_default
+    - prepare_apt_ubuntu_default:
+      - test: << parameters.test >>
 
 
   prepare_trixie_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1011
-    - prepare_apt_mariadb1011
+    - prepare_apt_mariadb1011:
+      - test: << parameters.test >>
 
 
   prepare_trixie_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_mariadb1006
-    - prepare_apt_mariadb1006
+    - prepare_apt_mariadb1006:
+      - test: << parameters.test >>
 
   prepare_el_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: percona-release setup -y ps57
     - run: dnf -y module disable mysql || true
@@ -3849,7 +4385,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_mysql80
+    - prepare_bionic_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -3870,7 +4407,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_mysql84
+    - prepare_bionic_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -3891,7 +4429,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_mysql97
+    - prepare_bionic_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -3912,7 +4451,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_debian_default
+    - prepare_bionic_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -3933,7 +4473,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_ubuntu_default
+    - prepare_bionic_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -3954,7 +4495,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_percona57
+    - prepare_bionic_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -3975,7 +4517,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_percona80
+    - prepare_bionic_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -3996,7 +4539,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_percona84
+    - prepare_bionic_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -4017,7 +4561,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_mariadb1011
+    - prepare_bionic_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -4038,7 +4583,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_mariadb1006
+    - prepare_bionic_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -4059,7 +4605,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_tidb
+    - prepare_bionic_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -4080,7 +4627,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_mysql80
+    - prepare_focal_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -4101,7 +4649,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_mysql84
+    - prepare_focal_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -4122,7 +4671,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_mysql97
+    - prepare_focal_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -4143,7 +4693,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_debian_default
+    - prepare_focal_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -4164,7 +4715,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_ubuntu_default
+    - prepare_focal_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -4185,7 +4737,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_percona57
+    - prepare_focal_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -4206,7 +4759,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_percona80
+    - prepare_focal_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -4227,7 +4781,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_percona84
+    - prepare_focal_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -4248,7 +4803,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_mariadb1011
+    - prepare_focal_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -4269,7 +4825,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_mariadb1006
+    - prepare_focal_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -4290,7 +4847,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_tidb
+    - prepare_focal_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -4311,7 +4869,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_mysql80
+    - prepare_jammy_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -4332,7 +4891,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_mysql84
+    - prepare_jammy_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -4353,7 +4913,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_mysql97
+    - prepare_jammy_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -4374,7 +4935,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_debian_default
+    - prepare_jammy_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -4395,7 +4957,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_ubuntu_default
+    - prepare_jammy_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -4416,7 +4979,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_percona57
+    - prepare_jammy_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -4437,7 +5001,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_percona80
+    - prepare_jammy_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -4458,7 +5023,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_percona84
+    - prepare_jammy_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -4479,7 +5045,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_mariadb1011
+    - prepare_jammy_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -4500,7 +5067,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_mariadb1006
+    - prepare_jammy_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -4521,7 +5089,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_tidb
+    - prepare_jammy_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -4542,7 +5111,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_mysql80
+    - prepare_noble_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -4563,7 +5133,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_mysql84
+    - prepare_noble_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -4584,7 +5155,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_mysql97
+    - prepare_noble_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -4605,7 +5177,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_debian_default
+    - prepare_noble_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -4626,7 +5199,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_ubuntu_default
+    - prepare_noble_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -4647,7 +5221,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_percona57
+    - prepare_noble_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -4668,7 +5243,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_percona80
+    - prepare_noble_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -4689,7 +5265,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_percona84
+    - prepare_noble_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -4710,7 +5287,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_mariadb1011
+    - prepare_noble_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -4731,7 +5309,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_mariadb1006
+    - prepare_noble_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -4752,7 +5331,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_tidb
+    - prepare_noble_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -4773,7 +5353,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_mysql80
+    - prepare_resolute_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -4794,7 +5375,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_mysql84
+    - prepare_resolute_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -4815,7 +5397,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_mysql97
+    - prepare_resolute_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -4836,7 +5419,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_debian_default
+    - prepare_resolute_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -4857,7 +5441,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_ubuntu_default
+    - prepare_resolute_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -4878,7 +5463,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_percona57
+    - prepare_resolute_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -4899,7 +5485,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_percona80
+    - prepare_resolute_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -4920,7 +5507,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_percona84
+    - prepare_resolute_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -4941,7 +5529,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_mariadb1011
+    - prepare_resolute_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -4962,7 +5551,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_mariadb1006
+    - prepare_resolute_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -4983,7 +5573,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_resolute_tidb
+    - prepare_resolute_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -5004,7 +5595,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_mysql80
+    - prepare_bullseye_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -5025,7 +5617,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_mysql84
+    - prepare_bullseye_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -5046,7 +5639,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_mysql97
+    - prepare_bullseye_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -5067,7 +5661,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_debian_default
+    - prepare_bullseye_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -5088,7 +5683,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_ubuntu_default
+    - prepare_bullseye_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -5109,7 +5705,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_percona57
+    - prepare_bullseye_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -5130,7 +5727,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_percona80
+    - prepare_bullseye_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -5151,7 +5749,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_percona84
+    - prepare_bullseye_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -5172,7 +5771,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_mariadb1011
+    - prepare_bullseye_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -5193,7 +5793,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_mariadb1006
+    - prepare_bullseye_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -5214,7 +5815,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_tidb
+    - prepare_bullseye_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -5235,7 +5837,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_mysql80
+    - prepare_bookworm_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -5256,7 +5859,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_mysql84
+    - prepare_bookworm_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -5277,7 +5881,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_mysql97
+    - prepare_bookworm_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -5298,7 +5903,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_debian_default
+    - prepare_bookworm_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -5319,7 +5925,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_ubuntu_default
+    - prepare_bookworm_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -5340,7 +5947,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_percona57
+    - prepare_bookworm_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -5361,7 +5969,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_percona80
+    - prepare_bookworm_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -5382,7 +5991,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_percona84
+    - prepare_bookworm_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -5403,7 +6013,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_mariadb1011
+    - prepare_bookworm_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -5424,7 +6035,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_mariadb1006
+    - prepare_bookworm_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -5445,7 +6057,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_tidb
+    - prepare_bookworm_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -5466,7 +6079,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_mysql80
+    - prepare_trixie_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -5487,7 +6101,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_mysql84
+    - prepare_trixie_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -5508,7 +6123,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_mysql97
+    - prepare_trixie_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -5529,7 +6145,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_debian_default
+    - prepare_trixie_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -5550,7 +6167,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_ubuntu_default
+    - prepare_trixie_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -5571,7 +6189,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_percona57
+    - prepare_trixie_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -5592,7 +6211,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_percona80
+    - prepare_trixie_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -5613,7 +6233,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_percona84
+    - prepare_trixie_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -5634,7 +6255,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_mariadb1011
+    - prepare_trixie_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -5655,7 +6277,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_mariadb1006
+    - prepare_trixie_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -5676,7 +6299,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_tidb
+    - prepare_trixie_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -5697,7 +6321,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_mysql80
+    - prepare_el7_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -5718,7 +6343,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_mysql84
+    - prepare_el7_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -5739,7 +6365,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_mysql97
+    - prepare_el7_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -5760,7 +6387,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_debian_default
+    - prepare_el7_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -5781,7 +6409,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_ubuntu_default
+    - prepare_el7_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -5802,7 +6431,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_percona57
+    - prepare_el7_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -5823,7 +6453,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_percona80
+    - prepare_el7_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -5844,7 +6475,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_percona84
+    - prepare_el7_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -5865,7 +6497,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_mariadb1011
+    - prepare_el7_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -5886,7 +6519,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_mariadb1006
+    - prepare_el7_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -5907,7 +6541,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_tidb
+    - prepare_el7_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -5928,7 +6563,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_mysql80
+    - prepare_el8_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -5949,7 +6585,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_mysql84
+    - prepare_el8_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -5970,7 +6607,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_mysql97
+    - prepare_el8_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -5991,7 +6629,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_debian_default
+    - prepare_el8_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -6012,7 +6651,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_ubuntu_default
+    - prepare_el8_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -6033,7 +6673,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_percona57
+    - prepare_el8_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -6054,7 +6695,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_percona80
+    - prepare_el8_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -6075,7 +6717,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_percona84
+    - prepare_el8_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -6096,7 +6739,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_mariadb1011
+    - prepare_el8_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -6117,7 +6761,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_mariadb1006
+    - prepare_el8_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -6138,7 +6783,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_tidb
+    - prepare_el8_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -6159,7 +6805,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_mysql80
+    - prepare_el9_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -6180,7 +6827,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_mysql84
+    - prepare_el9_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -6201,7 +6849,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_mysql97
+    - prepare_el9_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -6222,7 +6871,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_debian_default
+    - prepare_el9_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -6243,7 +6893,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_ubuntu_default
+    - prepare_el9_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -6264,7 +6915,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_percona57
+    - prepare_el9_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -6285,7 +6937,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_percona80
+    - prepare_el9_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -6306,7 +6959,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_percona84
+    - prepare_el9_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -6327,7 +6981,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_mariadb1011
+    - prepare_el9_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -6348,7 +7003,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_mariadb1006
+    - prepare_el9_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -6369,7 +7025,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_tidb
+    - prepare_el9_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -6390,7 +7047,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_mysql80
+    - prepare_el10_mysql80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]0[.]'
@@ -6411,7 +7069,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_mysql84
+    - prepare_el10_mysql84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
@@ -6432,7 +7091,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_mysql97
+    - prepare_el10_mysql97:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
@@ -6453,7 +7113,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_debian_default
+    - prepare_el10_debian_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|MariaDB) [0-9]'
@@ -6474,7 +7135,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_ubuntu_default
+    - prepare_el10_ubuntu_default:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
@@ -6495,7 +7157,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_percona57
+    - prepare_el10_percona57:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'
@@ -6516,7 +7179,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_percona80
+    - prepare_el10_percona80:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
@@ -6537,7 +7201,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_percona84
+    - prepare_el10_percona84:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]4[.]'
@@ -6558,7 +7223,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_mariadb1011
+    - prepare_el10_mariadb1011:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
@@ -6579,7 +7245,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_mariadb1006
+    - prepare_el10_mariadb1006:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
@@ -6600,7 +7267,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_tidb
+    - prepare_el10_tidb:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 5[.]7[.]'

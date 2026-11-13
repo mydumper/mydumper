@@ -344,16 +344,40 @@ commands:
 #    - run: yum-config-manager --disable mariadb-maxscale || true
 
   prepare_el_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-community-client
 
   prepare_el_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-community-client
 
   prepare_el_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-community-client
 
   prepare_apt_debian_default:
     steps:
@@ -364,23 +388,51 @@ commands:
     - run: sudo apt-get install -y  default-libmysqlclient-dev
 
   prepare_apt_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo percona-release setup -y ps57
     - run: sudo apt-get install -y gdb screen time libperconaserverclient20 libperconaserverclient20-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y percona-server-client-5.7
 
   prepare_apt_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y percona-server-client
 
   prepare_apt_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
     - run: sudo percona-release setup -y ps-84-lts
     - run: sudo apt-get install -y gdb screen time libperconaserverclient24 libperconaserverclient24-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y percona-server-client
 
   prepare_apt_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.0-lts" | sudo debconf-set-selections
@@ -388,8 +440,16 @@ commands:
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mysql-client
 
   prepare_apt_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run:
         command: |
@@ -406,8 +466,16 @@ EOF
 cat <<EOF
           sudo apt-get update
           sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mysql-client
 
   prepare_apt_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-9.7-lts" | sudo debconf-set-selections
@@ -415,11 +483,27 @@ cat <<EOF
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mysql-client
 
   prepare_apt_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: false
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mariadb-client
 
   prepare_el_mariadb1006:
     steps:
@@ -428,9 +512,17 @@ cat <<EOF
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 
   prepare_apt_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mariadb-client
 
   erase_packages_apt:
     steps:
@@ -541,22 +633,32 @@ do
     vendor=tidb
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+      - test: << parameters.test >>
 "
     # For Percona and MySQL will be the standar apt preparation
     for vendor in ${list_percona_version[@]} ${list_mysql_version[@]}
     do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_${all_vendors[${vendor}_0]}
+    - prepare_apt_${all_vendors[${vendor}_0]}:
+      - test: << parameters.test >>
 "
     done
 
@@ -565,18 +667,27 @@ echo "
     do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    parameters:
+      test:
+        type: boolean
+        default: true
     steps:
     - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_${all_vendors[${vendor}_0]}
-    - prepare_apt_${all_vendors[${vendor}_0]}
+    - prepare_apt_${all_vendors[${vendor}_0]}:
+      - test: << parameters.test >>
 "
     done
 done
 
 cat <<EOF
   prepare_el_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: percona-release setup -y ps57
     - run: dnf -y module disable mysql || true
@@ -693,7 +804,8 @@ do
     resource_class: large
     steps:
     - checkout
-    - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '${all_vendors[${vendor}_8]}'
