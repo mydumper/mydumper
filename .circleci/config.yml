@@ -2805,7 +2805,7 @@ commands:
 
   erase_packages_apt:
     steps:
-    - run: sudo apt remove $(dpkg -l | egrep -i "percona|mysql|mariadb" | awk  '{print $2}' | egrep -v "release|apt") -y
+    - run: sudo apt remove $(dpkg -l | egrep -i "percona|mysql|mariadb" | awk  '{print $2}' | egrep -v "release|apt|common") -y
 
   prepare_el7_mariadb1011:
     steps:
