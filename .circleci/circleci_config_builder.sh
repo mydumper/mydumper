@@ -179,7 +179,7 @@ all_os[${os}_0]="el10"
 all_os[${os}_1]="almalinux:10"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql84 mysql97 percona57 percona80 mariadb1011 mariadb1006"
+all_os[${os}_4]="percona80 mysql84 mysql97 mariadb1011 mariadb1006"
 
 os=bullseye
 all_os[${os}_0]="bullseye"
@@ -357,11 +357,11 @@ commands:
 
   prepare_apt_debian_default:
     steps:
-    - run: sudo apt-get install -y  default-libmysqlclient-dev -core
+    - run: sudo apt-get install -y  default-libmysqlclient-dev 
 
   prepare_apt_ubuntu_default:
     steps:
-    - run: sudo apt-get install -y  default-libmysqlclient-dev -core
+    - run: sudo apt-get install -y  default-libmysqlclient-dev
 
   prepare_apt_percona57:
     steps:
@@ -435,7 +435,7 @@ cat <<EOF
   erase_packages_apt:
     steps:
     - run: sudo apt remove \$(dpkg -l | egrep -i "percona|mysql|mariadb" | awk  '{print \$2}' | egrep -v "release|apt") -y
-    - run: sudo apt remove -y  default-libmysqlclient-dev -core libperconaserverclient20 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev libperconaserverclient24 libperconaserverclient24-dev  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-common mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt remove -y  default-libmysqlclient-dev libperconaserverclient20 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev libperconaserverclient24 libperconaserverclient24-dev  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-common mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
 
   prepare_el7_mariadb1011:
     steps:

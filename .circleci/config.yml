@@ -2628,11 +2628,11 @@ commands:
 
   prepare_apt_debian_default:
     steps:
-    - run: sudo apt-get install -y  default-libmysqlclient-dev -core
+    - run: sudo apt-get install -y  default-libmysqlclient-dev 
 
   prepare_apt_ubuntu_default:
     steps:
-    - run: sudo apt-get install -y  default-libmysqlclient-dev -core
+    - run: sudo apt-get install -y  default-libmysqlclient-dev
 
   prepare_apt_percona57:
     steps:
@@ -2699,7 +2699,7 @@ commands:
   erase_packages_apt:
     steps:
     - run: sudo apt remove $(dpkg -l | egrep -i "percona|mysql|mariadb" | awk  '{print $2}' | egrep -v "release|apt") -y
-    - run: sudo apt remove -y  default-libmysqlclient-dev -core libperconaserverclient20 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev libperconaserverclient24 libperconaserverclient24-dev  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-common mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt remove -y  default-libmysqlclient-dev libperconaserverclient20 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev libperconaserverclient24 libperconaserverclient24-dev  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-common mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
 
   prepare_el7_mariadb1011:
     steps:
@@ -7099,6 +7099,11 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - prepare_el10_percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+        expected_version: '(MySQL|Percona) 8[.]0[.]'
+    - checkout
     - prepare_el10_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -7108,16 +7113,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
-    - checkout
-    - prepare_el10_percona57
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: '(MySQL|Percona) 5[.]7[.]'
-    - checkout
-    - prepare_el10_percona80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
     - prepare_el10_mariadb1011
     - compile_and_test_mydumper:
