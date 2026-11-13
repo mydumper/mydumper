@@ -410,11 +410,14 @@ commands:
         default: false
     steps:
     - run: sudo percona-release setup -y ps57
-    - run: sudo apt-get install -y gdb screen time libperconaserverclient20 libperconaserverclient20-dev
     - when:
         condition: << parameters.test >>
         steps:
-        - run: sudo apt-get install -y percona-server-client-5.7
+        - run: sudo apt-get install -y gdb screen time libperconaserverclient20 libperconaserverclient20-dev percona-server-client-5.7
+    - unless:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y gdb screen time libperconaserverclient20 libperconaserverclient20-dev
 
   prepare_apt_percona80:
     parameters:
