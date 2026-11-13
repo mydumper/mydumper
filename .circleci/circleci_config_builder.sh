@@ -648,7 +648,7 @@ do
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     steps:
     - erase_packages_apt
     - prepare_apt
@@ -664,7 +664,7 @@ echo "
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     steps:
     - erase_packages_apt
     - prepare_apt
@@ -682,7 +682,7 @@ echo "
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     steps:
     - erase_packages_apt
     - prepare_apt
