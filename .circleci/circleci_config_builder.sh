@@ -144,14 +144,14 @@ all_os[${os}_0]="noble"
 all_os[${os}_1]="cimg/base:current-24.04"
 all_os[${os}_2]="percona-release_latest.noble_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 ubuntu_default percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql80 mysql84 ubuntu_default percona80 percona84 mariadb1011"
 
 os=resolute
 all_os[${os}_0]="resolute"
 all_os[${os}_1]="cimg/base:current-26.04"
 all_os[${os}_2]="percona-release_latest.resolute_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql84 mysql97 ubuntu_default percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql84 mysql97 ubuntu_default percona84 mariadb1011 mariadb1006"
 
 os=el7
 all_os[${os}_0]="el7"
