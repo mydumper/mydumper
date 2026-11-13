@@ -493,10 +493,6 @@ cat <<EOF
       test:
         type: boolean
         default: false
-    parameters:
-      test:
-        type: boolean
-        default: false
     steps:
     - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
