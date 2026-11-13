@@ -435,7 +435,6 @@ cat <<EOF
   erase_packages_apt:
     steps:
     - run: sudo apt remove \$(dpkg -l | egrep -i "percona|mysql|mariadb" | awk  '{print \$2}' | egrep -v "release|apt") -y
-    - run: sudo apt remove -y  default-libmysqlclient-dev libperconaserverclient20 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev libperconaserverclient24 libperconaserverclient24-dev  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-common mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
 
   prepare_el7_mariadb1011:
     steps:
@@ -459,8 +458,7 @@ cat <<EOF
 
   erase_packages_el:
     steps:
-    - run: sudo yum -y erase \$(rpm -qa | egrep -i "percona|mysql|mariadb" | grep -v "percona-release") 
-    - run: sudo yum -y erase mysql-community-common-plugins mysql-community-libs mysql-community-devel Percona-Server-devel-57 Percona-Server-shared-57 percona-server-devel MariaDB-compat MariaDB-devel
+    - run: sudo yum -y erase \$(rpm -qa | egrep -i "percona|mysql|mariadb" | grep -v "percona-release") || true
 EOF
 
 
