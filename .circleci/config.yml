@@ -2651,12 +2651,28 @@ commands:
         - run: sudo yum install -y mysql-community-client
 
   prepare_apt_debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo apt-get install -y  default-libmysqlclient-dev 
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-client
 
   prepare_apt_ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo apt-get install -y  default-libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-client
 
   prepare_apt_percona57:
     parameters:
