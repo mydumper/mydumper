@@ -2682,8 +2682,8 @@ commands:
 
   prepare_apt_mariadb1006:
     steps:
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   prepare_el_mariadb1006:
     steps:
@@ -2693,8 +2693,8 @@ commands:
 
   prepare_apt_mariadb1011:
     steps:
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   erase_packages_apt:
     steps:
@@ -6749,11 +6749,6 @@ jobs:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
     - checkout
-    - prepare_noble_percona57
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: '(MySQL|Percona) 5[.]7[.]'
-    - checkout
     - prepare_noble_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6805,11 +6800,6 @@ jobs:
         test: << parameters.test >>
         expected_version: 'MySQL [0-9]'
     - checkout
-    - prepare_resolute_percona57
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: '(MySQL|Percona) 5[.]7[.]'
-    - checkout
     - prepare_resolute_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6846,26 +6836,6 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MySQL 8[.]0[.]'
-    - checkout
-    - prepare_bullseye_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
-    - checkout
-    - prepare_bullseye_mysql97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MySQL 9[.]7[.]'
-    - checkout
-    - prepare_bullseye_debian_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: '(MySQL|MariaDB) [0-9]'
-    - checkout
     - prepare_bullseye_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -6875,11 +6845,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
-    - checkout
-    - prepare_bullseye_percona84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: '(MySQL|Percona) 8[.]4[.]'
     - checkout
     - prepare_bullseye_mariadb1011
     - compile_and_test_mydumper:
@@ -7051,16 +7016,6 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MySQL 8[.]4[.]'
-    - checkout
-    - prepare_el9_mysql97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MySQL 9[.]7[.]'
-    - checkout
     - prepare_el9_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -7070,6 +7025,16 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
+    - checkout
+    - prepare_el9_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+        expected_version: 'MySQL 8[.]4[.]'
+    - checkout
+    - prepare_el9_mysql97
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+        expected_version: 'MySQL 9[.]7[.]'
     - checkout
     - prepare_el9_mariadb1011
     - compile_and_test_mydumper:
@@ -7116,11 +7081,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
-    - checkout
-    - prepare_el10_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 10[.]6[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:

@@ -144,14 +144,14 @@ all_os[${os}_0]="noble"
 all_os[${os}_1]="cimg/base:current-24.04"
 all_os[${os}_2]="percona-release_latest.noble_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql80 mysql84 ubuntu_default percona80 percona84 mariadb1011 mariadb1006"
 
 os=resolute
 all_os[${os}_0]="resolute"
 all_os[${os}_1]="cimg/base:current-26.04"
 all_os[${os}_2]="percona-release_latest.resolute_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql84 mysql97 ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql84 mysql97 ubuntu_default percona80 percona84 mariadb1011 mariadb1006"
 
 os=el7
 all_os[${os}_0]="el7"
@@ -172,21 +172,21 @@ all_os[${os}_0]="el9"
 all_os[${os}_1]="almalinux:9"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql84 mysql97 percona57 percona80 mariadb1011 mariadb1006"
+all_os[${os}_4]="percona57 percona80 mysql84 mysql97 mariadb1011 mariadb1006"
 
 os=el10
 all_os[${os}_0]="el10"
 all_os[${os}_1]="almalinux:10"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="percona80 mysql84 mysql97 mariadb1011 mariadb1006"
+all_os[${os}_4]="percona80 mysql84 mysql97 mariadb1011"
 
 os=bullseye
 all_os[${os}_0]="bullseye"
 all_os[${os}_1]="debian:bullseye"
 all_os[${os}_2]="percona-release_latest.bullseye_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="percona57 percona80 mariadb1011 mariadb1006"
 
 os=bookworm
 all_os[${os}_0]="bookworm"
@@ -418,8 +418,8 @@ cat <<EOF
 
   prepare_apt_mariadb1006:
     steps:
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   prepare_el_mariadb1006:
     steps:
@@ -429,8 +429,8 @@ cat <<EOF
 
   prepare_apt_mariadb1011:
     steps:
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   erase_packages_apt:
     steps:
