@@ -459,7 +459,7 @@ cat <<EOF
 
   erase_packages_el:
     steps:
-    - run: sudo yum -y erase \$(rpm -qa | egrep -i "percona|mysql|mariadb") 
+    - run: sudo yum -y erase \$(rpm -qa | egrep -i "percona|mysql|mariadb" | grep -v "percona-release") 
     - run: sudo yum -y erase mysql-community-common-plugins mysql-community-libs mysql-community-devel Percona-Server-devel-57 Percona-Server-shared-57 percona-server-devel MariaDB-compat MariaDB-devel
 EOF
 
