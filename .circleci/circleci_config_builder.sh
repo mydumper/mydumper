@@ -389,7 +389,7 @@ commands:
     - when:
         condition: << parameters.test >>
         steps:
-        - run: sudo yum install -y mysql-client
+        - run: sudo apt install -y mysql-client
 
   prepare_apt_ubuntu_default:
     parameters:
@@ -401,7 +401,7 @@ commands:
     - when:
         condition: << parameters.test >>
         steps:
-        - run: sudo yum install -y mysql-client
+        - run: sudo apt install -y mysql-client
 
   prepare_apt_percona57:
     parameters:
