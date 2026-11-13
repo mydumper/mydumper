@@ -137,7 +137,7 @@ all_os[${os}_0]="jammy"
 all_os[${os}_1]="cimg/base:current-22.04"
 all_os[${os}_2]="percona-release_latest.jammy_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 mysql97 debian_default ubuntu_default percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="percona57 percona80 mysql84 mysql97 ubuntu_default mariadb1011 mariadb1006"
 
 os=noble
 all_os[${os}_0]="noble"
@@ -193,7 +193,7 @@ all_os[${os}_0]="bookworm"
 all_os[${os}_1]="debian:bookworm"
 all_os[${os}_2]="percona-release_latest.bookworm_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql84 debian_default percona57 percona80 percona84 mariadb1011"
+all_os[${os}_4]="percona57 percona80 mysql84 debian_default mariadb1011"
 
 os=trixie
 all_os[${os}_0]="trixie"
@@ -345,40 +345,40 @@ commands:
 
   prepare_el_mysql80:
     steps:
-    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
 
   prepare_el_mysql84:
     steps:
-    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
 
   prepare_el_mysql97:
     steps:
-    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
 
   prepare_apt_debian_default:
     steps:
-    - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
+    - run: sudo apt-get install -y  default-libmysqlclient-dev -core
 
   prepare_apt_ubuntu_default:
     steps:
-    - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
+    - run: sudo apt-get install -y  default-libmysqlclient-dev -core
 
   prepare_apt_percona57:
     steps:
     - run: sudo percona-release setup -y ps57
-    - run: sudo apt-get install -y gdb screen time libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
+    - run: sudo apt-get install -y gdb screen time libperconaserverclient20-5.7 libperconaserverclient20-dev
 
   prepare_apt_percona80:
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
     - run: sudo percona-release setup -y ps80
-    - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+    - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev
 
   prepare_apt_percona84:
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
     - run: sudo percona-release setup -y ps-84-lts
-    - run: sudo apt-get install -y gdb screen time libperconaserverclient24 libperconaserverclient24-dev percona-server-client
+    - run: sudo apt-get install -y gdb screen time libperconaserverclient24 libperconaserverclient24-dev
 
   prepare_apt_mysql80:
     steps:
@@ -435,7 +435,7 @@ cat <<EOF
   erase_packages_apt:
     steps:
     - run: sudo apt remove \$(dpkg -l | egrep -i "percona|mysql|mariadb" | awk  '{print \$2}' | egrep -v "release|apt") -y
-    - run: sudo apt remove -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev percona-server-client libperconaserverclient24 libperconaserverclient24-dev percona-server-client  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-common mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt remove -y  default-libmysqlclient-dev -core libperconaserverclient20-5.7 libperconaserverclient20-dev libperconaserverclient21 libperconaserverclient21-dev libperconaserverclient24 libperconaserverclient24-dev  libmysqlclient21 libmysqlclient-dev mysql-client libmysqlclient24 libmysqlclient-dev mysql-common mysql-client mysql-client-core mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
 
   prepare_el7_mariadb1011:
     steps:
@@ -460,7 +460,7 @@ cat <<EOF
   erase_packages_el:
     steps:
     - run: sudo yum -y erase \$(rpm -qa | egrep -i "percona|mysql|mariadb") 
-    - run: sudo yum -y erase mysql-community-common mysql-community-client-plugins mysql-community-libs mysql-community-devel mysql-community-client Percona-Server-devel-57 Percona-Server-client-57 Percona-Server-shared-57 percona-server-devel percona-server-client MariaDB-compat MariaDB-devel
+    - run: sudo yum -y erase mysql-community-common-plugins mysql-community-libs mysql-community-devel Percona-Server-devel-57 Percona-Server-shared-57 percona-server-devel MariaDB-compat MariaDB-devel
 EOF
 
 
@@ -582,7 +582,7 @@ cat <<EOF
     steps:
     - run: percona-release setup -y ps57
     - run: dnf -y module disable mysql || true
-    - run: yum -y install libasan gdb screen time Percona-Server-devel-57 Percona-Server-client-57
+    - run: yum -y install libasan gdb screen time Percona-Server-devel-57
 
   prepare_el_tidb:
     steps:
@@ -592,13 +592,13 @@ cat <<EOF
     steps:
     - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
     - run: percona-release setup -y ps80
-    - run: yum -y install libasan gdb screen time percona-server-devel percona-server-client
+    - run: yum -y install libasan gdb screen time percona-server-devel
 
   prepare_el_percona84:
     steps:
     - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
     - run: percona-release setup -y ps84-lts
-    - run: yum -y install libasan gdb screen time percona-server-devel percona-server-client
+    - run: yum -y install libasan gdb screen time percona-server-devel
 
   compile:
     parameters:
