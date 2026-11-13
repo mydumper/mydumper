@@ -387,7 +387,7 @@ commands:
     - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
-    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev mysql-client
+    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev
 
   prepare_apt_mysql84:
     steps:
@@ -405,7 +405,7 @@ EOF
 #          gpg --output /usr/share/keyrings/mysql-apt-config.gpg --export BCA43417C3B485DD128EC6D4B7B3B788A8D3785C
 cat <<EOF
           sudo apt-get update
-          sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
+          sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
 
   prepare_apt_mysql97:
     steps:
@@ -414,7 +414,7 @@ cat <<EOF
     - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
-    - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
+    - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
 
   prepare_apt_mariadb1006:
     steps:
