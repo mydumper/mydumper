@@ -11,6 +11,7 @@ guint max_threads_per_table = 1, num_threads = 1, retry_count = 0;
 gboolean schema_checksums, data_checksums = FALSE;
 gboolean skip_view_checksums = FALSE, skip_table_checksums = FALSE;
 gboolean skip_index_checksums, skip_trigger_checksums, skip_data_checksums = FALSE;
+gboolean skip_indexes = FALSE;
 
 void trace(const char *fmt, ...) { (void)fmt; }
 void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboolean force)
@@ -59,7 +60,7 @@ static void check(gboolean schemas, gboolean skip_index, gboolean skip_trigger, 
   struct db_table *table = NULL;
   g_assert_true(append_new_db_table(&table, &database, g_strdup(table_name), table_name, FALSE));
   g_assert_cmpint(table->checksum.skip_trigger, ==, table_override || !schemas || skip_trigger);
-  g_assert_cmpint(table->checksum.skip_index, ==, !schemas || skip_index);
+  g_assert_cmpint(table->checksum.skip_index, ==, !schemas || skip_index || skip_indexes);
   g_free(table->source_table_name);
   g_free(table->table_filename);
   g_mutex_free(table->mutex);
@@ -80,11 +81,15 @@ int main(int argc, char **argv)
   /* Both regressions are covered before the remaining flag combinations. */
   check(TRUE, FALSE, TRUE, FALSE);
   check(TRUE, TRUE, FALSE, FALSE);
+  /* --skip-indexes: the indexes are not created, so they must not be verified (#2292). */
+  skip_indexes = TRUE;
+  check(TRUE, FALSE, FALSE, FALSE);
+  skip_indexes = FALSE;
   for (int schemas = 0; schemas <= 1; schemas++)
     for (int index = 0; index <= 1; index++)
       for (int trigger = 0; trigger <= 1; trigger++)
         for (int override = 0; override <= 1; override++)
           check(schemas, index, trigger, override);
-  g_print("18 trigger/index checksum flag cases passed.\n");
+  g_print("19 trigger/index checksum flag cases passed.\n");
   return 0;
 }
