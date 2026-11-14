@@ -134,6 +134,12 @@ OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
 
 enable_testing()
 
+add_executable(test_global_variables_rollback test/unit/test_global_variables_rollback.c src/common.c)
+target_compile_options(test_global_variables_rollback PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
+set_property(TARGET test_global_variables_rollback APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
+target_link_libraries(test_global_variables_rollback ${GLIB2_LIBRARIES} ${PCRE2_LIBRARY})
+add_test(NAME global_variables_rollback COMMAND test_global_variables_rollback)
+
 add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c)
 # Older CMake adds -rdynamic; hidden symbols let the linker discard untested code.
 target_compile_options(test_restore_connection_loss PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)

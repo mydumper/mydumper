@@ -517,12 +517,12 @@ void set_global_rollback_from_hash(GString *ss, GString *sr, GHashTable *set_has
     g_hash_table_iter_next(&iter, (gpointer *)&lkey, (gpointer *)&e);
     g_string_append_printf(stmp, " @%s", lkey);
     g_string_append_printf(sr, "SET GLOBAL %s = @%s ;\n", lkey, lkey);
-    g_string_append_printf(ss, " @@%s", lkey);
+    g_string_append_printf(ss, " @@GLOBAL.%s", lkey);
     while (g_hash_table_iter_next(&iter, (gpointer *)&lkey, (gpointer *)&e))
     {
       g_string_append_printf(stmp, ", @%s", lkey);
       g_string_append_printf(sr, "SET GLOBAL %s = @%s ;\n", lkey, lkey);
-      g_string_append_printf(ss, ", @@%s", lkey);
+      g_string_append_printf(ss, ", @@GLOBAL.%s", lkey);
     }
     g_string_append_printf(ss, "%s ;\n", stmp->str);
   }
