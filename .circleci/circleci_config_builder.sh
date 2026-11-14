@@ -391,14 +391,14 @@ cat <<EOF
 
   prepare_el7_mariadb1011:
     steps:
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.11.11"
+    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --skip-os-eol-check --mariadb-server-version "mariadb-10.11.11"
 #    - run: yum-config-manager --disable mariadb-maxscale || true
     - run: sudo yum install -y libasan gdb screen time MariaDB-devel
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 
   prepare_el7_mariadb1006:
     steps:
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.6.21"
+    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --skip-os-eol-check --mariadb-server-version "mariadb-10.6.21"
 #    - run: yum-config-manager --disable mariadb-maxscale || true
     - run: sudo yum install -y libasan gdb screen time MariaDB-devel
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
@@ -417,8 +417,8 @@ do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:"
-        if [[ "$os" == "el10" && "$vendor" == mysql* ]]; then
-            echo "    - run: sudo yum install -y https://repo.mysql.com/mysql84-community-release-el10.rpm
+        if [[ "$os:$vendor" == el9:mysql84 || "$os:$vendor" == el10:mysql* ]]; then
+            echo "    - run: sudo yum install -y https://repo.mysql.com/mysql84-community-release-${os}.rpm
     - run: sudo rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2025
     - run: sudo yum --disablerepo='mysql*' --enablerepo=mysql-8.4-lts-community install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client"
         else
@@ -433,9 +433,13 @@ do
   echo "
   prepare_el8_${all_vendors[${vendor}_0]}:
     steps:
-    - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
-"
+    - run: sudo dnf module disable mysql -y"
+  if [[ "$vendor" == percona57 || "$vendor" == percona80 ]]; then
+    echo "    - prepare_el_${vendor}"
+  else
+    echo "    - prepare_el_mysql80"
+  fi
+  echo
 done
 
 for os in el8 el9 el10
