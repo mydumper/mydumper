@@ -320,6 +320,60 @@ do
     done
 done
 
+## ALL DATABASES EXECUTOR: resolute builder + one server per database image,
+## each one listening on its own port (MYSQL_PORT_<vendor> in the builder)
+all_databases_os=resolute
+all_databases_vendors=( "${list_mysql_version[@]:0:3}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" tidb )
+all_databases_first_port=3310
+
+port=${all_databases_first_port}
+echo "
+  ${all_databases_os}_all_databases:
+    docker:
+    - image: mydumper/mydumper-builder-${all_databases_os}
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:"
+for vendor in ${all_databases_vendors[@]}
+do
+    echo "        MYSQL_PORT_${all_vendors[${vendor}_0]}: ${port}"
+    port=$(( port + 1 ))
+done
+
+port=${all_databases_first_port}
+server_id=1
+for vendor in ${all_databases_vendors[@]}
+do
+    # Start from the same server command as the other executors and add the
+    # options needed to run every server side by side on 127.0.0.1
+    case ${vendor} in
+      tidb)
+        command="[-P, \"${port}\"]" ;;
+      *)
+        command="${all_vendors[${vendor}_5]:-${db_server_command}}"
+        command="${command/--server-id=1/--server-id=${server_id}}"
+        command="${command%]}, --port=${port}"
+        case ${vendor} in
+          mysql*|percona80|percona84) command="${command}, --mysqlx=OFF" ;;
+        esac
+        command="${command}]" ;;
+    esac
+    echo "    - image: ${all_vendors[${vendor}_1]}
+      command: ${command}
+      environment:"
+    case ${vendor} in
+      mysql*) ;;
+      *) echo "        MYSQL_USER: root" ;;
+    esac
+    echo "        MYSQL_ALLOW_EMPTY_PASSWORD: true"
+    port=$(( port + 1 ))
+    server_id=$(( server_id + 1 ))
+done
+echo "    working_directory: /tmp/src/mydumper"
+
 # COMMANDS
 
 

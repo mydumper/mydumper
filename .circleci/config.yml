@@ -2598,6 +2598,68 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  resolute_all_databases:
+    docker:
+    - image: mydumper/mydumper-builder-resolute
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+        MYSQL_PORT_mysql80: 3310
+        MYSQL_PORT_mysql84: 3311
+        MYSQL_PORT_mysql97: 3312
+        MYSQL_PORT_percona57: 3313
+        MYSQL_PORT_percona80: 3314
+        MYSQL_PORT_percona84: 3315
+        MYSQL_PORT_mariadb1011: 3316
+        MYSQL_PORT_mariadb1006: 3317
+        MYSQL_PORT_tidb: 3318
+    - image: mysql:8.0
+      command: [mysqld, --log-bin=mysql-bin, --server-id=1, --port=3310, --mysqlx=OFF]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3311, --mysqlx=OFF]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:9.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=3, --port=3312, --mysqlx=OFF]
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:5.7
+      command: [mysqld, --log-bin=mysql-bin, --server-id=4, --port=3313]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona:8
+      command: [mysqld, --log-bin=mysql-bin, --server-id=5, --port=3314, --mysqlx=OFF]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: percona/percona-server:8.4
+      command: [mysqld, --log-bin=mysql-bin, --server-id=6, --port=3315, --mysqlx=OFF]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.11
+      command: [mysqld, --log-bin=mysql-bin, --server-id=7, --port=3316]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:10.6
+      command: [mysqld, --log-bin=mysql-bin, --server-id=8, --port=3317]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: pingcap/tidb
+      command: [-P, "3318"]
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
 commands:
 
   prepare_apt:
