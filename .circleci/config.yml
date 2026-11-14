@@ -7806,6 +7806,133 @@ jobs:
          paths:
            - .
 
+  compile_and_test_mydumper_in_resolute_all_databases:
+    executor: resolute_all_databases
+    resource_class: xlarge
+    steps:
+    - checkout
+    - prepare_resolute_mysql84
+    - compile_and_test_mydumper:
+        test: false
+        expected_version: 'MySQL 8[.]4[.]'
+    - run:
+        name: Backup from mysql80 and restore into mysql80
+        when: always
+        command: |
+          SOURCE_DB=mysql80
+          SOURCE_PORT=${MYSQL_PORT_mysql80}
+          TARGET_DB=mysql80
+          TARGET_PORT=${MYSQL_PORT_mysql80}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port ${TARGET_PORT}
+          bash ./test_mydumper.sh -d SSL --replica-port ${TARGET_PORT}
+    - run:
+        name: Backup from mysql84 and restore into mysql84
+        when: always
+        command: |
+          SOURCE_DB=mysql84
+          SOURCE_PORT=${MYSQL_PORT_mysql84}
+          TARGET_DB=mysql84
+          TARGET_PORT=${MYSQL_PORT_mysql84}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port ${TARGET_PORT}
+          bash ./test_mydumper.sh -d SSL --replica-port ${TARGET_PORT}
+    - run:
+        name: Backup from mysql97 and restore into mysql97
+        when: always
+        command: |
+          SOURCE_DB=mysql97
+          SOURCE_PORT=${MYSQL_PORT_mysql97}
+          TARGET_DB=mysql97
+          TARGET_PORT=${MYSQL_PORT_mysql97}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port ${TARGET_PORT}
+          bash ./test_mydumper.sh -d SSL --replica-port ${TARGET_PORT}
+    - run:
+        name: Backup from percona57 and restore into percona57
+        when: always
+        command: |
+          SOURCE_DB=percona57
+          SOURCE_PORT=${MYSQL_PORT_percona57}
+          TARGET_DB=percona57
+          TARGET_PORT=${MYSQL_PORT_percona57}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port ${TARGET_PORT}
+          bash ./test_mydumper.sh -d SSL --replica-port ${TARGET_PORT}
+    - run:
+        name: Backup from percona80 and restore into percona80
+        when: always
+        command: |
+          SOURCE_DB=percona80
+          SOURCE_PORT=${MYSQL_PORT_percona80}
+          TARGET_DB=percona80
+          TARGET_PORT=${MYSQL_PORT_percona80}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port ${TARGET_PORT}
+          bash ./test_mydumper.sh -d SSL --replica-port ${TARGET_PORT}
+    - run:
+        name: Backup from percona84 and restore into percona84
+        when: always
+        command: |
+          SOURCE_DB=percona84
+          SOURCE_PORT=${MYSQL_PORT_percona84}
+          TARGET_DB=percona84
+          TARGET_PORT=${MYSQL_PORT_percona84}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port ${TARGET_PORT}
+          bash ./test_mydumper.sh -d SSL --replica-port ${TARGET_PORT}
+    - run:
+        name: Backup from mariadb1011 and restore into mariadb1011
+        when: always
+        command: |
+          SOURCE_DB=mariadb1011
+          SOURCE_PORT=${MYSQL_PORT_mariadb1011}
+          TARGET_DB=mariadb1011
+          TARGET_PORT=${MYSQL_PORT_mariadb1011}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port ${TARGET_PORT}
+          bash ./test_mydumper.sh -d SSL --replica-port ${TARGET_PORT}
+    - run:
+        name: Backup from mariadb1006 and restore into mariadb1006
+        when: always
+        command: |
+          SOURCE_DB=mariadb1006
+          SOURCE_PORT=${MYSQL_PORT_mariadb1006}
+          TARGET_DB=mariadb1006
+          TARGET_PORT=${MYSQL_PORT_mariadb1006}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port ${TARGET_PORT}
+          bash ./test_mydumper.sh -d SSL --replica-port ${TARGET_PORT}
+    - run:
+        name: Backup from tidb and restore into tidb
+        when: always
+        command: |
+          SOURCE_DB=tidb
+          SOURCE_PORT=${MYSQL_PORT_tidb}
+          TARGET_DB=tidb
+          TARGET_PORT=${MYSQL_PORT_tidb}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port ${TARGET_PORT}
+          bash ./test_mydumper.sh -d SSL --replica-port ${TARGET_PORT}
+
   build_el7_mysql80_aarch64:
     executor: el7
     resource_class: arm.medium

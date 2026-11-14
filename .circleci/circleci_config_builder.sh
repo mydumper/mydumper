@@ -325,6 +325,7 @@ done
 all_databases_os=resolute
 all_databases_vendors=( "${list_mysql_version[@]:0:3}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" tidb )
 all_databases_first_port=3310
+all_databases_client=mysql84
 
 port=${all_databases_first_port}
 echo "
@@ -923,6 +924,41 @@ EOF
 
 EOF
 done
+
+# Compiles once and runs the test suite against every server of the
+# all_databases executor. Each test step runs even if a previous one failed.
+cat <<EOF
+  compile_and_test_mydumper_in_${all_databases_os}_all_databases:
+    executor: ${all_databases_os}_all_databases
+    resource_class: xlarge
+    steps:
+    - checkout
+    - prepare_${all_databases_os}_${all_vendors[${all_databases_client}_0]}
+    - compile_and_test_mydumper:
+        test: false
+        expected_version: '${all_vendors[${all_databases_client}_8]}'
+EOF
+for vendor in ${all_databases_vendors[@]}
+do
+    source_db=${all_vendors[${vendor}_0]}
+    target_db=${all_vendors[${vendor}_0]}
+    cat <<EOF
+    - run:
+        name: Backup from ${source_db} and restore into ${target_db}
+        when: always
+        command: |
+          SOURCE_DB=${source_db}
+          SOURCE_PORT=\${MYSQL_PORT_${source_db}}
+          TARGET_DB=${target_db}
+          TARGET_PORT=\${MYSQL_PORT_${target_db}}
+          echo "Source (mydumper): \${SOURCE_DB} on \${MYSQL_HOST}:\${SOURCE_PORT}"
+          echo "Target (myloader): \${TARGET_DB} on \${MYSQL_HOST}:\${TARGET_PORT}"
+          export MYSQL_TCP_PORT=\${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port \${TARGET_PORT}
+          bash ./test_mydumper.sh -d SSL --replica-port \${TARGET_PORT}
+EOF
+done
+echo
 
 
 
