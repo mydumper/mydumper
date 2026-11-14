@@ -13,30 +13,45 @@ all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.0"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
+all_vendors[${vendor}_7]="mysql*8.0*"
+all_vendors[${vendor}_8]="MySQL 8[.]0[.]"
 
 vendor=mysql84
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
+all_vendors[${vendor}_7]="mysql*8.4*"
+all_vendors[${vendor}_8]="MySQL 8[.]4[.]"
+
+vendor=mysql97
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_1]="mysql:9.7"
+all_vendors[${vendor}_3]="mysqlclient"
+all_vendors[${vendor}_4]="mysqlclient"
+all_vendors[${vendor}_7]="mysql*9*7*"
+all_vendors[${vendor}_8]="MySQL 9[.]7[.]"
 
 vendor=percona57
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:5.7"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
+all_vendors[${vendor}_8]="(MySQL|Percona) 5[.]7[.]"
 
 vendor=percona80
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:8"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
+all_vendors[${vendor}_8]="(MySQL|Percona) 8[.]0[.]"
 
 vendor=percona84
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona/percona-server:8.4"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
+all_vendors[${vendor}_8]="(MySQL|Percona) 8[.]4[.]"
 
 vendor=mariadb1006
 all_vendors[${vendor}_0]="$vendor"
@@ -44,6 +59,7 @@ all_vendors[${vendor}_1]="mariadb:10.6"
 all_vendors[${vendor}_2]="mariadb-10.6"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
+all_vendors[${vendor}_8]="MariaDB 10[.]6[.]"
 
 vendor=mariadb1011
 all_vendors[${vendor}_0]="$vendor"
@@ -51,24 +67,28 @@ all_vendors[${vendor}_1]="mariadb:10.11"
 all_vendors[${vendor}_2]="mariadb-10.11"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
+all_vendors[${vendor}_8]="MariaDB 10[.]11[.]"
 
 vendor=tidb
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="pingcap/tidb"
 all_vendors[${vendor}_5]="mysqld"
 all_vendors[${vendor}_6]="mysqld"
+all_vendors[${vendor}_8]="(MySQL|Percona) 5[.]7[.]"
 
 vendor=debian_default
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
+all_vendors[${vendor}_8]="(MySQL|MariaDB) [0-9]"
 
 vendor=ubuntu_default
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
+all_vendors[${vendor}_8]="MySQL [0-9]"
 
 #_0: name
 #_1: docker image
@@ -76,9 +96,11 @@ all_vendors[${vendor}_4]="mysqlclient"
 #_3: variable found in CMAKE, like: -DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}
 #_4: static library name, like: lib${all_vendors[${vendor}_4]}.a
 #_5: server command, when it differs from db_server_command
+#_6: replica server command, when it differs from db_server_command
+#_7: repository regex for yum-config-manager used on EL
+#_8: regex expected after "built against " in mydumper/myloader --version
 
-
-list_mysql_version=( "mysql80" "mysql84" "debian_default" "ubuntu_default")
+list_mysql_version=( "mysql80" "mysql84" "mysql97" "debian_default" "ubuntu_default")
 list_percona_version=( "percona57" "percona80" "percona84")
 list_mariadb_version=( "mariadb1011" "mariadb1006")
 list_all_vendors=( "${list_mysql_version[@]}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" )
@@ -101,72 +123,84 @@ all_os[${os}_0]="bionic"
 all_os[${os}_1]="cimg/base:current-18.04"
 all_os[${os}_2]="percona-release_latest.bionic_all.deb"
 all_os[${os}_3]="false"
+all_os[${os}_4]="percona57 percona80"
 
 os=focal
 all_os[${os}_0]="focal"
 all_os[${os}_1]="cimg/base:stable-20.04"
 all_os[${os}_2]="percona-release_latest.focal_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 ubuntu_default percona57 percona80"
 
 os=jammy
 all_os[${os}_0]="jammy"
 all_os[${os}_1]="cimg/base:current-22.04"
 all_os[${os}_2]="percona-release_latest.jammy_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="percona57 percona80 mysql84 mysql97 ubuntu_default mariadb1011 mariadb1006"
 
 os=noble
 all_os[${os}_0]="noble"
 all_os[${os}_1]="cimg/base:current-24.04"
 all_os[${os}_2]="percona-release_latest.noble_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql80 mysql84 ubuntu_default percona80 percona84 mariadb1011"
 
 os=resolute
 all_os[${os}_0]="resolute"
 all_os[${os}_1]="cimg/base:current-26.04"
 all_os[${os}_2]="percona-release_latest.resolute_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="percona84 mysql97 ubuntu_default"
 
 os=el7
 all_os[${os}_0]="el7"
 all_os[${os}_1]="centos:7"
 
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql84 percona57 percona80"
 
 os=el8
 all_os[${os}_0]="el8"
 all_os[${os}_1]="almalinux:8"
 
 all_os[${os}_3]="true"
+all_os[${os}_4]="mysql84 percona57 percona80 percona84 mariadb1011 mariadb1006"
 
 os=el9
 all_os[${os}_0]="el9"
 all_os[${os}_1]="almalinux:9"
 
 all_os[${os}_3]="true"
+all_os[${os}_4]="percona57 percona80 mysql84 mysql97 mariadb1011 mariadb1006"
 
 os=el10
 all_os[${os}_0]="el10"
 all_os[${os}_1]="almalinux:10"
 
 all_os[${os}_3]="true"
+all_os[${os}_4]="percona80 mysql84 mysql97 mariadb1011"
 
 os=bullseye
 all_os[${os}_0]="bullseye"
 all_os[${os}_1]="debian:bullseye"
 all_os[${os}_2]="percona-release_latest.bullseye_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="percona57 percona80 mariadb1011 mariadb1006"
 
 os=bookworm
 all_os[${os}_0]="bookworm"
 all_os[${os}_1]="debian:bookworm"
 all_os[${os}_2]="percona-release_latest.bookworm_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="percona57 percona80 mysql84 debian_default mariadb1011"
 
 os=trixie
 all_os[${os}_0]="trixie"
 all_os[${os}_1]="debian:trixie"
 all_os[${os}_2]="percona-release_latest.trixie_all.deb"
 all_os[${os}_3]="true"
+all_os[${os}_4]="debian_default percona84"
 
 # os=
 # all_os[${os}_0]=""
@@ -200,20 +234,20 @@ list_compile=(
   "focal_percona57"    "focal_percona80"    #"focal_mariadb1011"    "focal_mariadb1006"
 # jammy is in the tests list 
 #                                                                                          "noble_mysql84" This is already on the list of test
-                                                                                                             "noble_ubuntu_default"
-                                                                                                             "resolute_ubuntu_default"
-  "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
+                                                                                                                                 "noble_ubuntu_default"
+                                                                                                             "resolute_mysql97"  "resolute_ubuntu_default"
+  "el7_percona57"      "el7_percona80"                                                    "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
-                       "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
-                       "el10_mysql80"       "el10_mariadb1011"                            "el10_mysql84"
+                       "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"      "el9_mysql97"
+                                            "el10_mariadb1011"                            "el10_mysql84"     "el10_mysql97"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
   "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84"
-                                            "trixie_percona84"                                               "trixie_debian_default"
+                                            "trixie_percona84"                                                                   "trixie_debian_default"
 
 )
 
 list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" # "jammy_mariadb1006" 
-                                                                                        "noble_mysql84")
+                                                                                        "noble_mysql84"   )
 
 echo "---
 version: 2.1
@@ -225,11 +259,20 @@ executors:"
 
 # EXECUTORS
 
-
-
+## BUILDER EXECUTORS: only the builder image, used for building packages
 for os in ${list_all_os[@]}
 do
-## EXECUTORS BY VENDOR
+    echo "
+  ${all_os[${os}_0]}:
+    docker:
+    - image: mydumper/mydumper-builder-${all_os[${os}_0]}
+    working_directory: /tmp/src/mydumper"
+done
+
+## TEST EXECUTORS: builder image + primary and replica database images,
+## used by compile_and_test_mydumper_in_* jobs
+for os in ${list_all_os[@]}
+do
     for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]} tidb
     do
         echo "
@@ -275,18 +318,6 @@ do
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
     done
-## SINGLE EXECUTOR: used just for building 
-                echo "
-  ${all_os[${os}_0]}:
-    docker:
-    - image: mydumper/mydumper-builder-${all_os[${os}_0]}
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
-    working_directory: /tmp/src/mydumper"
 done
 
 # COMMANDS
@@ -313,48 +344,131 @@ commands:
 #    - run: yum-config-manager --disable mariadb-maxscale || true
 
   prepare_el_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
-    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-community-client
 
   prepare_el_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
-    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-community-client
+
+  prepare_el_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: false
+    steps:
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo yum install -y mysql-community-client
 
   prepare_apt_debian_default:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
-    - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
+    - run: sudo apt-get install -y  default-libmysqlclient-dev 
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt install -y mysql-client
 
   prepare_apt_ubuntu_default:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
-    - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
+    - run: sudo apt-get install -y  default-libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt install -y mysql-client
 
   prepare_apt_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: sudo percona-release setup -y ps57
-    - run: sudo apt-get install -y gdb screen time libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y gdb screen time libperconaserverclient20 libperconaserverclient20-dev percona-server-client-5.7
+    - unless:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y gdb screen time libperconaserverclient20 libperconaserverclient20-dev
 
   prepare_apt_percona80:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
     - run: sudo percona-release setup -y ps80
-    - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+    - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y percona-server-client
 
   prepare_apt_percona84:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
     - run: sudo percona-release setup -y ps-84-lts
-    - run: sudo apt-get install -y gdb screen time libperconaserverclient24 libperconaserverclient24-dev percona-server-client
+    - run: sudo apt-get install -y gdb screen time libperconaserverclient24 libperconaserverclient24-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y percona-server-client
 
   prepare_apt_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.0-lts" | sudo debconf-set-selections
     - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
-    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev mysql-client
+    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mysql-client
 
   prepare_apt_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run:
         command: |
@@ -370,12 +484,41 @@ EOF
 #          gpg --output /usr/share/keyrings/mysql-apt-config.gpg --export BCA43417C3B485DD128EC6D4B7B3B788A8D3785C
 cat <<EOF
           sudo apt-get update
-          sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
+          sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mysql-client
+
+  prepare_apt_mysql97:
+    parameters:
+      test:
+        type: boolean
+        default: false
+    steps:
+    - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
+    - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-9.7-lts" | sudo debconf-set-selections
+    - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
+    - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
+    - run: sudo apt-get update
+    - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mysql-client
 
   prepare_apt_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mariadb-client
 
   prepare_el_mariadb1006:
     steps:
@@ -384,10 +527,21 @@ cat <<EOF
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 
   prepare_apt_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mariadb-client
 
+  erase_packages_apt:
+    steps:
+    - run: sudo apt remove \$(dpkg -l | egrep -i "percona|mysql|mariadb" | awk  '{print \$2}' | egrep -v "release|apt|common") -y
 
   prepare_el7_mariadb1011:
     steps:
@@ -408,27 +562,67 @@ cat <<EOF
     - prepare_mariadb1011
     - run: sudo yum install -y libasan gdb screen time MariaDB-devel
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
+
+  erase_packages_el:
+    steps:
+    - run: sudo yum -y erase \$(rpm -qa | egrep -i "percona|mysql|mariadb" | grep -v "percona-release") || true
 EOF
+
+
+
 
 for os in el7 el9 el10
 do
-    for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
+    for vendor in ${list_mysql_version[@]} 
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - erase_packages_el
+    - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
+    - run: yum-config-manager --disable 'mysql*'
+    - run: yum-config-manager --enable '${all_vendors[${vendor}_7]}'
     - prepare_el_${all_vendors[${vendor}_0]}
 "
     done
 done
 
-for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
+os="el8"
+for vendor in ${list_mysql_version[@]} 
 do
   echo "
   prepare_el8_${all_vendors[${vendor}_0]}:
     steps:
+    - erase_packages_el
+    - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
+    - run: yum-config-manager --disable 'mysql*'
+    - run: yum-config-manager --enable '${all_vendors[${vendor}_7]}'
     - run: sudo dnf module disable mysql -y
     - prepare_el_mysql80
+"
+done
+
+for os in el7 el9 el10
+do
+    for vendor in ${list_percona_version[@]}
+    do
+        echo "
+  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    steps:
+    - erase_packages_el
+    - prepare_el_${all_vendors[${vendor}_0]}
+"
+    done
+done
+
+for vendor in ${list_percona_version[@]}
+do
+  echo "
+  prepare_el8_${all_vendors[${vendor}_0]}:
+    steps:
+    - erase_packages_el
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_${all_vendors[${vendor}_0]}
 "
 done
 
@@ -439,6 +633,7 @@ do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - erase_packages_el
     - prepare_el_${all_vendors[${vendor}_0]}
 "
     done
@@ -453,20 +648,32 @@ do
     vendor=tidb
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_percona57
+    - prepare_apt_percona57:
+        test: << parameters.test >>
 "
     # For Percona and MySQL will be the standar apt preparation
     for vendor in ${list_percona_version[@]} ${list_mysql_version[@]}
     do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
-    - prepare_apt_${all_vendors[${vendor}_0]}
+    - prepare_apt_${all_vendors[${vendor}_0]}:
+        test: << parameters.test >>
 "
     done
 
@@ -475,21 +682,31 @@ echo "
     do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
+    - erase_packages_apt
     - prepare_apt
     - run: sudo apt-get update
     - prepare_${all_vendors[${vendor}_0]}
-    - prepare_apt_${all_vendors[${vendor}_0]}
+    - prepare_apt_${all_vendors[${vendor}_0]}:
+        test: << parameters.test >>
 "
     done
 done
 
 cat <<EOF
   prepare_el_percona57:
+    parameters:
+      test:
+        type: boolean
+        default: false
     steps:
     - run: percona-release setup -y ps57
     - run: dnf -y module disable mysql || true
-    - run: yum -y install libasan gdb screen time Percona-Server-devel-57 Percona-Server-client-57
+    - run: yum -y install libasan gdb screen time Percona-Server-devel-57
 
   prepare_el_tidb:
     steps:
@@ -499,32 +716,60 @@ cat <<EOF
     steps:
     - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
     - run: percona-release setup -y ps80
-    - run: yum -y install libasan gdb screen time percona-server-devel percona-server-client
+    - run: yum -y install libasan gdb screen time percona-server-devel
+
+  prepare_el_percona84:
+    steps:
+    - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
+    - run: percona-release setup -y ps84-lts
+    - run: yum -y install libasan gdb screen time percona-server-devel
 
   compile:
     parameters:
       CMAKED:
         default: ""
         type: string
+      expected_version:
+        description: Regex that must follow "built against " in --version, empty to skip the check
+        default: ""
+        type: string
     steps:
     - run:
         command: |
           source /etc/profile.d/sh.local || true
+    - run: rm -f CMakeCache.txt
+    - run: make clean || true
     - run: cmake . <<parameters.CMAKED>>
     - run: make VERBOSE=1
     - run:
         name: Run unit tests
         command: ctest --output-on-failure
     - run: sudo make install
-    - run: ./mydumper --version
+    - run:
+        name: Check client library reported by --version
+        command: |
+          for bin in ./mydumper ./myloader
+          do
+            out=\$(\$bin --version)
+            echo "\$out"
+            if [ -n '<< parameters.expected_version >>' ] && ! echo "\$out" | grep -Eq 'built against << parameters.expected_version >>'
+            then
+              echo "ERROR: \$bin expected to be built against '<< parameters.expected_version >>'"
+              exit 1
+            fi
+          done
 
   compile_and_test_mydumper:
     parameters:
       test:
         type: boolean
         default: true
+      expected_version:
+        default: ""
+        type: string
     steps:
-    - compile
+    - compile:
+        expected_version: << parameters.expected_version >>
     - when:
         condition: << parameters.test >>
         steps:
@@ -557,7 +802,7 @@ jobs:
 
 EOF
 
-for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
+for os in ${list_ubuntu_os[@]} ${list_debian_os[@]} ${list_el_os[@]}
 do
     for vendor in ${list_all_vendors[@]} tidb
     do
@@ -567,45 +812,18 @@ do
       test:
         type: boolean
         default: false
-      e:
-        type: string
-        default: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-EOF
-    done
-done
-
-for os in ${list_el_os[@]}
-do
-    for vendor in ${list_all_vendors[@]} tidb
-    do
-        cat <<EOF
-  compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
+      this_executor:
         type: string
         default: ${all_os[${os}_0]}
-    executor: << parameters.e >>
+    executor: << parameters.this_executor >>
     resource_class: large
     steps:
     - checkout
-    - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+        test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
+        expected_version: '${all_vendors[${vendor}_8]}'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -614,6 +832,49 @@ do
 EOF
     done
 done
+
+
+
+
+for os in ${list_ubuntu_os[@]} ${list_debian_os[@]} ${list_el_os[@]}
+do
+  cat <<EOF
+  compile_and_test_mydumper_in_${all_os[${os}_0]}:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      this_executor:
+        type: string
+        default: ${all_os[${os}_0]}
+    executor: << parameters.this_executor >>
+    resource_class: large
+    steps:
+EOF
+    for vendor in ${all_os[${os}_4]}
+    do
+        cat <<EOF
+    - checkout
+    - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+        expected_version: '${all_vendors[${vendor}_8]}'
+EOF
+    done
+    cat <<EOF
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+EOF
+done
+
+
+
+
+
+
 
 for arch in ${list_arch[@]}
 do
@@ -637,6 +898,7 @@ echo "    - set_env_vars
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a\"
+        expected_version: '${all_vendors[${vendor}_8]}'
     - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}/
@@ -690,6 +952,7 @@ echo "    - set_env_vars
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}:FILEPATH=/usr/lib/${all_arch[${arch}_rpm]}-linux-gnu/lib${all_vendors[${vendor}_4]}.a\"
+        expected_version: '${all_vendors[${vendor}_8]}'
     - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -871,30 +1134,38 @@ workflows:
   mydumper:
     jobs:'
 
-for lc in ${!list_compile[@]}
+
+
+#for lc in ${!list_compile[@]}
+#do
+
+#  if [ "build" = "$1" ]
+#  then
+
+#    echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}:"
+#    echo '        filters:
+#          branches:
+#            ignore: /.*/
+#          tags:
+#            only: /^v\d+\.\d+\.\d+-\d+$/'
+#  else
+#    echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
+#  fi
+#done
+
+
+for os in ${list_ubuntu_os[@]} ${list_debian_os[@]} ${list_el_os[@]}
 do
-
-if [ "build" = "$1" ]
-then
-
-echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}:"
-# Decomment next 5 lines if you want to ignore compilation and add : to previous line
-echo '        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/'
-else
-echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
-fi
+  echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}"
 done
+
+
 
 for lt in ${!list_test[@]}
 do
 echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
         test: true
-        e: ${list_test[${lt}]}"
-# Decomment next 5 lines if you want to ignore compilation
+        this_executor: ${list_test[${lt}]}"
 if [ "build" = "$1" ]
 then
 echo '        filters:
