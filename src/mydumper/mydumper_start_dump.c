@@ -471,6 +471,15 @@ static void cancel_dump(MYSQL *conn, MYSQL *second_conn)
     release_global_write_lock_function(conn);
   if (release_ddl_lock_function != NULL)
     release_ddl_lock_function(second_conn);
+  if (is_mysql_like() && replica_stopped)
+  {
+    replica_stopped = m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
+    if (source_control_command == AWS)
+      discard_mysql_output(conn);
+  }
+  execute_gstring(conn, set_global_back);
+  if (second_conn != conn)
+    mysql_close(second_conn);
   mysql_close(conn);
   exit(EXIT_FAILURE);
 }
