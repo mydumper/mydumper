@@ -347,6 +347,17 @@ void g_message_connection_details_once()
   g_string_free(print_body, TRUE);
 }
 
+/* A monitor must not hold cleanup indefinitely or exit the process on reconnect failure. */
+gboolean m_connect_with_timeout(MYSQL *conn, guint timeout)
+{
+  configure_connection(conn);
+  if (mysql_options(conn, MYSQL_OPT_CONNECT_TIMEOUT, &timeout) ||
+      mysql_options(conn, MYSQL_OPT_READ_TIMEOUT, &timeout) ||
+      mysql_options(conn, MYSQL_OPT_WRITE_TIMEOUT, &timeout))
+    return FALSE;
+  return mysql_real_connect(conn, hostname, username, password, default_connection_database, port, socket_path, 0) != NULL;
+}
+
 void m_connect(MYSQL *conn)
 {
   configure_connection(conn);

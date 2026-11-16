@@ -26,6 +26,7 @@ void          initialize_connection_socket_dir(gchar *current_dir);
 void          initialize_connection(const gchar *app);
 void          set_connection_defaults_file_and_group(gchar *cdf, const gchar *group);
 void          m_connect(MYSQL *conn);
+gboolean      m_connect_with_timeout(MYSQL *conn, guint timeout);
 void          hide_password(int argc, char *argv[]);
 void          ask_password();
 void          print_connection_help();

@@ -5,6 +5,9 @@ Usage: MYSQL_PWD=... python3 test/test_global_variables_rollback.py MYSQL_CONTAI
 The build container must share the servers' network and provide writable /work.
 Only the global_rollback_fixture/global_rollback_target databases are used.
 Global timeout/connection settings are restored after the test, including failure.
+An optional fifth argument enables monitor fault tests with the compiled
+unit/monitor_query_delay.c shared library (cc -shared -fPIC ... -ldl).
+Only dedicated, otherwise idle database containers may be used.
 """
 import os
 import shlex
@@ -12,7 +15,8 @@ import subprocess
 import sys
 import time
 
-mysql, maria, builder, binaries = sys.argv[1:]
+mysql, maria, builder, binaries = sys.argv[1:5]
+fault_library = sys.argv[5] if len(sys.argv) > 5 else None
 password = os.environ["MYSQL_PWD"]
 database, target = "global_rollback_fixture", "global_rollback_target"
 variables = ("net_write_timeout", "net_read_timeout", "max_connections")
@@ -56,7 +60,7 @@ for server in ((mysql, "mysql"), (maria, "mariadb")):
                     f"CREATE TABLE {database}.t(id INT PRIMARY KEY); "
                     f"INSERT INTO {database}.t VALUES (1),(2),(3)")
         print(server[0], sql(server, "SELECT VERSION()"), flush=True)
-        for mode in ("normal", "TERM", "INT"):
+        for mode in (("normal", "TERM", "INT", "monitor_lost", "slow_monitor") if fault_library else ("normal", "TERM", "INT")):
             sql(server, "SET GLOBAL net_write_timeout=60; SET GLOBAL net_read_timeout=30")
             expected = globals_now(server)
             root = "/work/global-rollback-" + server[0] + "-" + mode
@@ -81,6 +85,8 @@ for server in ((mysql, "mysql"), (maria, "mariadb")):
                            "--defaults-extra-file=" + root + "/config.cnf", "--data-checksums",
                            "--sync-thread-lock-mode=FTWRL", "--outputdir=" + root + "/dump", "--clear", "--long-query-guard=0",
                            "--logfile=" + root + "/tool.log", "--verbose=3"]
+                if mode == "slow_monitor":
+                    command = ["env", "LD_PRELOAD=" + fault_library] + command
                 shell = 'echo $$ > "$1/pid"; exec ' + shlex.join(command)
                 process = subprocess.Popen(["docker", "exec", builder, "sh", "-c", shell, "sh", root],
                                            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
@@ -88,22 +94,39 @@ for server in ((mysql, "mysql"), (maria, "mariadb")):
                 if mode != "normal":
                     wait_for_blocked_flush(server, process)
                     assert globals_now(server) == "77\t88\t211"
-                    # Let the monitor enter its normal long timeout before signalling.
-                    time.sleep(2)
-                    pid = run(["docker", "exec", builder, "cat", root + "/pid"])
-                    cancelled_at = time.monotonic()
-                    run(["docker", "exec", builder, "kill", "-" + mode, pid])
-                    # Cancellation must finish while the blocking transaction is still active.
-                    process.wait(timeout=5)
-                    print("Cancel latency", server[0], mode, round(time.monotonic() - cancelled_at, 2), flush=True)
-                    blocker.stdin.close()
-                    blocker.wait(timeout=5)
+                    if mode == "monitor_lost":
+                        time.sleep(2)
+                        ids = sql(server, "SELECT ID FROM information_schema.PROCESSLIST WHERE "
+                                  "ID<>CONNECTION_ID() AND HOST NOT LIKE 'localhost%' AND COMMAND='Sleep'").splitlines()
+                        assert len(ids) == 1, ids
+                        sql(server, "KILL CONNECTION " + ids[0])
+                    if mode == "slow_monitor":
+                        deadline = time.monotonic() + 10
+                        while not int(sql(server, "SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE INFO='SELECT SLEEP(10)'")):
+                            assert time.monotonic() < deadline, "monitor never entered delayed query"
+                            time.sleep(0.05)
+                        cancelled_at = time.monotonic()
+                        blocker.stdin.close()
+                        blocker.wait(timeout=5)
+                        process.wait(timeout=5)
+                        print("Completion with stalled monitor", server[0], round(time.monotonic()-cancelled_at, 2), flush=True)
+                    else:
+                        # Let the monitor enter its normal long timeout before signalling.
+                        time.sleep(2)
+                        pid = run(["docker", "exec", builder, "cat", root + "/pid"])
+                        cancelled_at = time.monotonic()
+                        run(["docker", "exec", builder, "kill", "-" + ("TERM" if mode == "monitor_lost" else mode), pid])
+                        # Cancellation must finish while the blocking transaction is still active.
+                        process.wait(timeout=5)
+                        print("Cancel latency", server[0], mode, round(time.monotonic() - cancelled_at, 2), flush=True)
+                        blocker.stdin.close()
+                        blocker.wait(timeout=5)
                 output, error = process.communicate(timeout=20)
-                assert process.returncode == (0 if mode == "normal" else 1), (output, error)
+                assert process.returncode == (0 if mode in ("normal", "slow_monitor") else 1), (output, error)
                 actual = globals_now(server)
                 assert actual == expected, (server[0], mode, "restored globals", actual, "expected", expected)
                 run(["docker", "exec", builder, "test", "-s", root + "/tool.log"])
-                metadata = "metadata" if mode == "normal" else "metadata.partial"
+                metadata = "metadata" if mode in ("normal", "slow_monitor") else "metadata.partial"
                 run(["docker", "exec", builder, "test", "-f", root + "/dump/" + metadata])
                 sql(server, f"SET SESSION lock_wait_timeout=2; CREATE TABLE {database}.probe(id INT); "
                             f"DROP TABLE {database}.probe")

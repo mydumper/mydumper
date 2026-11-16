@@ -280,7 +280,7 @@ static MYSQL *create_connection()
 
 void *monitor_ftwrl_thread(void *thread_id)
 {
-  MYSQL     *conn = create_connection();
+  MYSQL     *conn = NULL;
   MYSQL_RES *res = NULL;
   gboolean   ftwrl_found_in_processlist = FALSE;
   gchar     *query = NULL;
@@ -297,10 +297,30 @@ void *monitor_ftwrl_thread(void *thread_id)
     }
     if (g_atomic_int_get(&ftwrl_completed))
       break;
-    res = m_store_result(conn, "SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST");
+    if (!conn)
+    {
+      conn = mysql_init(NULL);
+      if (!conn)
+        break;
+      if (!m_connect_with_timeout(conn, 1))
+      {
+        m_warning("Could not connect FTWRL monitor: %s; retrying", mysql_error(conn));
+        mysql_close(conn);
+        conn = NULL;
+        ftwrl_found_in_processlist = FALSE;
+        continue;
+      }
+    }
+    if (g_atomic_int_get(&ftwrl_completed))
+      break;
+    res = mysql_query(conn, "SHOW PROCESSLIST") ? NULL : mysql_store_result(conn);
     if (!res)
     {
-      break;
+      m_warning("Could not check PROCESSLIST: %s; reconnecting FTWRL monitor", mysql_error(conn));
+      mysql_close(conn);
+      conn = NULL;
+      ftwrl_found_in_processlist = FALSE;
+      continue;
     }
     else
     {
@@ -316,9 +336,11 @@ void *monitor_ftwrl_thread(void *thread_id)
         {
           if (!strcasecmp(FLUSH_TABLES_WITH_READ_LOCK, row[info_col]) || !strcasecmp(FLUSH_NO_WRITE_TO_BINLOG_TABLES, row[info_col]))
           {
-            if (shutdown_triggered || ftwrl_found_in_processlist == TRUE)
+            if (!g_atomic_int_get(&ftwrl_completed) && (shutdown_triggered || ftwrl_found_in_processlist == TRUE))
             {
-              m_query_warning(conn, query = g_strdup_printf("KILL QUERY %lu", atol(row[id_col])), "Could not KILL slow query", NULL);
+              query = g_strdup_printf("KILL QUERY %lu", atol(row[id_col]));
+              if (mysql_query(conn, query))
+                m_warning("Could not KILL slow query: %s", mysql_error(conn));
               g_free(query);
               ftwrl_found_in_processlist = FALSE;
             }
@@ -333,7 +355,8 @@ void *monitor_ftwrl_thread(void *thread_id)
     }
     mysql_free_result(res);
   }
-  mysql_close(conn);
+  if (conn)
+    mysql_close(conn);
   return NULL;
 }
 
@@ -815,7 +838,7 @@ try_FLUSH_NO_WRITE_TO_BINLOG_TABLES:
 
 ftwrl_done:
   g_atomic_int_set(&ftwrl_completed, TRUE);
-  /* Stop the monitor before cleanup reuses the connection and the stack ID expires. */
+  /* Monitor I/O is timed out; join prevents a late KILL from racing with cleanup. */
   g_thread_join(monitor);
 }
 
