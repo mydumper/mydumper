@@ -7792,7 +7792,7 @@ jobs:
 
   compile_and_test_mydumper_in_resolute_all_databases:
     executor: resolute_all_databases
-    resource_class: xlarge
+    resource_class: large
     steps:
     - checkout
     - prepare_resolute_mysql84:

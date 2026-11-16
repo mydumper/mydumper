@@ -942,7 +942,7 @@ done
 cat <<EOF
   compile_and_test_mydumper_in_${all_databases_os}_all_databases:
     executor: ${all_databases_os}_all_databases
-    resource_class: xlarge
+    resource_class: large
     steps:
     - checkout
     - prepare_${all_databases_os}_${all_vendors[${all_databases_client}_0]}:
