@@ -7,12 +7,17 @@
 #             When omitted, docker picks the default platform.
 #   -p:       override a job parameter (e.g. -p test=true -p this_executor=noble_mysql84)
 #   -n:       dry run, only print the expanded steps
+#   -s MODE:  interactive shell at the end: always (default), on_fail or never
+#   -N:       same as -s never
+#   -b REF:   check out this branch/tag/commit (e.g. master, origin/bug_2358)
+#             instead of the current working tree (which includes uncommitted
+#             changes). Run "git fetch" first for remote branches.
 #
 # The primary executor image is started, secondary images (databases) share its
 # network namespace like in CircleCI, then every step of the job (expanding
 # reusable commands, parameters and when/unless) is executed in order. At the
-# end you get an interactive shell inside the container; when you leave it all
-# containers are removed.
+# end, depending on -s, you get an interactive shell inside the container; when
+# you leave it (or right away without a shell) all containers are removed.
 #
 # Workspaces (persist_to_workspace / attach_workspace) are shared between runs
 # through the docker volume "circleci_local_workspace". Remove it with:
@@ -29,7 +34,7 @@ $stdout.sync = true
 
 def usage(msg = nil)
   warn "ERROR: #{msg}" if msg
-  warn "Usage: #{$0} <job_name> [platform] [-n] [-p name=value ...]"
+  warn "Usage: #{$0} <job_name> [platform] [-n] [-s always|on_fail|never] [-N] [-b ref] [-p name=value ...]"
   exit 1
 end
 
@@ -46,12 +51,20 @@ job_name = nil
 platform = nil
 overrides = {}
 dry_run = false
+git_ref = nil
+shell_mode = 'always'
+SHELL_MODES = %w[always on_fail never].freeze
 args = ARGV.dup
 until args.empty?
   a = args.shift
   case a
   when '-h', '--help' then usage
   when '-n', '--dry-run' then dry_run = true
+  when '-N', '--no-shell' then shell_mode = 'never'
+  when '-b', '--branch' then git_ref = args.shift or usage('-b needs a branch, tag or commit')
+  when '-s', '--shell'
+    shell_mode = args.shift.to_s.tr('-', '_')
+    usage("-s needs one of: #{SHELL_MODES.join(', ')}") unless SHELL_MODES.include?(shell_mode)
   when '-p', '--param'
     kv = args.shift or usage('-p needs name=value')
     k, v = kv.split('=', 2)
@@ -91,8 +104,15 @@ def cast(value, defn)
 end
 
 pipeline_params = param_defaults(config['parameters'])
-git_branch = `git -C #{repo_root.shellescape} rev-parse --abbrev-ref HEAD 2>/dev/null`.strip
-git_sha = `git -C #{repo_root.shellescape} rev-parse HEAD 2>/dev/null`.strip
+if git_ref
+  git_sha, status = Open3.capture2('git', '-C', repo_root, 'rev-parse', '--verify', '--quiet', "#{git_ref}^{commit}")
+  git_sha = git_sha.strip
+  usage("'#{git_ref}' is not a branch, tag or commit of #{repo_root} (try git fetch)") unless status.success?
+  git_branch = git_ref.sub(%r{\A(refs/heads/|refs/remotes/[^/]+/|origin/)}, '')
+else
+  git_branch = `git -C #{repo_root.shellescape} rev-parse --abbrev-ref HEAD 2>/dev/null`.strip
+  git_sha = `git -C #{repo_root.shellescape} rev-parse HEAD 2>/dev/null`.strip
+end
 
 TEMPLATE = /<<\s*([\w.-]+)\s*>>/
 
@@ -275,17 +295,29 @@ end
 
 do_checkout = lambda do |path, label|
   dest = expand_home.call(path || working_dir)
-  info "#{label} checkout -> #{dest}"
-  files, = Open3.capture2('git', '-C', repo_root, 'ls-files', '-z', '-co', '--exclude-standard')
-  list = files.split("\0").select { |f| File.exist?(File.join(repo_root, f)) } + ['.git']
-  tar = ['tar', '-C', repo_root, '-cf', '-', '--null', '-T', '-']
-  tar.insert(1, '--no-xattrs', '--no-mac-metadata') if RUBY_PLATFORM.include?('darwin')
+  untar = ['docker', 'exec', '-i', '-u', '0', container, 'tar', '-C', dest, '-xf', '-']
+  tar_opts = RUBY_PLATFORM.include?('darwin') ? ['--no-xattrs', '--no-mac-metadata'] : []
   ok = false
-  Open3.pipeline_w(tar, ['docker', 'exec', '-i', '-u', '0', container, 'tar', '-C', dest, '-xf', '-'],
-                   err: File::NULL) do |stdin, threads|
-    stdin.write(list.join("\0"))
-    stdin.close
-    ok = threads.all? { |t| t.value.success? }
+  if git_ref
+    # Files of the requested commit, plus .git with HEAD detached at it
+    info "#{label} checkout #{git_ref} (#{git_sha[0, 12]}) -> #{dest}"
+    ok = system('sh', '-c', "git -C \"$1\" archive --format=tar \"$2\" | #{untar.shelljoin}",
+                'sh', repo_root, git_sha, err: File::NULL)
+    git_tar = ['tar', *tar_opts, '-C', repo_root, '-cf', '-', '.git']
+    ok &&= Open3.pipeline(git_tar, untar, err: File::NULL).all?(&:success?)
+    # Rebuild the index for the new HEAD if git exists in the image (not required to build)
+    ok &&= as_root.call("echo #{git_sha} > #{dest.shellescape}/.git/HEAD && rm -f #{dest.shellescape}/.git/index && " \
+                        "(cd #{dest.shellescape} && git -c safe.directory='*' reset -q 2>/dev/null || true)")
+  else
+    info "#{label} checkout -> #{dest}"
+    files, = Open3.capture2('git', '-C', repo_root, 'ls-files', '-z', '-co', '--exclude-standard')
+    list = files.split("\0").select { |f| File.exist?(File.join(repo_root, f)) } + ['.git']
+    tar = ['tar', *tar_opts, '-C', repo_root, '-cf', '-', '--null', '-T', '-']
+    Open3.pipeline_w(tar, untar, err: File::NULL) do |stdin, threads|
+      stdin.write(list.join("\0"))
+      stdin.close
+      ok = threads.all? { |t| t.value.success? }
+    end
   end
   ok && as_root.call("mkdir -p #{dest.shellescape} && chown -R #{uid}:#{gid} #{dest.shellescape}")
 end
@@ -334,12 +366,15 @@ rescue Interrupt
   failed = true
 end
 
+want_shell = shell_mode == 'always' || (shell_mode == 'on_fail' && failed)
 if failed
-  warn_step('Job FAILED. Dropping into the container so you can inspect it.')
+  warn_step(want_shell ? 'Job FAILED. Dropping into the container so you can inspect it.' : 'Job FAILED.')
 else
   info 'Job finished successfully.'
 end
-if $stdin.tty?
+if !want_shell
+  info "Skipping the interactive shell (-s #{shell_mode})"
+elsif $stdin.tty?
   info "Interactive shell in #{container} (exit to remove the containers)"
   trap('INT', 'IGNORE')
   system('docker', 'exec', '-it', '-w', working_dir, container, 'bash', '-l') ||

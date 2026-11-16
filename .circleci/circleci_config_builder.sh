@@ -10,6 +10,7 @@ replica_db_server_command="[mysqld, --log-bin=mysql-bin, --server-id=2, --port=3
 declare -A all_vendors
 vendor=mysql80
 all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="mysql:8.0"
 all_vendors[${vendor}_1]="mysql:8.0"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
@@ -18,6 +19,7 @@ all_vendors[${vendor}_8]="MySQL 8[.]0[.]"
 
 vendor=mysql84
 all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="mysql:8.4"
 all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
@@ -26,6 +28,7 @@ all_vendors[${vendor}_8]="MySQL 8[.]4[.]"
 
 vendor=mysql97
 all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="mysql:9.7"
 all_vendors[${vendor}_1]="mysql:9.7"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
@@ -34,6 +37,7 @@ all_vendors[${vendor}_8]="MySQL 9[.]7[.]"
 
 vendor=percona57
 all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="percona:5.7"
 all_vendors[${vendor}_1]="percona:5.7"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
@@ -41,6 +45,7 @@ all_vendors[${vendor}_8]="(MySQL|Percona) 5[.]7[.]"
 
 vendor=percona80
 all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="percona:8.0"
 all_vendors[${vendor}_1]="percona:8"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
@@ -48,6 +53,7 @@ all_vendors[${vendor}_8]="(MySQL|Percona) 8[.]0[.]"
 
 vendor=percona84
 all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="percona:8.4"
 all_vendors[${vendor}_1]="percona/percona-server:8.4"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
@@ -55,6 +61,7 @@ all_vendors[${vendor}_8]="(MySQL|Percona) 8[.]4[.]"
 
 vendor=mariadb1006
 all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="mariadb:10.6"
 all_vendors[${vendor}_1]="mariadb:10.6"
 all_vendors[${vendor}_2]="mariadb-10.6"
 all_vendors[${vendor}_3]="mariadb"
@@ -63,6 +70,7 @@ all_vendors[${vendor}_8]="MariaDB 10[.]6[.]"
 
 vendor=mariadb1011
 all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="mariadb:10.11"
 all_vendors[${vendor}_1]="mariadb:10.11"
 all_vendors[${vendor}_2]="mariadb-10.11"
 all_vendors[${vendor}_3]="mariadb"
@@ -99,6 +107,7 @@ all_vendors[${vendor}_8]="MySQL [0-9]"
 #_6: replica server command, when it differs from db_server_command
 #_7: repository regex for yum-config-manager used on EL
 #_8: regex expected after "built against " in mydumper/myloader --version
+#_9: vendor:version for test_mydumper.sh --source-db/--target-db
 
 list_mysql_version=( "mysql80" "mysql84" "mysql97" "debian_default" "ubuntu_default")
 list_percona_version=( "percona57" "percona80" "percona84")
@@ -323,7 +332,10 @@ done
 ## ALL DATABASES EXECUTOR: resolute builder + one server per database image,
 ## each one listening on its own port (MYSQL_PORT_<vendor> in the builder)
 all_databases_os=resolute
-all_databases_vendors=( "${list_mysql_version[@]:0:3}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" tidb )
+# Percona is preferred over MySQL when both ship the same version (8.0, 8.4).
+# Each family is listed from the oldest to the newest version, as the
+# migration steps below rely on this order.
+all_databases_vendors=( percona57 percona80 percona84 mysql97 mariadb1006 mariadb1011 )
 all_databases_first_port=3310
 all_databases_client=mysql84
 
@@ -933,15 +945,33 @@ cat <<EOF
     resource_class: xlarge
     steps:
     - checkout
-    - prepare_${all_databases_os}_${all_vendors[${all_databases_client}_0]}
+    - prepare_${all_databases_os}_${all_vendors[${all_databases_client}_0]}:
+        test: true
     - compile_and_test_mydumper:
         test: false
         expected_version: '${all_vendors[${all_databases_client}_8]}'
 EOF
-for vendor in ${all_databases_vendors[@]}
+# Migration steps: never the same server; inside a family (MySQL/Percona or
+# MariaDB) only from an older to a newer version; between families both ways.
+vendor_family() {
+    case $1 in
+      mariadb*) echo mariadb ;;
+      *) echo mysql ;;
+    esac
+}
+for (( s=0; s<${#all_databases_vendors[@]}; s++ ))
 do
-    source_db=${all_vendors[${vendor}_0]}
-    target_db=${all_vendors[${vendor}_0]}
+  for (( t=0; t<${#all_databases_vendors[@]}; t++ ))
+  do
+    source_vendor=${all_databases_vendors[$s]}
+    target_vendor=${all_databases_vendors[$t]}
+    (( s == t )) && continue
+    if [ "$(vendor_family ${source_vendor})" = "$(vendor_family ${target_vendor})" ] && (( t < s ))
+    then
+        continue
+    fi
+    source_db=${all_vendors[${source_vendor}_0]}
+    target_db=${all_vendors[${target_vendor}_0]}
     cat <<EOF
     - run:
         name: Backup from ${source_db} and restore into ${target_db}
@@ -954,9 +984,9 @@ do
           echo "Source (mydumper): \${SOURCE_DB} on \${MYSQL_HOST}:\${SOURCE_PORT}"
           echo "Target (myloader): \${TARGET_DB} on \${MYSQL_HOST}:\${TARGET_PORT}"
           export MYSQL_TCP_PORT=\${SOURCE_PORT}
-          bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port \${TARGET_PORT}
-          bash ./test_mydumper.sh -d SSL --replica-port \${TARGET_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port \${TARGET_PORT} --source-db '${all_vendors[${source_vendor}_9]}' --target-db '${all_vendors[${target_vendor}_9]}'
 EOF
+  done
 done
 echo
 
@@ -1222,7 +1252,8 @@ workflows:
 #    - update_repo
 
   mydumper:
-    jobs:'
+    jobs:
+    - compile_and_test_mydumper_in_resolute_all_databases'
 
 
 
