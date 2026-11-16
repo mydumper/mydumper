@@ -79,7 +79,7 @@ for server in ((mysql, "mysql"), (maria, "mariadb")):
                 command = [binaries + "/mydumper", "--host=" + server[0], "--user=root",
                            "--password=" + password, "--database=" + database, "--threads=2",
                            "--defaults-extra-file=" + root + "/config.cnf", "--data-checksums",
-                           "--outputdir=" + root + "/dump", "--clear", "--long-query-guard=0",
+                           "--sync-thread-lock-mode=FTWRL", "--outputdir=" + root + "/dump", "--clear", "--long-query-guard=0",
                            "--logfile=" + root + "/tool.log", "--verbose=3"]
                 shell = 'echo $$ > "$1/pid"; exec ' + shlex.join(command)
                 process = subprocess.Popen(["docker", "exec", builder, "sh", "-c", shell, "sh", root],
@@ -88,9 +88,14 @@ for server in ((mysql, "mysql"), (maria, "mariadb")):
                 if mode != "normal":
                     wait_for_blocked_flush(server, process)
                     assert globals_now(server) == "77\t88\t211"
+                    # Let the monitor enter its normal long timeout before signalling.
+                    time.sleep(2)
                     pid = run(["docker", "exec", builder, "cat", root + "/pid"])
+                    cancelled_at = time.monotonic()
                     run(["docker", "exec", builder, "kill", "-" + mode, pid])
-                    time.sleep(0.2)
+                    # Cancellation must finish while the blocking transaction is still active.
+                    process.wait(timeout=5)
+                    print("Cancel latency", server[0], mode, round(time.monotonic() - cancelled_at, 2), flush=True)
                     blocker.stdin.close()
                     blocker.wait(timeout=5)
                 output, error = process.communicate(timeout=20)

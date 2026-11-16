@@ -87,7 +87,7 @@ static guint      pause_at = 0;
 static guint      resume_at = 0;
 static gchar    **db_items = NULL;
 static GRecMutex *ready_table_dump_mutex = NULL;
-static gboolean   ftwrl_completed = FALSE;
+static gint       ftwrl_completed = FALSE;
 static void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
 static void (*release_ddl_lock_function)(MYSQL *) = NULL;
 
@@ -284,16 +284,19 @@ void *monitor_ftwrl_thread(void *thread_id)
   MYSQL_RES *res = NULL;
   gboolean   ftwrl_found_in_processlist = FALSE;
   gchar     *query = NULL;
-  while (!ftwrl_completed)
+  while (!g_atomic_int_get(&ftwrl_completed))
   {
     if (ftwrl_found_in_processlist == TRUE)
     {
-      sleep(ftwrl_max_wait_time);
+      for (guint waited = 0; waited < ftwrl_max_wait_time && !shutdown_triggered && !g_atomic_int_get(&ftwrl_completed); waited++)
+        sleep(1);
     }
     else
     {
       sleep(1);
     }
+    if (g_atomic_int_get(&ftwrl_completed))
+      break;
     res = m_store_result(conn, "SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST");
     if (!res)
     {
@@ -308,11 +311,12 @@ void *monitor_ftwrl_thread(void *thread_id)
       determine_columns_on_show_processlist(mysql_fetch_fields(res), mysql_num_fields(res), &id_col, NULL, NULL, NULL, &info_col);
       while ((row = mysql_fetch_row(res)))
       {
-        if ((atol(row[id_col]) == *((guint *)(thread_id))))
+        if (id_col >= 0 && info_col >= 0 && row[id_col] && row[info_col] &&
+            atol(row[id_col]) == *((guint *)(thread_id)))
         {
           if (!strcasecmp(FLUSH_TABLES_WITH_READ_LOCK, row[info_col]) || !strcasecmp(FLUSH_NO_WRITE_TO_BINLOG_TABLES, row[info_col]))
           {
-            if (ftwrl_found_in_processlist == TRUE)
+            if (shutdown_triggered || ftwrl_found_in_processlist == TRUE)
             {
               m_query_warning(conn, query = g_strdup_printf("KILL QUERY %lu", atol(row[id_col])), "Could not KILL slow query", NULL);
               g_free(query);
@@ -789,21 +793,30 @@ static void send_backup_stage_end(MYSQL *conn)
 static void send_flush_table_with_read_lock(MYSQL *conn)
 {
   guint id = mysql_thread_id(conn);
-  m_thread_new("mon_ftwrl", monitor_ftwrl_thread, &id, "FTWRL monitor thread could not be created");
+  g_atomic_int_set(&ftwrl_completed, FALSE);
+  GThread *monitor = m_thread_new("mon_ftwrl", monitor_ftwrl_thread, &id, "FTWRL monitor thread could not be created");
 
   guint i = 0;
 try_FLUSH_NO_WRITE_TO_BINLOG_TABLES:
   i++;
+  if (shutdown_triggered)
+    goto ftwrl_done;
   if ((m_query_verbose(conn, FLUSH_NO_WRITE_TO_BINLOG_TABLES, m_warning, "Flush tables failed, we are continuing anyways")) &&
       (ftwrl_timeout_retries == 0 || (i < ftwrl_timeout_retries)))
     goto try_FLUSH_NO_WRITE_TO_BINLOG_TABLES;
 
-try_FLUSH_TABLES_WITH_READ_LOCK:
-  if ((m_query_verbose(conn, FLUSH_TABLES_WITH_READ_LOCK, m_critical, "Couldn't acquire global lock, snapshots will not be consistent")) &&
-      (ftwrl_timeout_retries == 0 || i < ftwrl_timeout_retries))
-    goto try_FLUSH_TABLES_WITH_READ_LOCK;
+  if (shutdown_triggered)
+    goto ftwrl_done;
+  if (m_query_verbose(conn, FLUSH_TABLES_WITH_READ_LOCK, m_warning, "Couldn't acquire global lock"))
+  {
+    if (!shutdown_triggered)
+      m_critical("Couldn't acquire global lock, snapshots will not be consistent");
+  }
 
-  ftwrl_completed = TRUE;
+ftwrl_done:
+  g_atomic_int_set(&ftwrl_completed, TRUE);
+  /* Stop the monitor before cleanup reuses the connection and the stack ID expires. */
+  g_thread_join(monitor);
 }
 
 static void initialize_tidb_snapshot(MYSQL *conn)
