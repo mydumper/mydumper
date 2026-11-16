@@ -335,7 +335,7 @@ static gboolean parse_create_table_from_file(struct db_table *dbt, gchar *filena
           {
             // Processing CREATE TABLE statement
             int flag =  // process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt, (dbt->rows == 0 || dbt->rows >= 1000000 || skip_constraints || skip_indexes));
-                global_process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->source_table_name ? dbt->source_table_name : dbt->create_table_name, TRUE);
+                global_process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->source_table_name ? dbt->source_table_name : dbt->create_table_name, TRUE, NULL);
             if (flag & IS_TRX_TABLE)
             {
               trace("IS_TRX_TABLE: %s.%s", dbt->database->target_database, dbt->source_table_name);
