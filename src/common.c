@@ -1668,101 +1668,81 @@ int global_process_create_table_statement(gchar *statement, GString *create_tabl
   int    i = 0;
   gchar *engine_pos = NULL;
   guint  index_in_alter_counter = 0;
-  gboolean create_table_statement_open=TRUE;
-  guint j=0;
-  guint create_table_statement_open_counter=0;
   while (!g_strstr_len(split_file[i], -1, "("))
   {
     i++;
   }
   for (; i < (int)g_strv_length(split_file); i++)
   {
-    if (create_table_statement_open)
+    if (split_indexes && (g_strstr_len(split_file[i], 5, "  KEY") || g_strstr_len(split_file[i], 8, "  UNIQUE") || g_strstr_len(split_file[i], 9, "  SPATIAL") || g_strstr_len(split_file[i], 10, "  FULLTEXT") || g_strstr_len(split_file[i], 7, "  INDEX")))
     {
-      if (split_indexes && (g_strstr_len(split_file[i], 5, "  KEY") || g_strstr_len(split_file[i], 8, "  UNIQUE") || g_strstr_len(split_file[i], 9, "  SPATIAL") || g_strstr_len(split_file[i], 10, "  FULLTEXT") || g_strstr_len(split_file[i], 7, "  INDEX")))
+      // Ignore if the first column of the index is the AUTO_INCREMENT column
+      if ((autoinc_column != NULL) && (g_strrstr(split_file[i], autoinc_column)))
       {
-        // Ignore if the first column of the index is the AUTO_INCREMENT column
-        if ((autoinc_column != NULL) && (g_strrstr(split_file[i], autoinc_column)))
-        {
-          g_string_append(create_table_statement, split_file[i]);
-          g_string_append_c(create_table_statement, '\n');
-        }
-        else
-        {
-          index_in_alter_counter++;
-          flag |= IS_ALTER_TABLE_PRESENT;
-          if (g_strrstr(split_file[i], "  FULLTEXT"))
-            fulltext_counter++;
-          if (fulltext_counter > 1)
-          {
-            fulltext_counter = 1;
-            finish_alter_table(alter_table_statement);
-            append_alter_table(alter_table_statement, real_table);
-            index_in_alter_counter = 1;
-          }
-          else if (optimize_keys_batchsize > 0 && index_in_alter_counter > optimize_keys_batchsize)
-          {
-            finish_alter_table(alter_table_statement);
-            append_alter_table(alter_table_statement, real_table);
-            index_in_alter_counter = 1;
-          }
-          g_string_append(alter_table_statement, "\n ADD");
-          g_string_append(alter_table_statement, split_file[i]);
-        }
+        g_string_append(create_table_statement, split_file[i]);
+        g_string_append_c(create_table_statement, '\n');
       }
       else
       {
-        if (g_strstr_len(split_file[i], 12, "  CONSTRAINT"))
+        index_in_alter_counter++;
+        flag |= IS_ALTER_TABLE_PRESENT;
+        if (g_strrstr(split_file[i], "  FULLTEXT"))
+          fulltext_counter++;
+        if (fulltext_counter > 1)
         {
-          flag |= INCLUDE_CONSTRAINT;
-          g_string_append(alter_table_constraint_statement, "\n ADD");
-          g_string_append(alter_table_constraint_statement, split_file[i]);
+          fulltext_counter = 1;
+          finish_alter_table(alter_table_statement);
+          append_alter_table(alter_table_statement, real_table);
+          index_in_alter_counter = 1;
         }
-        else
+        else if (optimize_keys_batchsize > 0 && index_in_alter_counter > optimize_keys_batchsize)
         {
-          if (g_strrstr(split_file[i], "AUTO_INCREMENT"))
-          {
-            gchar **autoinc_split = g_strsplit(split_file[i], identifier_quote_character_str, 3);
-            autoinc_column = g_strdup_printf("(%c%s%c", identifier_quote_character, autoinc_split[1], identifier_quote_character);
-          }
-          g_string_append(create_table_statement, split_file[i]);
-          g_string_append_c(create_table_statement, '\n');
+          finish_alter_table(alter_table_statement);
+          append_alter_table(alter_table_statement, real_table);
+          index_in_alter_counter = 1;
         }
-      }
-    
-      j=0;
-      while (split_file[i][j] && create_table_statement_open){
-        if (split_file[i][j]=='(')
-          create_table_statement_open_counter++;
-        else if (split_file[i][j]==')')
-          create_table_statement_open_counter--;
-        if (create_table_statement_open_counter==0)
-          create_table_statement_open=FALSE;
-        j++;
+        g_string_append(alter_table_statement, "\n ADD");
+        g_string_append(alter_table_statement, split_file[i]);
       }
     }
-    if (!create_table_statement_open)
+    else
     {
-      engine_pos = g_strrstr(split_file[i], "ENGINE=");
-      if (engine_pos)
+      if (g_strstr_len(split_file[i], 12, "  CONSTRAINT"))
       {
-        engine_pos += 7;
-        gchar *end_engine_pos = g_strstr_len(engine_pos, -1, " ");
-        if (end_engine_pos)
-          end_engine_pos[0] = '\0';
-        if (g_list_find_custom(optimize_key_engines, engine_pos, (GCompareFunc)g_strcmp0))
-          flag |= IS_TRX_TABLE;
-        if (end_engine_pos)
-          end_engine_pos[0] = ' ';
+        flag |= INCLUDE_CONSTRAINT;
+        g_string_append(alter_table_constraint_statement, "\n ADD");
+        g_string_append(alter_table_constraint_statement, split_file[i]);
       }
-      if (table_option_modifier)
-        table_option_modifier(create_table_statement);
+      else
+      {
+        if (g_strrstr(split_file[i], "AUTO_INCREMENT"))
+        {
+          gchar **autoinc_split = g_strsplit(split_file[i], identifier_quote_character_str, 3);
+          autoinc_column = g_strdup_printf("(%c%s%c", identifier_quote_character, autoinc_split[1], identifier_quote_character);
+        }
+        g_string_append(create_table_statement, split_file[i]);
+        g_string_append_c(create_table_statement, '\n');
+      }
     }
-    
+    engine_pos = g_strrstr(split_file[i], "ENGINE=");
+    if (engine_pos)
+    {
+      engine_pos += 7;
+      gchar *end_engine_pos = g_strstr_len(engine_pos, -1, " ");
+      if (end_engine_pos)
+        end_engine_pos[0] = '\0';
+      if (g_list_find_custom(optimize_key_engines, engine_pos, (GCompareFunc)g_strcmp0))
+        flag |= IS_TRX_TABLE;
+      if (end_engine_pos)
+        end_engine_pos[0] = ' ';
+    }
   }
+  if (table_option_modifier)
+    table_option_modifier(create_table_statement);
   g_string_replace(create_table_statement, ",\n)", "\n)", 0);
   finish_alter_table(alter_table_statement);
   finish_alter_table(alter_table_constraint_statement);
+  g_message("Create table statement: %s", create_table_statement->str);
   return flag;
 }
 
