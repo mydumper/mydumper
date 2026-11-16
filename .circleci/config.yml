@@ -2657,7 +2657,7 @@ commands:
 
   prepare_mariadb1011:
     steps:
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.11.20"
+    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.11"
 #    - run: yum-config-manager --disable mariadb-maxscale || true
 
   prepare_el_mysql80:
@@ -7549,11 +7549,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
-    - checkout
-    - prepare_bullseye_mariadb1011
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 10[.]11[.]'
     - checkout
     - prepare_bullseye_mariadb1006
     - compile_and_test_mydumper:
