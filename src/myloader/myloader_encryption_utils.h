@@ -23,7 +23,7 @@ enum remove_encryption_option_mode
 
 /* Parses the --remove-encryption-option value. A NULL value (option given
    without argument) means ALWAYS. Returns FALSE on an unknown value. */
-gboolean parse_remove_encryption_option_mode(const gchar *value, enum remove_encryption_option_mode *mode);
+gboolean     parse_remove_encryption_option_mode(const gchar *value, enum remove_encryption_option_mode *mode);
 const gchar *remove_encryption_option_mode_to_str(enum remove_encryption_option_mode mode);
 
 /* Decides whether the option has to be removed for the given mode/target. */

@@ -33,12 +33,12 @@
 #include "myloader/myloader_control_job.h"
 #include "myloader/myloader_database.h"
 #include "myloader/myloader_directory.h"
+#include "myloader/myloader_encryption_utils.h"
 #include "myloader/myloader_global.h"
 #include "myloader/myloader_restore_job.h"
 #include "myloader/myloader_stream.h"
 #include "myloader/myloader_worker_loader_main.h"
 #include "myloader/myloader_worker_schema.h"
-#include "myloader/myloader_encryption_utils.h"
 
 struct replication_statements *replication_statements = NULL;
 gboolean                       append_if_not_exist = FALSE;
