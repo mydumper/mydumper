@@ -85,8 +85,8 @@ then
     # CREATE DATABASE ... /*!80016 DEFAULT ENCRYPTION='N' */
     -e "s#[[:space:]]*/\*![0-9]* DEFAULT ENCRYPTION='[NnYy]' \*/##g"
     # CREATE TABLE ... ENCRYPTION='N' (MariaDB uses ENCRYPTED=YES/NO)
-    -e "s#[[:space:]]ENCRYPTION='[Nn]'##g"
-    -e "s#[[:space:]]ENCRYPTION='[Yy]'# ENCRYPTED=YES#g"
+#    -e "s#[[:space:]]ENCRYPTION='[Nn]'##g"
+#    -e "s#[[:space:]]ENCRYPTION='[Yy]'# ENCRYPTED=YES#g"
     # MySQL 8 collations, unknown before MariaDB 11.4
     -e "s#utf8mb4_0900_bin#utf8mb4_bin#g"
     -e "s#utf8mb4_[a-z0-9_]*0900_[a-z_]*#utf8mb4_unicode_520_ci#g"
