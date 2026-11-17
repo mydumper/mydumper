@@ -227,7 +227,7 @@ extern guint g_get_num_processors(void);
 #endif
 char *show_warnings_if_possible(MYSQL *conn);
 int   global_process_create_table_statement(
-    gchar *statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes);
+    gchar *statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes, void table_option_modifier(GString *));
 void          parse_object_scope(struct object_scope *object_to_export, gchar *val);
 gchar        *build_dbt_key(gchar *a, gchar *b);
 gchar        *build_config_file_dbt_key(const gchar *a, const gchar *b);

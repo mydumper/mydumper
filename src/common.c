@@ -1657,7 +1657,7 @@ void finish_alter_table(GString *alter_table_statement)
     g_string_append(alter_table_statement, ";\n");
 }
 
-int global_process_create_table_statement(gchar *statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes)
+int global_process_create_table_statement(gchar *statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes, void table_option_modifier(GString *))
 {
   int     flag = 0;
   gchar **split_file = g_strsplit(statement, "\n", -1);
@@ -1668,7 +1668,11 @@ int global_process_create_table_statement(gchar *statement, GString *create_tabl
   int    i = 0;
   gchar *engine_pos = NULL;
   guint  index_in_alter_counter = 0;
-  for (i = 0; i < (int)g_strv_length(split_file); i++)
+  while (!g_strstr_len(split_file[i], -1, "("))
+  {
+    i++;
+  }
+  for (; i < (int)g_strv_length(split_file); i++)
   {
     if (split_indexes && (g_strstr_len(split_file[i], 5, "  KEY") || g_strstr_len(split_file[i], 8, "  UNIQUE") || g_strstr_len(split_file[i], 9, "  SPATIAL") || g_strstr_len(split_file[i], 10, "  FULLTEXT") || g_strstr_len(split_file[i], 7, "  INDEX")))
     {
@@ -1733,9 +1737,12 @@ int global_process_create_table_statement(gchar *statement, GString *create_tabl
         end_engine_pos[0] = ' ';
     }
   }
+  if (table_option_modifier)
+    table_option_modifier(create_table_statement);
   g_string_replace(create_table_statement, ",\n)", "\n)", 0);
   finish_alter_table(alter_table_statement);
   finish_alter_table(alter_table_constraint_statement);
+  g_message("Create table statement: %s", create_table_statement->str);
   return flag;
 }
 
