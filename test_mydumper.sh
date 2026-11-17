@@ -291,10 +291,10 @@ encrypt_database(){
   if mysql -N -e "SELECT VERSION()" | grep -qi mariadb
   then
     option="ENCRYPTED=YES"
-    encrypted="%ENCRYPTED%=YES%"
+    encrypted="%ENCRYPTED%=%YES%"
   else
     option="ENCRYPTION='Y'"
-    encrypted="%ENCRYPTION='Y'%"
+    encrypted="%ENCRYPTION%=%Y%"
   fi
   local tables="FROM information_schema.TABLES WHERE TABLE_SCHEMA='${db}' AND TABLE_TYPE='BASE TABLE' AND ENGINE='InnoDB'"
   echo "Encrypting the InnoDB tables of ${db} with ${option}"
