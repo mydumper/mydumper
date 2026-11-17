@@ -97,7 +97,7 @@ export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
 
-optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,skip-backup,prepare,directories:,retry:,replica-host:,replica-port:,source-db:,target-db:"
+optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,skip-backup,prepare,directories:,retry:,replica-host:,replica-port:,source-db:,target-db:,encrypt-tables"
 optstring_short="c:,e:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
@@ -117,6 +117,7 @@ unset replica_host
 unset replica_port
 unset source_db
 unset target_db
+unset encrypt_tables
 log_level="--verbose 4"
 
 while true
@@ -187,6 +188,9 @@ do
   --target-db)
     target_db=$2
     shift 2;;
+  --encrypt-tables)
+    encrypt_tables=1
+    shift;;
   --) shift; break;;
   esac
 done
@@ -279,11 +283,39 @@ backtrace ()
    done
 }
 
+# --encrypt-tables: encrypts at rest every InnoDB table of a database. The
+# server needs a keyring (MySQL/Percona) or a key management plugin (MariaDB).
+# It fails when a table is still not encrypted, as mysql() ignores errors.
+encrypt_database(){
+  local db=$1 option encrypted
+  if mysql -N -e "SELECT VERSION()" | grep -qi mariadb
+  then
+    option="ENCRYPTED=YES"
+    encrypted="%ENCRYPTED%=YES%"
+  else
+    option="ENCRYPTION='Y'"
+    encrypted="%ENCRYPTION='Y'%"
+  fi
+  local tables="FROM information_schema.TABLES WHERE TABLE_SCHEMA='${db}' AND TABLE_TYPE='BASE TABLE' AND ENGINE='InnoDB'"
+  echo "Encrypting the InnoDB tables of ${db} with ${option}"
+  mysql -N -e "SELECT CONCAT('ALTER TABLE \`', TABLE_SCHEMA, '\`.\`', TABLE_NAME, '\` ', \"${option}\", ';') ${tables}" | mysql
+  local not_encrypted
+  not_encrypted=$(mysql -N -e "SELECT GROUP_CONCAT(TABLE_NAME) ${tables} AND CREATE_OPTIONS NOT LIKE \"${encrypted}\"")
+  if [ -n "${not_encrypted}" ] && [ "${not_encrypted}" != "NULL" ]
+  then
+    die "Tables not encrypted in ${db}: ${not_encrypted}"
+  fi
+}
+
 prepare_database_in_directory(){
   prepare_database="test/${1}.sql"
   if [ -f ${prepare_database} ]
   then
     mysql < ${prepare_database}
+    if [ -n "$encrypt_tables" ] && grep -q "sakila-schema.sql" ${prepare_database}
+    then
+      encrypt_database sakila
+    fi
   fi
 }
 
