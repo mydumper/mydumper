@@ -24,6 +24,7 @@
 
 #include "common_options.h"
 #include "myloader/myloader.h"
+#include "myloader/myloader_encryption_utils.h"
 
 extern gboolean debug;
 extern gboolean disable_redo_log;
@@ -64,6 +65,7 @@ extern gchar  *exec_per_thread_extension;
 extern gchar **exec_per_thread_cmd;
 extern gchar  *optimize_keys_str;
 extern gchar  *checksum_str;
+extern enum remove_encryption_option_mode remove_encryption_option_mode;
 extern gchar  *ignore_errors;
 extern gchar  *compress_extension;
 extern gchar  *target_db;

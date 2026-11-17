@@ -25,5 +25,28 @@ int main(void)
   check("CREATE TABLE `t`(`id` int) ENGINE=InnoDB ENCRYPTION='Y';\n", FALSE, "CREATE TABLE `t`(`id` int) ENGINE=InnoDB ENCRYPTION='Y';\n");
   check("INSERT INTO `t` VALUES ('x ENCRYPTION=''N'';');\n", FALSE, "INSERT INTO `t` VALUES ('x ENCRYPTION=''N'';');\n");
   check("", FALSE, "");
+  /* as built by global_process_create_table_statement: preceding SET statements in the buffer */
+  check("/*!40101 SET NAMES binary*/;\nCREATE TABLE IF NOT EXISTS `v`(\n`id` int\n) ENGINE=MEMORY ENCRYPTION='N';\n\n", TRUE,
+        "/*!40101 SET NAMES binary*/;\nCREATE TABLE IF NOT EXISTS `v`(\n`id` int\n) ENGINE=MEMORY;\n\n");
+
+  /* --remove-encryption-option values */
+  enum remove_encryption_option_mode mode = REMOVE_ENCRYPTION_OPTION_AUTO;
+  g_assert_true(parse_remove_encryption_option_mode(NULL, &mode));
+  g_assert_cmpint(mode, ==, REMOVE_ENCRYPTION_OPTION_ALWAYS);
+  g_assert_true(parse_remove_encryption_option_mode("never", &mode));
+  g_assert_cmpint(mode, ==, REMOVE_ENCRYPTION_OPTION_NEVER);
+  g_assert_true(parse_remove_encryption_option_mode("OFF", &mode));
+  g_assert_cmpint(mode, ==, REMOVE_ENCRYPTION_OPTION_NEVER);
+  g_assert_true(parse_remove_encryption_option_mode("Always", &mode));
+  g_assert_cmpint(mode, ==, REMOVE_ENCRYPTION_OPTION_ALWAYS);
+  g_assert_true(parse_remove_encryption_option_mode("auto", &mode));
+  g_assert_cmpint(mode, ==, REMOVE_ENCRYPTION_OPTION_AUTO);
+  g_assert_false(parse_remove_encryption_option_mode("maybe", &mode));
+  g_assert_cmpint(mode, ==, REMOVE_ENCRYPTION_OPTION_AUTO);
+
+  g_assert_true(should_remove_encryption_option(REMOVE_ENCRYPTION_OPTION_AUTO, TRUE));
+  g_assert_false(should_remove_encryption_option(REMOVE_ENCRYPTION_OPTION_AUTO, FALSE));
+  g_assert_true(should_remove_encryption_option(REMOVE_ENCRYPTION_OPTION_ALWAYS, FALSE));
+  g_assert_false(should_remove_encryption_option(REMOVE_ENCRYPTION_OPTION_NEVER, TRUE));
   return 0;
 }
