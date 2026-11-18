@@ -338,9 +338,7 @@ void *monitor_ftwrl_thread(void *thread_id)
           {
             if (!g_atomic_int_get(&ftwrl_completed) && (shutdown_triggered || ftwrl_found_in_processlist == TRUE))
             {
-              query = g_strdup_printf("KILL QUERY %lu", atol(row[id_col]));
-              if (mysql_query(conn, query))
-                m_warning("Could not KILL slow query: %s", mysql_error(conn));
+              m_query_warning(conn, query = g_strdup_printf("KILL QUERY %lu", atol(row[id_col])), "Could not KILL slow query", NULL);
               g_free(query);
               ftwrl_found_in_processlist = FALSE;
             }
