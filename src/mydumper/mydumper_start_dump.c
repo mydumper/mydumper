@@ -88,6 +88,8 @@ static guint      resume_at = 0;
 static gchar    **db_items = NULL;
 static GRecMutex *ready_table_dump_mutex = NULL;
 static gint       ftwrl_completed = FALSE;
+static GMutex     ftwrl_mutex;
+static GCond      ftwrl_cond;
 static void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
 static void (*release_ddl_lock_function)(MYSQL *) = NULL;
 
@@ -278,6 +280,19 @@ static MYSQL *create_connection()
   return conn;
 }
 
+static void wait_for_ftwrl_completion(void)
+{
+  gint64 deadline = g_get_monotonic_time() + G_TIME_SPAN_SECOND;
+  g_mutex_lock(&ftwrl_mutex);
+  /* Recheck after each wakeup, including when completion preceded the wait. */
+  while (!g_atomic_int_get(&ftwrl_completed))
+  {
+    if (!g_cond_wait_until(&ftwrl_cond, &ftwrl_mutex, deadline))
+      break;
+  }
+  g_mutex_unlock(&ftwrl_mutex);
+}
+
 void *monitor_ftwrl_thread(void *thread_id)
 {
   MYSQL     *conn = NULL;
@@ -289,11 +304,11 @@ void *monitor_ftwrl_thread(void *thread_id)
     if (ftwrl_found_in_processlist == TRUE)
     {
       for (guint waited = 0; waited < ftwrl_max_wait_time && !shutdown_triggered && !g_atomic_int_get(&ftwrl_completed); waited++)
-        sleep(1);
+        wait_for_ftwrl_completion();
     }
     else
     {
-      sleep(1);
+      wait_for_ftwrl_completion();
     }
     if (g_atomic_int_get(&ftwrl_completed))
       break;
@@ -835,7 +850,10 @@ try_FLUSH_NO_WRITE_TO_BINLOG_TABLES:
   }
 
 ftwrl_done:
+  g_mutex_lock(&ftwrl_mutex);
   g_atomic_int_set(&ftwrl_completed, TRUE);
+  g_cond_signal(&ftwrl_cond);
+  g_mutex_unlock(&ftwrl_mutex);
   /* Monitor I/O is timed out; join prevents a late KILL from racing with cleanup. */
   g_thread_join(monitor);
 }
