@@ -141,7 +141,7 @@ add_executable(test_view_database_mapping test/unit/test_view_database_mapping.c
 target_link_libraries(test_view_database_mapping ${GLIB2_LIBRARIES})
 add_test(NAME view_database_mapping COMMAND test_view_database_mapping)
 add_executable(test_checksum_view test/unit/test_checksum_view.c)
-target_link_libraries(test_checksum_view ${GLIB2_LIBRARIES})
+target_link_libraries(test_checksum_view ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
 add_test(NAME checksum_view COMMAND test_checksum_view)
 
 add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c)
@@ -167,7 +167,7 @@ target_link_libraries(test_checksum_missing ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES}
 add_test(NAME checksum_missing COMMAND test_checksum_missing)
 
 add_executable(test_checksum_view_server test/unit/test_checksum_view_server.c)
-target_link_libraries(test_checksum_view_server ${GLIB2_LIBRARIES} ${MYSQL_LIBRARIES})
+target_link_libraries(test_checksum_view_server ${GLIB2_LIBRARIES} ${MYSQL_LIBRARIES} ${ZLIB_LIBRARIES})
 
 # Unit test: --use-defer livelock
 # Requires only GLib (no MySQL). Link with -DUSE_DEFER_FIX to test the fixed
