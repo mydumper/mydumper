@@ -22,6 +22,7 @@
 #include "common.h"
 
 #include "checksum.h"
+#include "checksum_view_normalize.h"
 #include "server_detect.h"
 #include "logging.h"
 
@@ -157,11 +158,115 @@ char *checksum_trigger_structure_from_database(MYSQL *conn, char *database, char
       0, database, table);
 }
 
+static gchar *normalize_view_definition(const gchar *definition, const gchar *database, gboolean no_backslash_escapes, gboolean ansi_quotes)
+{
+  GString     *normalized = g_string_new(NULL);
+  const gchar *p = definition;
+  while (*p)
+  {
+    const gchar *start = p;
+    if (*p == '#' || (p[0] == '-' && p[1] == '-' && g_ascii_isspace(p[2])))
+    {
+      while (*p && *p != '\n')
+        p++;
+      g_string_append_len(normalized, start, p - start);
+    }
+    else if (p[0] == '/' && p[1] == '*')
+    {
+      const gchar *end = strstr(p + 2, "*/");
+      p = end ? end + 2 : p + strlen(p);
+      g_string_append_len(normalized, start, p - start);
+    }
+    else if (*p == '\'' || (*p == '"' && !ansi_quotes))
+    {
+      gchar quote = *p++;
+      while (*p)
+      {
+        if (*p == '\\' && !no_backslash_escapes && p[1])
+          p += 2;
+        else if (*p++ == quote)
+        {
+          if (*p != quote)
+            break;
+          p++;
+        }
+      }
+      g_string_append_len(normalized, start, p - start);
+    }
+    else if (*p == '`' || (*p == '"' && ansi_quotes) || g_ascii_isalnum(*p) || *p == '_' || *p == '$' || (guchar)*p >= 128)
+    {
+      gchar    quote = (*p == '`' || *p == '"') ? *p++ : 0;
+      GString *identifier = g_string_new(NULL);
+      gboolean closed = !quote;
+      if (quote)
+      {
+        while (*p)
+        {
+          if (*p == quote)
+          {
+            p++;
+            if (*p != quote)
+            {
+              closed = TRUE;
+              break;
+            }
+          }
+          g_string_append_c(identifier, *p++);
+        }
+      }
+      else
+        while (g_ascii_isalnum(*p) || *p == '_' || *p == '$' || (guchar)*p >= 128)
+          g_string_append_c(identifier, *p++);
+      const gchar *next = p;
+      while (g_ascii_isspace(*next))
+        next++;
+      const gchar *previous = start;
+      while (previous > definition && g_ascii_isspace(previous[-1]))
+        previous--;
+      /* Match complete qualifier tokens, not literals or identifier substrings. */
+      if (closed && *next == '.' && (previous == definition || previous[-1] != '.') && !strcmp(identifier->str, database))
+        p = next + 1;
+      else
+        g_string_append_len(normalized, start, p - start);
+      g_string_free(identifier, TRUE);
+    }
+    else
+      g_string_append_c(normalized, *p++);
+  }
+  return g_string_free(normalized, FALSE);
+}
+
 char *checksum_view_structure(MYSQL *conn, char *database, char *table)
 {
-  return generic_checksum(conn,
-      checksum_select_prefix "SELECT REPLACE(VIEW_DEFINITION,TABLE_SCHEMA,'') AS col FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s') AS a;",
-      0, database, table);
+  gchar *query = g_strdup_printf(
+      "SELECT BINARY VIEW_DEFINITION, @@SESSION.sql_mode FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s'",
+      database, table);
+  struct M_ROW *mr = m_store_result_single_row(conn, query, "Error dumping checksum (%s.%s)", database, table);
+  g_free(query);
+  gchar *checksum = NULL;
+  if (mr && mr->row && mr->row[0] && mr->row[1])
+  {
+    gchar *definition = normalize_view_definition(mr->row[0], database,
+        strstr(mr->row[1], "NO_BACKSLASH_ESCAPES") != NULL,
+        strstr(mr->row[1], "ANSI_QUOTES") != NULL);
+    gchar *expressions = normalize_view_expressions(definition,
+        strstr(mr->row[1], "NO_BACKSLASH_ESCAPES") != NULL,
+        strstr(mr->row[1], "ANSI_QUOTES") != NULL,
+        strstr(mr->row[1], "HIGH_NOT_PRECEDENCE") != NULL || strstr(mr->row[1], "PIPES_AS_CONCAT") != NULL);
+    g_free(definition);
+    definition = expressions;
+    /* A binary hex literal preserves definition bytes and needs no SQL escaping. */
+    GString *crc_query = g_string_new("SELECT LOWER(CONV(CRC32(X'");
+    for (const guchar *p = (const guchar *)definition; *p; p++)
+      g_string_append_printf(crc_query, "%02x", *p);
+    g_string_append(crc_query, "'), 10, 16))");
+    checksum = generic_checksum(conn, crc_query->str, 0, database, table);
+    g_string_free(crc_query, TRUE);
+    g_free(definition);
+  }
+  if (mr)
+    m_store_result_row_free(mr);
+  return checksum;
 }
 
 char *checksum_database_defaults(MYSQL *conn, char *database, char *table)
