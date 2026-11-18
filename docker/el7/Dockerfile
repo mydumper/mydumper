@@ -14,7 +14,7 @@ RUN \
 RUN \
   yum -y install epel-release && \
   yum -y install wget curl && \
-  yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel pcre2-devel openssl-devel libzstd-devel sudo && \
+  yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel pcre2-devel openssl-devel libzstd-devel sudo yum-utils && \
   yum clean all
 
 RUN \
@@ -25,6 +25,5 @@ RUN \
   wget https://r.mariadb.com/downloads/mariadb_repo_setup -O /tmp/mariadb_repo_setup
 
 RUN \
-  yum -y install https://repo.mysql.com/mysql84-community-release-el7.rpm && \
   rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2025 && \
   yum clean all

@@ -93,7 +93,7 @@ MESSAGE(STATUS "Default configuration file: ${DEFAULTS_FILE}")
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/src/config.h )
 SET( SHARED_SRCS src/server_detect.c src/connection.c src/logging.c src/set_verbose.c src/common.c src/tables_skiplist.c src/tables_includelist.c src/regex.c src/common_options.c src/pmm_thread.c src/checksum.c )
 SET( MYDUMPER_SRCS src/mydumper/mydumper.c ${SHARED_SRCS} src/mydumper/mydumper_pmm.c src/mydumper/mydumper_start_dump.c src/mydumper/mydumper_jobs.c src/mydumper/mydumper_common.c src/mydumper/mydumper_stream.c src/mydumper/mydumper_database.c src/mydumper/mydumper_table.c src/mydumper/mydumper_working_thread.c src/mydumper/mydumper_daemon_thread.c src/mydumper/mydumper_exec_command.c src/mydumper/mydumper_masquerade.c src/mydumper/mydumper_chunks.c src/mydumper/mydumper_write.c src/mydumper/mydumper_escape.c src/mydumper/mydumper_arguments.c src/mydumper/mydumper_integer_chunks.c src/mydumper/mydumper_string_chunks.c src/mydumper/mydumper_string_planner.c src/mydumper/mydumper_string_planner_utils.c src/mydumper/mydumper_partition_chunks.c src/mydumper/mydumper_file_handler.c src/mydumper/mydumper_create_jobs.c )
-SET( MYLOADER_SRCS src/myloader/myloader.c ${SHARED_SRCS} src/myloader/myloader_pmm.c src/myloader/myloader_stream.c src/myloader/myloader_stream.c src/myloader/myloader_process.c src/myloader/myloader_common.c src/myloader/myloader_directory.c src/myloader/myloader_restore.c src/myloader/myloader_restore_job.c src/myloader/myloader_control_job.c src/myloader/myloader_process_filename.c src/myloader/myloader_process_file_type.c src/myloader/myloader_arguments.c src/myloader/myloader_worker_index.c src/myloader/myloader_worker_schema.c src/myloader/myloader_worker_loader.c src/myloader/myloader_worker_post.c src/myloader/myloader_database.c src/myloader/myloader_worker_loader_main.c src/myloader/myloader_table.c)
+SET( MYLOADER_SRCS src/myloader/myloader.c ${SHARED_SRCS} src/myloader/myloader_pmm.c src/myloader/myloader_stream.c src/myloader/myloader_stream.c src/myloader/myloader_process.c src/myloader/myloader_common.c src/myloader/myloader_directory.c src/myloader/myloader_restore.c src/myloader/myloader_restore_job.c src/myloader/myloader_control_job.c src/myloader/myloader_process_filename.c src/myloader/myloader_process_file_type.c src/myloader/myloader_arguments.c src/myloader/myloader_worker_index.c src/myloader/myloader_worker_schema.c src/myloader/myloader_worker_loader.c src/myloader/myloader_worker_post.c src/myloader/myloader_database.c src/myloader/myloader_view.c src/myloader/myloader_worker_loader_main.c src/myloader/myloader_table.c)
 
 add_executable(mydumper ${MYDUMPER_SRCS})
 add_executable(myloader ${MYLOADER_SRCS})
@@ -137,6 +137,12 @@ enable_testing()
 add_executable(test_checksum_routine test/unit/test_checksum_routine.c)
 target_link_libraries(test_checksum_routine ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
 add_test(NAME checksum_routine COMMAND test_checksum_routine)
+add_executable(test_view_database_mapping test/unit/test_view_database_mapping.c src/myloader/myloader_view.c)
+target_link_libraries(test_view_database_mapping ${GLIB2_LIBRARIES})
+add_test(NAME view_database_mapping COMMAND test_view_database_mapping)
+add_executable(test_checksum_view test/unit/test_checksum_view.c)
+target_link_libraries(test_checksum_view ${GLIB2_LIBRARIES})
+add_test(NAME checksum_view COMMAND test_checksum_view)
 
 add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c)
 # Older CMake adds -rdynamic; hidden symbols let the linker discard untested code.
@@ -144,6 +150,12 @@ target_compile_options(test_restore_connection_loss PRIVATE -ffunction-sections 
 set_property(TARGET test_restore_connection_loss APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
 target_link_libraries(test_restore_connection_loss ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 add_test(NAME restore_connection_loss COMMAND test_restore_connection_loss)
+
+add_executable(test_index_tail_connections test/unit/test_index_tail_connections.c)
+target_compile_options(test_index_tail_connections PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
+set_property(TARGET test_index_tail_connections APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
+target_link_libraries(test_index_tail_connections ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
+add_test(NAME index_tail_connections COMMAND test_index_tail_connections)
 
 add_executable(test_trigger_checksum_flags test/unit/test_trigger_checksum_flags.c src/myloader/myloader_table.c)
 target_link_libraries(test_trigger_checksum_flags ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
@@ -153,6 +165,9 @@ add_test(NAME trigger_checksum_skip_index COMMAND test_trigger_checksum_flags sk
 add_executable(test_checksum_missing test/unit/test_checksum_missing.c src/checksum.c)
 target_link_libraries(test_checksum_missing ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
 add_test(NAME checksum_missing COMMAND test_checksum_missing)
+
+add_executable(test_checksum_view_server test/unit/test_checksum_view_server.c)
+target_link_libraries(test_checksum_view_server ${GLIB2_LIBRARIES} ${MYSQL_LIBRARIES})
 
 # Unit test: --use-defer livelock
 # Requires only GLib (no MySQL). Link with -DUSE_DEFER_FIX to test the fixed
