@@ -1,6 +1,14 @@
 /* Lexical normalization tests; no server, dump, or restore is required. */
 #include "../../src/checksum.c"
 
+MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query, const char *fmt, ...)
+{
+  (void)conn; (void)query; (void)fmt;
+  g_assert_not_reached();
+}
+MYSQL_ROW STDCALL mysql_fetch_row(MYSQL_RES *result) { (void)result; g_assert_not_reached(); }
+void STDCALL mysql_free_result(MYSQL_RES *result) { (void)result; g_assert_not_reached(); }
+
 struct M_ROW *m_store_result_single_row(MYSQL *conn, const gchar *query, const char *fmt, ...)
 {
   (void)conn;

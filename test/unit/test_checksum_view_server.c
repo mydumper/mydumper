@@ -1,6 +1,14 @@
 /* Exercise the real checksum query against disposable integration servers. */
 #include "../../src/checksum.c"
 
+MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query, const char *fmt, ...)
+{
+  (void)fmt;
+  if (mysql_query(conn, query))
+    g_error("%s", mysql_error(conn));
+  return mysql_store_result(conn);
+}
+
 struct M_ROW *m_store_result_single_row(MYSQL *conn, const gchar *query, const char *fmt, ...)
 {
   (void)fmt;

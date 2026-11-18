@@ -134,11 +134,14 @@ OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
 
 enable_testing()
 
+add_executable(test_checksum_routine test/unit/test_checksum_routine.c)
+target_link_libraries(test_checksum_routine ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
+add_test(NAME checksum_routine COMMAND test_checksum_routine)
 add_executable(test_view_database_mapping test/unit/test_view_database_mapping.c src/myloader/myloader_view.c)
 target_link_libraries(test_view_database_mapping ${GLIB2_LIBRARIES})
 add_test(NAME view_database_mapping COMMAND test_view_database_mapping)
 add_executable(test_checksum_view test/unit/test_checksum_view.c)
-target_link_libraries(test_checksum_view ${GLIB2_LIBRARIES})
+target_link_libraries(test_checksum_view ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
 add_test(NAME checksum_view COMMAND test_checksum_view)
 
 add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c)
@@ -160,11 +163,11 @@ add_test(NAME trigger_checksum_flags COMMAND test_trigger_checksum_flags)
 add_test(NAME trigger_checksum_skip_index COMMAND test_trigger_checksum_flags skip-index)
 
 add_executable(test_checksum_missing test/unit/test_checksum_missing.c src/checksum.c)
-target_link_libraries(test_checksum_missing ${GLIB2_LIBRARIES})
+target_link_libraries(test_checksum_missing ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
 add_test(NAME checksum_missing COMMAND test_checksum_missing)
 
 add_executable(test_checksum_view_server test/unit/test_checksum_view_server.c)
-target_link_libraries(test_checksum_view_server ${GLIB2_LIBRARIES} ${MYSQL_LIBRARIES})
+target_link_libraries(test_checksum_view_server ${GLIB2_LIBRARIES} ${MYSQL_LIBRARIES} ${ZLIB_LIBRARIES})
 
 # Unit test: --use-defer livelock
 # Requires only GLib (no MySQL). Link with -DUSE_DEFER_FIX to test the fixed
