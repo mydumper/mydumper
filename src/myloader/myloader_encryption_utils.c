@@ -335,8 +335,9 @@ gboolean remove_database_encryption_option(GString *data)
   {
     // /*!80016 DEFAULT ENCRYPTION='N' */ as written by SHOW CREATE DATABASE,
     // or unversioned [DEFAULT] ENCRYPTION [=] 'Y'
-    GRegex *r = g_regex_new("[ \\t]*/\\*!\\d+\\s+(DEFAULT\\s+)?ENCRYPTION\\s*=?\\s*'[YN]'\\s*\\*/"
-                            "|\\s+(DEFAULT\\s+)?ENCRYPTION\\s*=?\\s*'[YN]'",
+    GRegex *r = g_regex_new(
+        "[ \\t]*/\\*!\\d+\\s+(DEFAULT\\s+)?ENCRYPTION\\s*=?\\s*'[YN]'\\s*\\*/"
+        "|\\s+(DEFAULT\\s+)?ENCRYPTION\\s*=?\\s*'[YN]'",
         G_REGEX_CASELESS | G_REGEX_RAW | G_REGEX_OPTIMIZE, 0, NULL);
     g_once_init_leave(&regex, r);
   }
