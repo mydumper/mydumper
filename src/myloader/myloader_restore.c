@@ -971,6 +971,9 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
   GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
   guint    line = 0, preline = 0;
   gchar   *path = g_build_filename(directory, filename, NULL);
+  // The database encryption option is not portable between MySQL and MariaDB (issue #2367)
+  table_option_modifier_func database_modifier =
+      restore_job_statement_type == CREATE_DATABASE ? get_database_encryption_modifier(encryption_option_mode, get_product() == SERVER_TYPE_MARIADB) : NULL;
   infile = myl_open(path, "r");
 
   g_log_set_always_fatal(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL);
@@ -1163,6 +1166,8 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           else
           {
             header = NULL;
+            if (database_modifier)
+              database_modifier(data);
           }
           assign_statement(ir, td, td->dbt, data->str, preline, is_schema, OTHER);
           g_async_queue_push(cd->queue->restore, ir);

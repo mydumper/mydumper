@@ -1657,7 +1657,7 @@ void finish_alter_table(GString *alter_table_statement)
     g_string_append(alter_table_statement, ";\n");
 }
 
-int global_process_create_table_statement(gchar *statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes, void table_option_modifier(GString *))
+int global_process_create_table_statement(gchar *statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes, gboolean table_option_modifier(GString *))
 {
   int     flag = 0;
   gchar **split_file = g_strsplit(statement, "\n", -1);
@@ -1742,7 +1742,6 @@ int global_process_create_table_statement(gchar *statement, GString *create_tabl
   g_string_replace(create_table_statement, ",\n)", "\n)", 0);
   finish_alter_table(alter_table_statement);
   finish_alter_table(alter_table_constraint_statement);
-  g_message("Create table statement: %s", create_table_statement->str);
   return flag;
 }
 

@@ -356,12 +356,41 @@ do
     port=$(( port + 1 ))
 done
 
+# Every server of the all_databases executor has a keyring, so tables can be
+# encrypted at rest (test_mydumper.sh --encrypt-tables):
+#   - percona57, percona80: keyring_file plugin, only server options
+#   - mysql97, percona84: component_keyring_file, which needs a manifest next
+#     to mysqld and a config file in the plugin directory, written as root
+#     before the image entrypoint starts
+#   - mariadb*: file_key_management plugin, which needs a key file
+# The key files are only CI test data.
+all_databases_keyring_dir=/var/lib/mysql-keyring
+
+# Shell run as root in the database container before the image entrypoint
+all_databases_component_keyring_prepare="set -e
+mkdir -p ${all_databases_keyring_dir}
+chown mysql:mysql ${all_databases_keyring_dir}
+mysqld_bin=\$(readlink -f \"\$(command -v mysqld)\")
+component=\$(find /usr -name component_keyring_file.so -not -path '*/debug/*' -print -quit)
+[ -n \"\${component}\" ] || { echo component_keyring_file.so not found >&2; exit 1; }
+echo '{\"components\": \"file://component_keyring_file\"}' > \"\${mysqld_bin}.my\"
+echo '{\"path\": \"${all_databases_keyring_dir}/component_keyring_file\", \"read_only\": false}' > \"\$(dirname \"\${component}\")/component_keyring_file.cnf\"
+touch ${all_databases_keyring_dir}/component_keyring_file
+chown mysql:mysql ${all_databases_keyring_dir}/component_keyring_file"
+all_databases_mariadb_keyring_prepare="set -e
+mkdir -p ${all_databases_keyring_dir}
+echo '1;5b2a3e3c7c1b4e8f9a0d6c2e4f8a1b3c5d7e9f0a2b4c6d8e0f1a3b5c7d9e1f20' > ${all_databases_keyring_dir}/keys.txt
+chown -R mysql:mysql ${all_databases_keyring_dir}
+chmod 0400 ${all_databases_keyring_dir}/keys.txt"
+
 port=${all_databases_first_port}
 server_id=1
 for vendor in ${all_databases_vendors[@]}
 do
     # Start from the same server command as the other executors and add the
     # options needed to run every server side by side on 127.0.0.1
+    prepare=""
+    image_user=""
     case ${vendor} in
       tidb)
         command="[-P, \"${port}\"]" ;;
@@ -372,15 +401,51 @@ do
         case ${vendor} in
           mysql*|percona80|percona84) command="${command}, --mysqlx=OFF" ;;
         esac
+        case ${vendor} in
+          percona57|percona80)
+            # /tmp: the mysql user can not create a directory in /var/lib
+            command="${command}, --early-plugin-load=keyring_file.so, --keyring-file-data=/tmp/keyring_file" ;;
+          mysql97)
+            command="${command}, --innodb-use-native-aio=0, --innodb-flush-method=fsync"
+            prepare="${all_databases_component_keyring_prepare}" ;;
+          percona84)
+            # The image runs as mysql, which can not write next to mysqld
+            prepare="${all_databases_component_keyring_prepare}"
+            image_user=root
+            command="${command}, --user=mysql" ;;
+          mariadb*)
+            prepare="${all_databases_mariadb_keyring_prepare}"
+            command="${command}, --plugin-load-add=file_key_management, --file-key-management-filename=${all_databases_keyring_dir}/keys.txt" ;;
+        esac
         command="${command}]" ;;
     esac
-    echo "    - image: ${all_vendors[${vendor}_1]}
-      command: ${command}
-      environment:"
+    echo "    - image: ${all_vendors[${vendor}_1]}"
+    [ -n "${image_user}" ] && echo "      user: ${image_user}"
+    if [ -n "${prepare}" ]
+    then
+        # bash -c '<prepare>; exec <entrypoint> "$@"' bash mysqld <options>
+        # Images run their entrypoint with this command and, as it is not
+        # mysqld, they execute it as is; the entrypoint is then started again
+        # with the real server command.
+        echo "      command:
+      - bash
+      - -c
+      - |"
+        echo "${prepare}" | sed 's/^/        /'
+        echo "        exec \"\$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)\" \"\$@\"
+      - bash"
+        args="${command#[}"
+        args="${args%]}"
+        echo "${args}" | sed 's/, /\n/g' | sed 's/^/      - /'
+    else
+        echo "      command: ${command}"
+    fi
+    echo "      environment:"
     case ${vendor} in
       mysql*) ;;
       *) echo "        MYSQL_USER: root" ;;
     esac
+    [ "${vendor}" = percona84 ] && echo "        PERCONA_TELEMETRY_DISABLE: 1"
     echo "        MYSQL_ALLOW_EMPTY_PASSWORD: true"
     port=$(( port + 1 ))
     server_id=$(( server_id + 1 ))
@@ -985,6 +1050,7 @@ do
           echo "Target (myloader): \${TARGET_DB} on \${MYSQL_HOST}:\${TARGET_PORT}"
           export MYSQL_TCP_PORT=\${SOURCE_PORT}
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port \${TARGET_PORT} --source-db '${all_vendors[${source_vendor}_9]}' --target-db '${all_vendors[${target_vendor}_9]}'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port \${TARGET_PORT} --source-db '${all_vendors[${source_vendor}_9]}' --target-db '${all_vendors[${target_vendor}_9]}'
 EOF
   done
 done
