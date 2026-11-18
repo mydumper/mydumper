@@ -195,7 +195,7 @@ all_os[${os}_0]="bullseye"
 all_os[${os}_1]="debian:bullseye"
 all_os[${os}_2]="percona-release_latest.bullseye_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="percona57 percona80 mariadb1011 mariadb1006"
+all_os[${os}_4]="percona57 percona80 mariadb1006"
 
 os=bookworm
 all_os[${os}_0]="bookworm"

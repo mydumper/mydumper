@@ -60,5 +60,6 @@ void     release_load_data_as_it_is_close(gchar *filename);
 void     close_restore_thread();
 void     wait_restore_threads_to_close();
 gboolean release_idle_connection_if_possible();
+void     set_connection_pool_idle_release(gboolean release);
 
 #endif
