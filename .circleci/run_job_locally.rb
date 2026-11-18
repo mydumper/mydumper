@@ -254,6 +254,7 @@ info "Parameters: #{job_params.map { |k, v| "#{k}=#{v.inspect}" }.join(', ')}" u
 
 run_cmd = ['docker', 'run', '-d', '--name', container, *platform_args,
            '-v', "#{WORKSPACE_VOLUME}:#{WORKSPACE_DIR}", *env_args(job_env),
+           *(primary['user'] ? ['--user', primary['user'].to_s] : []),
            '--entrypoint', 'tail', primary['image'], '-f', '/dev/null']
 info "Starting #{primary['image']}"
 system(*run_cmd, out: File::NULL) or abort('could not start primary container')
@@ -263,6 +264,7 @@ docker_cfg.drop(1).each_with_index do |svc, i|
   name = "#{container}-svc#{i + 1}"
   cmd = ['docker', 'run', '-d', '--name', name, *platform_args, '--network', "container:#{container}",
          *env_args(stringify_env.call(svc['environment']))]
+  cmd += ['--user', svc['user'].to_s] if svc['user']
   cmd += ['--entrypoint', Array(svc['entrypoint']).first] if svc['entrypoint']
   cmd << svc['image']
   cmd += Array(svc['entrypoint']).drop(1) if svc['entrypoint']

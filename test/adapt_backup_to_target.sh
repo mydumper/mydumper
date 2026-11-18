@@ -15,7 +15,7 @@
 #   - target MySQL/Percona >= 8.0: drop SQL modes removed in 8.0
 #     (NO_AUTO_CREATE_USER, ...)
 #   - MariaDB -> MySQL/Percona: drop MariaDB only SQL modes
-#   - MySQL/Percona -> MariaDB: drop ENCRYPTION table/database options, map
+#   - MySQL/Percona -> MariaDB: map
 #     the MySQL 8 utf8mb4_0900_* collations to MariaDB ones and drop the
 #     ONLY_FULL_GROUP_BY SQL mode
 #   - between vendors: view definitions are rewritten by each server, so
@@ -83,7 +83,7 @@ if [ "$source_family" = mysql ] && [ "$target_family" = mariadb ]
 then
   schema_sed+=(
     # CREATE DATABASE ... /*!80016 DEFAULT ENCRYPTION='N' */
-    -e "s#[[:space:]]*/\*![0-9]* DEFAULT ENCRYPTION='[NnYy]' \*/##g"
+#    -e "s#[[:space:]]*/\*![0-9]* DEFAULT ENCRYPTION='[NnYy]' \*/##g"
     # CREATE TABLE ... ENCRYPTION='N' (MariaDB uses ENCRYPTED=YES/NO)
 #    -e "s#[[:space:]]ENCRYPTION='[Nn]'##g"
 #    -e "s#[[:space:]]ENCRYPTION='[Yy]'# ENCRYPTED=YES#g"

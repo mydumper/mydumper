@@ -2637,6 +2637,8 @@ executors:
         [ -n "${component}" ] || { echo component_keyring_file.so not found >&2; exit 1; }
         echo '{"components": "file://component_keyring_file"}' > "${mysqld_bin}.my"
         echo '{"path": "/var/lib/mysql-keyring/component_keyring_file", "read_only": false}' > "$(dirname "${component}")/component_keyring_file.cnf"
+        touch /var/lib/mysql-keyring/component_keyring_file
+        chown mysql:mysql /var/lib/mysql-keyring/component_keyring_file
         exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
       - bash
       - mysqld
@@ -2662,6 +2664,8 @@ executors:
         [ -n "${component}" ] || { echo component_keyring_file.so not found >&2; exit 1; }
         echo '{"components": "file://component_keyring_file"}' > "${mysqld_bin}.my"
         echo '{"path": "/var/lib/mysql-keyring/component_keyring_file", "read_only": false}' > "$(dirname "${component}")/component_keyring_file.cnf"
+        touch /var/lib/mysql-keyring/component_keyring_file
+        chown mysql:mysql /var/lib/mysql-keyring/component_keyring_file
         exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
       - bash
       - mysqld
@@ -2669,6 +2673,8 @@ executors:
       - --server-id=4
       - --port=3313
       - --mysqlx=OFF
+      - --innodb-use-native-aio=0
+      - --innodb-flush-method=fsync
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6

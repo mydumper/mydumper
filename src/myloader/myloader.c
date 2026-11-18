@@ -58,7 +58,7 @@ gchar *source_db = NULL;
 gboolean                           overwrite_tables = FALSE;
 gboolean                           overwrite_unsafe = FALSE;
 gboolean                           optimize_keys = TRUE;
-enum remove_encryption_option_mode remove_encryption_option_mode = REMOVE_ENCRYPTION_OPTION_AUTO;
+enum encryption_option_mode encryption_option_mode = ENCRYPTION_OPTION_CONVERT;
 gboolean                           optimize_keys_per_table = TRUE;
 gboolean                           optimize_keys_all_tables = FALSE;
 gboolean                           kill_at_once = FALSE;
@@ -304,7 +304,7 @@ static void print_defaults_arguments()
   print_bool("no-schemas", no_schemas);
   print_bool("disable-redo-log", disable_redo_log);
   print_string("checksum", checksum_str);
-  print_string("remove-encryption-option", remove_encryption_option_mode == REMOVE_ENCRYPTION_OPTION_AUTO ? NULL : remove_encryption_option_mode_to_str(remove_encryption_option_mode));
+  print_string("encryption-option", encryption_option_mode == ENCRYPTION_OPTION_CONVERT ? NULL : encryption_option_mode_to_str(encryption_option_mode));
   print_bool("drop-database", drop_database);
   print_string("drop-table", purgemode2str(purge_mode));
   print_bool("overwrite-unsafe", overwrite_unsafe);

@@ -236,9 +236,8 @@ static gboolean parse_create_table_from_file(struct db_table *dbt, gchar *filena
   g_string_set_size(data, 0);
   g_string_set_size(create_table_statement, 0);
   guint line = 0;
-  // MariaDB does not know the ENCRYPTION table option (issue #2367)
-  gboolean (*table_option_modifier)(GString *) =
-      should_remove_encryption_option(remove_encryption_option_mode, get_product() == SERVER_TYPE_MARIADB) ? &remove_encryption_option_from_create_table : NULL;
+  // The table encryption options are not portable between MySQL and MariaDB (issue #2367)
+  table_option_modifier_func table_option_modifier = get_table_encryption_modifier(encryption_option_mode, get_product() == SERVER_TYPE_MARIADB);
   infile = myl_open(filename, "r");
   trace("parse_create_table_from_file starting on %s", filename);
   if (!infile)
@@ -483,7 +482,12 @@ static gchar *get_database_name_from_content(gchar *filename, GString **out_cont
           // Capture the content so the schema worker can execute from memory
           // (avoids re-reading the file, which in stream mode may already be deleted).
           if (out_content)
+          {
             *out_content = g_string_new_len(data->str, data->len);
+            table_option_modifier_func database_modifier = get_database_encryption_modifier(encryption_option_mode, get_product() == SERVER_TYPE_MARIADB);
+            if (database_modifier)
+              database_modifier(*out_content);
+          }
           break;
         }
         else

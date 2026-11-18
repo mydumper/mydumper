@@ -139,11 +139,11 @@ gboolean arguments_callback(const gchar *option_name, const gchar *value, gpoint
     }
     g_critical("--checksum accepts: fail, warn (default), skip");
   }
-  else if (!g_strcmp0(option_name, "--remove-encryption-option"))
+  else if (!g_strcmp0(option_name, "--encryption-option"))
   {
-    if (parse_remove_encryption_option_mode(value, &remove_encryption_option_mode))
+    if (parse_encryption_option_mode(value, &encryption_option_mode))
       return TRUE;
-    g_critical("--remove-encryption-option accepts: auto (default), always, never");
+    g_critical("--encryption-option accepts: convert (default), remove, keep");
   }
   else if (!g_strcmp0(option_name, "--ignore-set"))
   {
@@ -277,10 +277,10 @@ static GOptionEntry execution_entries[] = {
         "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL},
     {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "Treat checksums: skip, fail, warn(default).", NULL},
-    {"remove-encryption-option", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
-        "Removes the ENCRYPTION='N' table option from CREATE TABLE statements, needed when restoring a MySQL/Percona backup into MariaDB. "
-        "Options: AUTO (only when the target server is MariaDB), ALWAYS and NEVER. "
-        "If the option is not set, the default is: AUTO. If the option is used without a parameter, the default is: ALWAYS.",
+    {"encryption-option", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+        "How to restore the encryption options, that are not portable between MySQL/Percona (ENCRYPTION='Y'|'N', DEFAULT ENCRYPTION) "
+        "and MariaDB (ENCRYPTED=YES|NO, ENCRYPTION_KEY_ID): CONVERT (default) rewrites them with the syntax of the target server, "
+        "REMOVE removes them so the target server defaults are used, KEEP keeps them untouched",
         NULL},
     {"drop-database", 0, 0, G_OPTION_ARG_NONE, &drop_database,
         "Executes a DROP DATABASE if the schema database file is found. ", NULL},

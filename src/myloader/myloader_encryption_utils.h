@@ -4,38 +4,56 @@
 #include <glib.h>
 
 /*
-  mydumper writes the view dependency table as
-    CREATE TABLE IF NOT EXISTS `v`(...) ENGINE=MEMORY ENCRYPTION='N';
-  MariaDB does not know the ENCRYPTION table option (ERROR 1911), so it has to
-  be removed when the target is MariaDB (issue #2367).
+  The encryption options are not portable between MySQL and MariaDB
+  (issue #2367):
+  - MySQL/Percona write the table option as ENCRYPTION='Y'|'N' (mydumper also
+    adds ENCRYPTION='N' to the MEMORY view dependency tables) and the database
+    option as /\*!80016 DEFAULT ENCRYPTION='N' *\/.
+  - MariaDB writes the table options as `ENCRYPTED`=YES|NO|DEFAULT and
+    `ENCRYPTION_KEY_ID`=n, and has no database option.
+  Each server rejects the syntax of the other one.
 
-  --remove-encryption-option controls it:
-    AUTO   (default) remove it only when the target server is MariaDB
-    ALWAYS remove it whatever the target server is (opt in)
-    NEVER  keep the statement untouched (opt out)
+  --encryption-option controls it:
+    CONVERT (default) rewrite the options with the syntax of the target server:
+            ENCRYPTION='Y'|'N' <-> `ENCRYPTED`=YES|NO. Options without
+            equivalent are removed: ENCRYPTION on non InnoDB tables (MariaDB
+            only supports it on InnoDB), `ENCRYPTED`=DEFAULT,
+            `ENCRYPTION_KEY_ID` and DEFAULT ENCRYPTION on MariaDB.
+    REMOVE  remove all the encryption options, so the defaults of the target
+            server are used
+    KEEP    keep the statements untouched
 */
-enum remove_encryption_option_mode
+enum encryption_option_mode
 {
-  REMOVE_ENCRYPTION_OPTION_AUTO,
-  REMOVE_ENCRYPTION_OPTION_ALWAYS,
-  REMOVE_ENCRYPTION_OPTION_NEVER
+  ENCRYPTION_OPTION_CONVERT,
+  ENCRYPTION_OPTION_REMOVE,
+  ENCRYPTION_OPTION_KEEP
 };
 
-/* Parses the --remove-encryption-option value. A NULL value (option given
-   without argument) means ALWAYS. Returns FALSE on an unknown value. */
-gboolean     parse_remove_encryption_option_mode(const gchar *value, enum remove_encryption_option_mode *mode);
-const gchar *remove_encryption_option_mode_to_str(enum remove_encryption_option_mode mode);
+/* Signature of the table_option_modifier of global_process_create_table_statement(). */
+typedef gboolean (*table_option_modifier_func)(GString *data);
 
-/* Decides whether the option has to be removed for the given mode/target. */
-gboolean should_remove_encryption_option(enum remove_encryption_option_mode mode, gboolean target_is_mariadb);
+/* Parses the --encryption-option value. Returns FALSE on an unknown value. */
+gboolean     parse_encryption_option_mode(const gchar *value, enum encryption_option_mode *mode);
+const gchar *encryption_option_mode_to_str(enum encryption_option_mode mode);
+
+/* Return the modifier to apply to the CREATE TABLE / CREATE DATABASE
+   statements for the given mode/target, or NULL when they must be kept
+   untouched. */
+table_option_modifier_func get_table_encryption_modifier(enum encryption_option_mode mode, gboolean target_is_mariadb);
+table_option_modifier_func get_database_encryption_modifier(enum encryption_option_mode mode, gboolean target_is_mariadb);
 
 /*
-  Removes the unversioned trailing ENCRYPTION='N' option of a CREATE TABLE
-  statement. data may contain previous statements (e.g. SET NAMES),
-  only the end of the buffer is inspected. Returns TRUE if data was changed.
-  Its signature matches the table_option_modifier of
-  global_process_create_table_statement().
+  CREATE TABLE modifiers. data may contain previous statements (e.g. SET
+  NAMES) and may come without the ';' terminator. Only the table options (the
+  line that closes the column definitions) are changed, quoted strings like
+  COMMENT='...' are skipped. They return TRUE if data was changed.
 */
-gboolean remove_encryption_option_from_create_table(GString *data);
+gboolean remove_table_encryption_options(GString *data);
+gboolean convert_table_encryption_options_to_mariadb(GString *data);
+gboolean convert_table_encryption_options_to_mysql(GString *data);
+
+/* CREATE DATABASE modifier: removes DEFAULT ENCRYPTION, versioned or not. */
+gboolean remove_database_encryption_option(GString *data);
 
 #endif

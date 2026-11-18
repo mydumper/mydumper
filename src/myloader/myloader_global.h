@@ -65,7 +65,7 @@ extern gchar                             *exec_per_thread_extension;
 extern gchar                            **exec_per_thread_cmd;
 extern gchar                             *optimize_keys_str;
 extern gchar                             *checksum_str;
-extern enum remove_encryption_option_mode remove_encryption_option_mode;
+extern enum encryption_option_mode encryption_option_mode;
 extern gchar                             *ignore_errors;
 extern gchar                             *compress_extension;
 extern gchar                             *target_db;
