@@ -137,6 +137,9 @@ enable_testing()
 add_executable(test_view_database_mapping test/unit/test_view_database_mapping.c src/myloader/myloader_view.c)
 target_link_libraries(test_view_database_mapping ${GLIB2_LIBRARIES})
 add_test(NAME view_database_mapping COMMAND test_view_database_mapping)
+add_executable(test_checksum_view test/unit/test_checksum_view.c)
+target_link_libraries(test_checksum_view ${GLIB2_LIBRARIES})
+add_test(NAME checksum_view COMMAND test_checksum_view)
 
 add_executable(test_restore_connection_loss test/unit/test_restore_connection_loss.c)
 # Older CMake adds -rdynamic; hidden symbols let the linker discard untested code.
@@ -144,6 +147,12 @@ target_compile_options(test_restore_connection_loss PRIVATE -ffunction-sections 
 set_property(TARGET test_restore_connection_loss APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
 target_link_libraries(test_restore_connection_loss ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 add_test(NAME restore_connection_loss COMMAND test_restore_connection_loss)
+
+add_executable(test_index_tail_connections test/unit/test_index_tail_connections.c)
+target_compile_options(test_index_tail_connections PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
+set_property(TARGET test_index_tail_connections APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
+target_link_libraries(test_index_tail_connections ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
+add_test(NAME index_tail_connections COMMAND test_index_tail_connections)
 
 add_executable(test_trigger_checksum_flags test/unit/test_trigger_checksum_flags.c src/myloader/myloader_table.c)
 target_link_libraries(test_trigger_checksum_flags ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
@@ -153,6 +162,9 @@ add_test(NAME trigger_checksum_skip_index COMMAND test_trigger_checksum_flags sk
 add_executable(test_checksum_missing test/unit/test_checksum_missing.c src/checksum.c)
 target_link_libraries(test_checksum_missing ${GLIB2_LIBRARIES})
 add_test(NAME checksum_missing COMMAND test_checksum_missing)
+
+add_executable(test_checksum_view_server test/unit/test_checksum_view_server.c)
+target_link_libraries(test_checksum_view_server ${GLIB2_LIBRARIES} ${MYSQL_LIBRARIES})
 
 # Unit test: --use-defer livelock
 # Requires only GLib (no MySQL). Link with -DUSE_DEFER_FIX to test the fixed
