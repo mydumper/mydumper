@@ -78,7 +78,9 @@ mysqldump()
 {
   # mysqldump doesn't respect $MYSQL_HOST
   local host_arg=${MYSQL_HOST:+-h $MYSQL_HOST}
-  $mysqldump_exe --no-defaults $host_arg -f --user $mysql_user "$@" || exit
+  # No locks: --skip-lock-tables avoids LOCK TABLES while dumping (enabled by
+  # --opt), --skip-add-locks keeps LOCK/UNLOCK TABLES out of the dump file.
+  $mysqldump_exe --no-defaults $host_arg -f --skip-lock-tables --skip-add-locks --user $mysql_user "$@" || exit
 }
 export -f mysqldump
 
@@ -95,7 +97,7 @@ export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
 
-optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,skip-backup,prepare,directories:,retry:,replica-host:,replica-port:"
+optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,skip-backup,prepare,directories:,retry:,replica-host:,replica-port:,source-db:,target-db:"
 optstring_short="c:,e:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
@@ -113,6 +115,8 @@ unset case_min
 unset case_max
 unset replica_host
 unset replica_port
+unset source_db
+unset target_db
 log_level="--verbose 4"
 
 while true
@@ -177,6 +181,12 @@ do
   --replica-port)
     replica_port=$2
     shift 2;;
+  --source-db)
+    source_db=$2
+    shift 2;;
+  --target-db)
+    target_db=$2
+    shift 2;;
   --) shift; break;;
   esac
 done
@@ -197,6 +207,18 @@ then
 else
   echo "Using replica on the same socket as the primary"
 fi
+
+# --source-db/--target-db (vendor:version, e.g. percona:5.7 mariadb:10.6):
+# the backup is adapted with test/adapt_backup_to_target.sh before importing
+if [ -n "$source_db" ] || [ -n "$target_db" ]
+then
+  if [ -z "$source_db" ] || [ -z "$target_db" ]
+  then
+    die "--source-db and --target-db must be used together"
+  fi
+  echo "Migration test from $source_db to $target_db"
+fi
+adapt_backup_script="$(dirname "$0")/test/adapt_backup_to_target.sh"
 
 mysql_replica()
 {
@@ -349,6 +371,18 @@ test_case_dir (){
       cat $mydumper_default_extra_file
       cat $myloader_default_extra_file
       exit $error
+    fi
+    if [ -n "$source_db" ]
+    then
+      if (( $mydumper_stream >= 1 ))
+      then
+        echo "Streaming backup: not adapted from $source_db to $target_db"
+      elif ! "$adapt_backup_script" "$source_db" "$target_db" "$mydumper_stor_dir"
+      then
+        echo "Error adapting the backup from $source_db to $target_db"
+        backtrace
+        exit 1
+      fi
     fi
   fi
   if [ -f $myloader_clean_database ]
