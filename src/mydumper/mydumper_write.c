@@ -1074,10 +1074,10 @@ static void reopen_files(struct table_job *tj)
 
 void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job *tj)
 {
-  struct db_table *dbt = tj->dbt;
-  guint            num_fields = mysql_num_fields(result);
-  MYSQL_FIELD     *fields = mysql_fetch_fields(result);
-  MYSQL_ROW        row;
+  struct db_table     *dbt = tj->dbt;
+  guint                num_fields = mysql_num_fields(result);
+  MYSQL_FIELD         *fields = mysql_fetch_fields(result);
+  MYSQL_ROW            row;
   g_autofree gboolean *native_text = NULL;
   if (get_product() == SERVER_TYPE_MARIADB)
   {
