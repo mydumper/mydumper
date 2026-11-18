@@ -24,6 +24,7 @@
 
 #include "common_options.h"
 #include "myloader/myloader.h"
+#include "myloader/myloader_encryption_utils.h"
 
 extern gboolean debug;
 extern gboolean disable_redo_log;
@@ -59,22 +60,23 @@ extern gboolean skip_table_sorting;
 extern gboolean mysqldump;
 extern gboolean drop_database;
 
-extern gchar  *exec_per_thread;
-extern gchar  *exec_per_thread_extension;
-extern gchar **exec_per_thread_cmd;
-extern gchar  *optimize_keys_str;
-extern gchar  *checksum_str;
-extern gchar  *ignore_errors;
-extern gchar  *compress_extension;
-extern gchar  *target_db;
-extern gchar  *directory;
-extern gchar  *source_db;
-extern gchar  *replace_definer;
-extern gchar  *defaults_file;
-extern gchar  *input_directory;
-extern gchar  *fifo_directory;
-extern gchar  *load_data_tmp_directory;
-extern gchar  *tables_list;
+extern gchar                      *exec_per_thread;
+extern gchar                      *exec_per_thread_extension;
+extern gchar                     **exec_per_thread_cmd;
+extern gchar                      *optimize_keys_str;
+extern gchar                      *checksum_str;
+extern enum encryption_option_mode encryption_option_mode;
+extern gchar                      *ignore_errors;
+extern gchar                      *compress_extension;
+extern gchar                      *target_db;
+extern gchar                      *directory;
+extern gchar                      *source_db;
+extern gchar                      *replace_definer;
+extern gchar                      *defaults_file;
+extern gchar                      *input_directory;
+extern gchar                      *fifo_directory;
+extern gchar                      *load_data_tmp_directory;
+extern gchar                      *tables_list;
 
 extern char **tables;
 extern char  *defaults_extra_file;

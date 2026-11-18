@@ -139,6 +139,12 @@ gboolean arguments_callback(const gchar *option_name, const gchar *value, gpoint
     }
     g_critical("--checksum accepts: fail, warn (default), skip");
   }
+  else if (!g_strcmp0(option_name, "--encryption-option"))
+  {
+    if (parse_encryption_option_mode(value, &encryption_option_mode))
+      return TRUE;
+    g_critical("--encryption-option accepts: convert (default), remove, keep");
+  }
   else if (!g_strcmp0(option_name, "--ignore-set"))
   {
     gchar **ignore_set_items = g_strsplit(value, ",", 0);
@@ -271,6 +277,11 @@ static GOptionEntry execution_entries[] = {
         "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL},
     {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "Treat checksums: skip, fail, warn(default).", NULL},
+    {"encryption-option", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+        "How to restore the encryption options, that are not portable between MySQL/Percona (ENCRYPTION='Y'|'N', DEFAULT ENCRYPTION) "
+        "and MariaDB (ENCRYPTED=YES|NO, ENCRYPTION_KEY_ID): CONVERT (default) rewrites them with the syntax of the target server, "
+        "REMOVE removes them so the target server defaults are used, KEEP keeps them untouched",
+        NULL},
     {"drop-database", 0, 0, G_OPTION_ARG_NONE, &drop_database,
         "Executes a DROP DATABASE if the schema database file is found. ", NULL},
     {"drop-table", 'o', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
