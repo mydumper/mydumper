@@ -1,0 +1,5 @@
+DROP DATABASE IF EXISTS specific_55_src;
+DROP DATABASE IF EXISTS specific_55_dst;
+CREATE DATABASE specific_55_src DEFAULT CHARACTER SET latin1 COLLATE latin1_german1_ci;
+CREATE TABLE specific_55_src.t (id INT NOT NULL PRIMARY KEY, val VARCHAR(32));
+INSERT INTO specific_55_src.t VALUES (1, 'a');

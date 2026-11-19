@@ -1,0 +1,9 @@
+#
+# -B/-s must keep the character set and collation of the source schema (issue #2341).
+#
+
+[myloader]
+directory=/tmp/data
+source-db=specific_55_src
+database=specific_55_dst
+drop-database

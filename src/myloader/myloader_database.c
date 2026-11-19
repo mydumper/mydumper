@@ -21,6 +21,7 @@
 
 #include "myloader/myloader_common.h"
 #include "myloader/myloader_global.h"
+#include "myloader/myloader_process.h"
 #include "myloader/myloader_restore.h"
 #include "myloader/myloader_restore_job.h"
 #include "myloader_view.h"
@@ -243,7 +244,89 @@ void execute_use_if_needs_to(struct connection_data *cd, struct database *databa
   }
 }
 
-static void create_database(struct thread_data *td, gchar *database)
+// @return the source database whose -schema-create file describes target_database,
+// or NULL when it cannot be determined. With -s it is that database; with a
+// single -B and no -s it is the only database found in the dump directory.
+static gchar *find_source_database(gchar *source_database)
+{
+  if (source_database)
+    return g_strdup(source_database);
+  if (source_db)
+    return g_strdup(source_db);
+  GDir *dir = g_dir_open(directory, 0, NULL);
+  if (!dir)
+    return NULL;
+  gchar       *found = NULL;
+  guint        count = 0;
+  const gchar *name;
+  while ((name = g_dir_read_name(dir)) != NULL)
+  {
+    const gchar *suffix = g_strrstr(name, "-schema-create.sql");
+    if (suffix == NULL || suffix == name || g_str_has_prefix(name, "mydumper_"))
+      continue;
+    count++;
+    g_free(found);
+    found = g_strndup(name, suffix - name);
+  }
+  g_dir_close(dir);
+  if (count != 1)
+  {
+    g_free(found);
+    return NULL;
+  }
+  return found;
+}
+
+// Builds `CREATE DATABASE IF NOT EXISTS target <options>` keeping the character
+// set and collation that the dump recorded for source_database.
+// @return NULL when the -schema-create file is missing or has no CREATE statement
+static GString *build_create_database_from_source(gchar *source_database, gchar *target_database)
+{
+  gchar *filename = g_strdup_printf("%s/%s-schema-create.sql%s", directory, source_database,
+      exec_per_thread_extension ? exec_per_thread_extension : "");
+  if (!g_file_test(filename, G_FILE_TEST_EXISTS))
+  {
+    g_free(filename);
+    return NULL;
+  }
+  FILE *infile = myl_open(filename, "r");
+  if (!infile)
+  {
+    g_free(filename);
+    return NULL;
+  }
+  GString *result = NULL;
+  GString *data = g_string_sized_new(512);
+  gboolean eof = FALSE;
+  guint    line;
+  while (!eof && !result)
+  {
+    if (read_data(infile, data, &eof, &line))
+    {
+      if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n"))
+      {
+        if (g_str_has_prefix(data->str, "CREATE "))
+        {
+          gchar **create = g_strsplit(data->str, identifier_quote_character_str, 3);
+          if (g_strv_length(create) == 3)
+          {
+            result = g_string_new("CREATE DATABASE IF NOT EXISTS ");
+            g_string_append_printf(result, "%s%s%s%s", identifier_quote_character_str, target_database,
+                identifier_quote_character_str, create[2]);
+          }
+          g_strfreev(create);
+        }
+        g_string_set_size(data, 0);
+      }
+    }
+  }
+  myl_close(filename, infile, FALSE);
+  g_string_free(data, TRUE);
+  g_free(filename);
+  return result;
+}
+
+static void create_database(struct thread_data *td, gchar *source_database, gchar *database)
 {
   const gchar *filename =
       g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension ? exec_per_thread_extension : "");
@@ -260,8 +343,16 @@ static void create_database(struct thread_data *td, gchar *database)
   }
   else
   {
-    GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
-    g_string_append_printf(data, "`%s`", database);
+    // The dump names the file after the source database, which differs from the
+    // -B target: reuse its character set and collation instead of server defaults.
+    gchar   *source = find_source_database(source_database);
+    GString *data = source ? build_create_database_from_source(source, database) : NULL;
+    g_free(source);
+    if (data == NULL)
+    {
+      data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
+      g_string_append_printf(data, "`%s`", database);
+    }
     trace("Creating schema %s as %s not found", database, filepath);
     if (restore_data_in_gstring_extended(td, data, TRUE, NULL, m_critical, "Failed to create database: %s", database))
       g_atomic_int_inc(&(detailed_errors.schema_errors));
@@ -280,7 +371,7 @@ void start_database(struct thread_data *td)
     return;
   if (single_target_database)
   {
-    create_database(td, single_target_database);
+    create_database(td, NULL, single_target_database);
     return;
   }
   GHashTable    *created = g_hash_table_new(g_str_hash, g_str_equal);
@@ -291,7 +382,7 @@ void start_database(struct thread_data *td)
   {
     if (g_hash_table_contains(created, _target_database))
       continue;
-    create_database(td, _target_database);
+    create_database(td, _key, _target_database);
     g_hash_table_add(created, _target_database);
   }
   g_hash_table_destroy(created);

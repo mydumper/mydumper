@@ -1,0 +1,3 @@
+[mydumper]
+database=specific_55_src
+outputdir=/tmp/data
