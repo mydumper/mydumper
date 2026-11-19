@@ -15,6 +15,7 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#include <errno.h>
 #include <glib-unix.h>
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -22,6 +23,7 @@
 #include <mysqld_error.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "myloader/myloader_restore_job.h"
 
@@ -739,70 +741,70 @@ cleanup:
 
 GMutex **pause_mutex_per_thread = NULL;
 
-gboolean sig_triggered(void *user_data, int signal)
+/* Ctrl+c handling.
+
+   The callbacks below are dispatched by the GMainLoop that runs in the signal
+   thread, so they must never block waiting for the user: while one of them is
+   blocked no other signal can be dispatched. The Y/N question is therefore
+   asked by pausing the workers and adding a watch on stdin to the same loop;
+   the answer arrives in prompt_answered(). As the loop stays free, a second
+   Ctrl+c (or a SIGTERM) while the question is pending cancels the restore
+   without waiting for it.
+
+   shutdown_triggered_mutex is held from the first Ctrl+c until the question is
+   answered and, on cancel, until the resume file is written, so
+   stop_signal_thread() keeps waiting for both. */
+static gboolean prompt_pending = FALSE;
+static guint    prompt_stdin_watch = 0;
+static guint    sigint_source = 0;
+static gboolean cancelled = FALSE;
+
+static void pause_workers(struct configuration *conf)
 {
-  struct configuration *conf = (struct configuration *)user_data;
-  guint                 i = 0;
-  GAsyncQueue          *queue = NULL;
-  g_mutex_lock(shutdown_triggered_mutex);
-  if (signal == SIGTERM)
+  guint i;
+  if (pause_mutex_per_thread == NULL)
   {
-    shutdown_triggered = TRUE;
-  }
-  else
-  {
-    if (pause_mutex_per_thread == NULL)
-    {
-      pause_mutex_per_thread = g_new(GMutex *, num_threads);
-      for (i = 0; i < num_threads; i++)
-      {
-        pause_mutex_per_thread[i] = g_mutex_new();
-      }
-    }
-    if (conf->pause_resume == NULL)
-      conf->pause_resume = g_async_queue_new();
-    queue = conf->pause_resume;
+    pause_mutex_per_thread = g_new(GMutex *, num_threads);
     for (i = 0; i < num_threads; i++)
-    {
-      g_mutex_lock(pause_mutex_per_thread[i]);
-      g_async_queue_push(queue, pause_mutex_per_thread[i]);
-    }
-    if (machine_log_json)
-    {
-      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-          "MESSAGE", "Ctrl+c detected; waiting for confirmation",
-          "EVENT", "restore_signal_prompt",
-          "PHASE", "signal",
-          "STATUS", "started",
-          NULL);
-    }
-    else
-    {
-      fprintf(stdout, "Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
-    }
-    int c = 0;
-    while (1)
-    {
-      do
-      {
-        c = fgetc(stdin);
-      } while (c == '\n');
-      if (c == 'N' || c == 'n')
-      {
-        for (i = 0; i < num_threads; i++)
-          g_mutex_unlock(pause_mutex_per_thread[i]);
-        g_mutex_unlock(shutdown_triggered_mutex);
-        return TRUE;
-      }
-      if (c == 'Y' || c == 'y')
-      {
-        shutdown_triggered = TRUE;
-        for (i = 0; i < num_threads; i++)
-          g_mutex_unlock(pause_mutex_per_thread[i]);
-        break;
-      }
-    }
+      pause_mutex_per_thread[i] = g_mutex_new();
   }
+  if (conf->pause_resume == NULL)
+    conf->pause_resume = g_async_queue_new();
+  for (i = 0; i < num_threads; i++)
+  {
+    g_mutex_lock(pause_mutex_per_thread[i]);
+    g_async_queue_push(conf->pause_resume, pause_mutex_per_thread[i]);
+  }
+}
+
+static void resume_workers()
+{
+  guint i;
+  for (i = 0; i < num_threads; i++)
+    g_mutex_unlock(pause_mutex_per_thread[i]);
+}
+
+/* Ends a pending question, if any. The workers are released in both cases:
+   with shutdown_triggered set they re-queue their file instead of loading it. */
+static void close_prompt()
+{
+  if (!prompt_pending)
+    return;
+  prompt_pending = FALSE;
+  if (prompt_stdin_watch != 0)
+  {
+    g_source_remove(prompt_stdin_watch);
+    prompt_stdin_watch = 0;
+  }
+  resume_workers();
+}
+
+/* Must be called with shutdown_triggered_mutex held; releases it. */
+static void cancel_restore()
+{
+  cancelled = TRUE;
+  shutdown_triggered = TRUE;
+  close_prompt();
   inform_restore_job_running();
   create_index_shutdown_job();
   restore_job_finish();
@@ -827,7 +829,99 @@ gboolean sig_triggered(void *user_data, int signal)
   g_free(p2);
   message("Shutting down gracefully completed.");
   g_mutex_unlock(shutdown_triggered_mutex);
-  return FALSE;
+}
+
+static void log_signal_event(GLogLevelFlags level, const char *json_message, const char *event,
+    const char *status, const char *text)
+{
+  if (machine_log_json)
+    machine_log_event(G_LOG_DOMAIN, level,
+        "MESSAGE", json_message,
+        "EVENT", event,
+        "PHASE", "signal",
+        "STATUS", status,
+        NULL);
+  else
+  {
+    fprintf(stdout, "%s", text);
+    fflush(stdout);
+  }
+}
+
+static gboolean prompt_answered(gint fd, GIOCondition condition, gpointer user_data)
+{
+  (void)condition;
+  (void)user_data;
+  char    c = 0;
+  ssize_t n = read(fd, &c, 1);
+  if (n < 0 && (errno == EINTR || errno == EAGAIN))
+    return G_SOURCE_CONTINUE;
+  if (n > 0 && c != 'Y' && c != 'y' && c != 'N' && c != 'n')
+    return G_SOURCE_CONTINUE;
+  /* Returning G_SOURCE_REMOVE drops this watch, close_prompt must not. */
+  prompt_stdin_watch = 0;
+  if (c == 'N' || c == 'n')
+  {
+    log_signal_event(G_LOG_LEVEL_MESSAGE, "restore resumed after confirmation",
+        "restore_signal_resume", "finished", "Resuming restore\n");
+    close_prompt();
+    g_mutex_unlock(shutdown_triggered_mutex);
+    return G_SOURCE_REMOVE;
+  }
+  /* 'Y', end of file or a read error: nobody can say no any more. */
+  log_signal_event(G_LOG_LEVEL_WARNING, "restore cancelled after confirmation",
+      "restore_signal_cancel", "cancelled", "Restore cancelled\n");
+  cancel_restore();
+  /* As before, once cancelled a further Ctrl+c is not trapped. */
+  if (sigint_source != 0)
+  {
+    g_source_remove(sigint_source);
+    sigint_source = 0;
+  }
+  return G_SOURCE_REMOVE;
+}
+
+gboolean sig_triggered(void *user_data, int signal)
+{
+  if (cancelled)
+  {
+    /* Already shutting down: nothing to ask. */
+  }
+  else if (prompt_pending)
+  {
+    /* Second Ctrl+c (or a SIGTERM) while waiting for the answer. The mutex
+       is still held since the first Ctrl+c. */
+    if (!machine_log_json)
+      fprintf(stdout, "\n");
+    log_signal_event(G_LOG_LEVEL_WARNING, "restore cancelled by a second signal",
+        "restore_signal_cancel", "cancelled", "Restore cancelled\n");
+    cancel_restore();
+  }
+  else
+  {
+    g_mutex_lock(shutdown_triggered_mutex);
+    /* SIGTERM, or no terminal on stdin and stdout: nobody can answer the Y/N
+       question (and with --stream stdin is the backup itself), so SIGINT
+       acts as SIGTERM. */
+    if (signal == SIGTERM || !isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO))
+    {
+      cancel_restore();
+    }
+    else
+    {
+      pause_workers((struct configuration *)user_data);
+      log_signal_event(G_LOG_LEVEL_WARNING, "Ctrl+c detected; waiting for confirmation",
+          "restore_signal_prompt", "started",
+          "Ctrl+c detected! Are you sure you want to cancel(Y/N)? Press Ctrl+c again to cancel now.");
+      prompt_pending = TRUE;
+      prompt_stdin_watch = g_unix_fd_add(STDIN_FILENO, G_IO_IN | G_IO_HUP | G_IO_ERR,
+          prompt_answered, user_data);
+      return G_SOURCE_CONTINUE;
+    }
+  }
+  if (signal == SIGINT)
+    sigint_source = 0;
+  return G_SOURCE_REMOVE;
 }
 
 gboolean sig_triggered_int(void *user_data)
@@ -843,7 +937,7 @@ GMainLoop *loop = NULL;
 
 void *signal_thread(void *data)
 {
-  g_unix_signal_add(SIGINT, sig_triggered_int, data);
+  sigint_source = g_unix_signal_add(SIGINT, sig_triggered_int, data);
   g_unix_signal_add(SIGTERM, sig_triggered_term, data);
   loop = g_main_loop_new(NULL, TRUE);
   g_main_loop_run(loop);
