@@ -21,7 +21,6 @@
 
 #include <errno.h>
 #include <gio/gio.h>
-#include <glib-unix.h>
 #include <glib/gstdio.h>
 #include <mysql.h>
 
@@ -147,9 +146,7 @@ void run_daemon()
   g_timeout_add_seconds(snapshot_interval * 60, (GSourceFunc)run_snapshot,
       NULL);
 #endif
-  guint sigsource = g_unix_signal_add(SIGINT, sig_triggered_int, NULL);
-  sigsource = g_unix_signal_add(SIGTERM, sig_triggered_term, NULL);
+  add_dump_signal_sources(NULL);
   m1 = g_main_loop_new(NULL, TRUE);
   g_main_loop_run(m1);
-  g_source_remove(sigsource);
 }
