@@ -47,6 +47,7 @@ const char DIRECTORY[] = "export";
 gchar   *output_directory = NULL;
 gchar   *dump_directory = NULL;
 gboolean daemon_mode = FALSE;
+gboolean kill_at_once = FALSE;
 gchar   *disk_limits = NULL;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
@@ -218,6 +219,7 @@ void print_defaults_arguments()
   print_string("logfile", logfile);
   print_string("disk-limits", disk_limits);
   print_bool("masquerade-filename", masquerade_filename);
+  print_bool("kill-at-once", kill_at_once);
   print_int("ftwrl-max-wait-time", ftwrl_max_wait_time, FALSE);
   print_int("ftwrl-timeout-retries", ftwrl_timeout_retries, ftwrl_timeout_retries == 0);
   print_list("replica-data", build_list_from_replica_options(&replica_data), NULL);

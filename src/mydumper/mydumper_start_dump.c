@@ -19,7 +19,7 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <glib-unix.h>
+#include <errno.h>
 #include <mysql.h>
 #include <sys/statvfs.h>
 
@@ -40,6 +40,7 @@
 #include "mydumper/mydumper_table.h"
 #include "mydumper/mydumper_working_thread.h"
 #include "mydumper/mydumper_write.h"
+#include "signal_prompt.h"
 #include "logging.h"
 
 /* Program options */
@@ -82,7 +83,6 @@ extern guint    ftwrl_timeout_retries;
 extern char   **ignore_engines;
 
 // static variables
-static GMutex   **pause_mutex_per_thread = NULL;
 static guint      pause_at = 0;
 static guint      resume_at = 0;
 static gchar    **db_items = NULL;
@@ -373,120 +373,31 @@ void *monitor_ftwrl_thread(void *thread_id)
   return NULL;
 }
 
-gboolean sig_triggered(void *user_data, int signal)
+/* Ctrl+c handling, see signal_prompt.h. */
+static gboolean dump_can_ask()
 {
-  /* Without a terminal on stdin and stdout nobody can answer the Y/N question
-     (and it would never reach a log file), so SIGINT acts as SIGTERM. */
-  if (signal == SIGTERM || (!daemon_mode && (!isatty(STDIN_FILENO) || !isatty(STDOUT_FILENO))))
-  {
-    shutdown_triggered = TRUE;
-  }
-  else
-  {
-    guint i = 0;
-    if (pause_mutex_per_thread == NULL)
-    {
-      pause_mutex_per_thread = g_new(GMutex *, num_threads);
-      for (i = 0; i < num_threads; i++)
-      {
-        pause_mutex_per_thread[i] = g_mutex_new();
-      }
-    }
-    if (((struct configuration *)user_data)->pause_resume == NULL)
-      ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
-    GAsyncQueue *queue = ((struct configuration *)user_data)->pause_resume;
-    if (!daemon_mode)
-    {
-      char *datetimestr = m_date_time_new_now_local();
-      if (machine_log_json)
-      {
-        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-            "MESSAGE", "Ctrl+c detected; waiting for confirmation",
-            "EVENT", "dump_signal_prompt",
-            "PHASE", "signal",
-            "STATUS", "started",
-            "TIMESTAMP_TEXT", datetimestr,
-            NULL);
-      }
-      else
-      {
-        fprintf(stdout, "%s: Ctrl+c detected! Are you sure you want to cancel(Y/N)?", datetimestr);
-        fflush(stdout);
-      }
-      g_free(datetimestr);
-      for (i = 0; i < num_threads; i++)
-      {
-        g_mutex_lock(pause_mutex_per_thread[i]);
-        g_async_queue_push(queue, pause_mutex_per_thread[i]);
-      }
-      int c = 0;
-      while (1)
-      {
-        do
-        {
-          c = fgetc(stdin);
-        } while (c == '\n');
-        if (c == 'N' || c == 'n')
-        {
-          datetimestr = m_date_time_new_now_local();
-          if (machine_log_json)
-          {
-            machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-                "MESSAGE", "backup resumed after confirmation",
-                "EVENT", "dump_signal_resume",
-                "PHASE", "signal",
-                "STATUS", "finished",
-                "TIMESTAMP_TEXT", datetimestr,
-                NULL);
-          }
-          else
-          {
-            fprintf(stdout, "%s: Resuming backup\n", datetimestr);
-          }
-          g_free(datetimestr);
-          for (i = 0; i < num_threads; i++)
-            g_mutex_unlock(pause_mutex_per_thread[i]);
+  return !daemon_mode;
+}
 
-          return TRUE;
-        }
-        if (c == 'Y' || c == 'y' || c == EOF)
-        {
-          datetimestr = m_date_time_new_now_local();
-          if (machine_log_json)
-          {
-            machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-                "MESSAGE", "backup cancelled after confirmation",
-                "EVENT", "dump_signal_cancel",
-                "PHASE", "signal",
-                "STATUS", "cancelled",
-                "TIMESTAMP_TEXT", datetimestr,
-                NULL);
-          }
-          else
-          {
-            fprintf(stdout, "%s: Backup cancelled\n", datetimestr);
-          }
-          g_free(datetimestr);
-          shutdown_triggered = TRUE;
-          for (i = 0; i < num_threads; i++)
-            g_mutex_unlock(pause_mutex_per_thread[i]);
-          goto finish;
-        }
-      }
-    }
-  }
-finish:
+static void dump_cancelled()
+{
   g_message("Shutting down gracefully");
-  return FALSE;
 }
 
-gboolean sig_triggered_int(void *user_data)
+static struct signal_prompt dump_signal_prompt = {
+    .name = "backup",
+    .event_prefix = "dump",
+    .timestamp = TRUE,
+    .shutdown_triggered = &shutdown_triggered,
+    .can_ask = dump_can_ask,
+    .on_cancel = dump_cancelled,
+};
+
+/* conf is NULL in daemon mode, where the question is never asked. */
+void add_dump_signal_sources(struct configuration *conf)
 {
-  return sig_triggered(user_data, SIGINT);
-}
-gboolean sig_triggered_term(void *user_data)
-{
-  return sig_triggered(user_data, SIGTERM);
+  dump_signal_prompt.pause_resume = conf ? &conf->pause_resume : NULL;
+  signal_prompt_add(&dump_signal_prompt);
 }
 
 /* Pops from queue but gives up when a shutdown is requested, so the main thread
@@ -526,8 +437,7 @@ static void cancel_dump(MYSQL *conn, MYSQL *second_conn)
 
 static void *signal_thread(void *data)
 {
-  g_unix_signal_add(SIGINT, sig_triggered_int, data);
-  g_unix_signal_add(SIGTERM, sig_triggered_term, data);
+  add_dump_signal_sources((struct configuration *)data);
   ((struct configuration *)data)->loop = g_main_loop_new(NULL, TRUE);
   g_main_loop_run(((struct configuration *)data)->loop);
   g_message("Ending signal thread");
@@ -1365,8 +1275,9 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   if (throttle_variable)
     m_thread_new("mon_thro", monitor_throttling_thread, NULL, "Monitor throttling thread could not be created");
 
-  // signal_thread is disable if daemon mode
-  if (!daemon_mode)
+  // signal_thread is disable if daemon mode (it has its own) or with
+  // --kill-at-once, where Ctrl+c keeps its default action
+  if (!daemon_mode && !kill_at_once)
     sthread = m_thread_new("signal", signal_thread, conf, "Signal thread could not be created");
 
   // Initilizing METADATA file

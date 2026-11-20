@@ -16,6 +16,7 @@
 #ifndef _src_mydumper_mydumper_global_h
 #define _src_mydumper_mydumper_global_h
 
+#include <errno.h>
 #include <gio/gio.h>
 #include <glib/gstdio.h>
 #include <mysql.h>
@@ -73,6 +74,7 @@ struct db_table;
 extern int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct db_table *dbt);
 extern GAsyncQueue  *start_scheduled_dump;
 extern gboolean      daemon_mode;
+extern gboolean      kill_at_once;
 extern gboolean      dump_events;
 extern gboolean      dump_routines;
 extern gboolean      dump_tablespaces;
@@ -132,7 +134,6 @@ extern guint64       starting_chunk_step_size;
 extern guint         snapshot_count;
 extern guint         statement_size;
 extern guint         updated_since;
-extern int           errno;
 extern int           need_dummy_read;
 extern int           need_dummy_toku_read;
 extern int           skip_tz;
