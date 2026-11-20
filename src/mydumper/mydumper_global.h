@@ -74,6 +74,7 @@ struct db_table;
 extern int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct db_table *dbt);
 extern GAsyncQueue  *start_scheduled_dump;
 extern gboolean      daemon_mode;
+extern gboolean      kill_at_once;
 extern gboolean      dump_events;
 extern gboolean      dump_routines;
 extern gboolean      dump_tablespaces;

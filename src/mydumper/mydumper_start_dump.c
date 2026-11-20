@@ -1214,8 +1214,9 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   if (throttle_variable)
     m_thread_new("mon_thro", monitor_throttling_thread, NULL, "Monitor throttling thread could not be created");
 
-  // signal_thread is disable if daemon mode
-  if (!daemon_mode)
+  // signal_thread is disable if daemon mode (it has its own) or with
+  // --kill-at-once, where Ctrl+c keeps its default action
+  if (!daemon_mode && !kill_at_once)
     sthread = m_thread_new("signal", signal_thread, conf, "Signal thread could not be created");
 
   // Initilizing METADATA file
