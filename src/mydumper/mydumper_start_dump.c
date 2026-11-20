@@ -347,8 +347,7 @@ static gboolean prompt_pending = FALSE;
 static guint    prompt_stdin_watch = 0;
 static guint    sigint_source = 0;
 
-static void log_signal_event(GLogLevelFlags level, const char *json_message, const char *event,
-    const char *status, const char *text)
+static void log_signal_event(GLogLevelFlags level, const char *json_message, const char *event, const char *status, const char *text)
 {
   char *datetimestr = m_date_time_new_now_local();
   if (machine_log_json)

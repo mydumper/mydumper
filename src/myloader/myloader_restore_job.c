@@ -831,8 +831,7 @@ static void cancel_restore()
   g_mutex_unlock(shutdown_triggered_mutex);
 }
 
-static void log_signal_event(GLogLevelFlags level, const char *json_message, const char *event,
-    const char *status, const char *text)
+static void log_signal_event(GLogLevelFlags level, const char *json_message, const char *event, const char *status, const char *text)
 {
   if (machine_log_json)
     machine_log_event(G_LOG_DOMAIN, level,
