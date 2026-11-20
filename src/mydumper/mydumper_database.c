@@ -39,6 +39,7 @@ void free_database(struct database *_database)
   //    g_mutex_free(_database->ad_mutex);
   //    _database->ad_mutex=NULL;
   //  }
+  g_free(_database->source_database_name);
   g_free(_database);
 }
 
@@ -52,6 +53,7 @@ static struct database *new_database(MYSQL *conn, char *database_name)
 {
   struct database *_database = g_new(struct database, 1);
   _database->source_database = backtick_protect(database_name);
+  _database->source_database_name = g_strdup(database_name);
   _database->database_name_in_filename = get_ref_table(_database->source_database);
   _database->source_database_escaped = escape_string(conn, _database->source_database);
   //  _database->already_dumped = already_dumped;
