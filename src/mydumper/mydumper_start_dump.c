@@ -19,6 +19,7 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#include <errno.h>
 #include <mysql.h>
 #include <sys/statvfs.h>
 
@@ -39,8 +40,8 @@
 #include "mydumper/mydumper_table.h"
 #include "mydumper/mydumper_working_thread.h"
 #include "mydumper/mydumper_write.h"
-#include "logging.h"
 #include "signal_prompt.h"
+#include "logging.h"
 
 /* Program options */
 gchar   *tidb_snapshot = NULL;

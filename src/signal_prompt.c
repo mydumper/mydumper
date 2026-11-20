@@ -21,10 +21,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "signal_prompt.h"
-
 #include "common.h"
+
 #include "common_options.h"
+#include "signal_prompt.h"
 #include "logging.h"
 
 /* The callbacks below are dispatched by the GMainLoop that runs the signal
@@ -38,8 +38,7 @@ static gboolean              cancelled = FALSE;
 static guint                 prompt_stdin_watch = 0;
 static guint                 sigint_source = 0;
 
-static void log_signal_event(GLogLevelFlags level, const char *event, const char *status,
-    const char *json_message, const char *text)
+static void log_signal_event(GLogLevelFlags level, const char *event, const char *status, const char *json_message, const char *text)
 {
   char  *datetimestr = prompt->timestamp ? m_date_time_new_now_local() : NULL;
   gchar *event_name = g_strdup_printf("%s_%s", prompt->event_prefix, event);
