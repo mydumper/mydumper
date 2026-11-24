@@ -1,0 +1,4 @@
+[myloader]
+database=specific_39_restore
+directory=/tmp/data
+set-names=binary
