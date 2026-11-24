@@ -16,12 +16,12 @@
 */
 
 #include <errmsg.h>
-#include <mysqld_error.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <mysql.h>
+#include <mysqld_error.h>
 #include <poll.h>
 #include <stdio.h>
 #include <string.h>
