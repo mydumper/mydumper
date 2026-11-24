@@ -1,0 +1,5 @@
+[myloader]
+directory=/tmp/data
+skip-indexes
+checksum=fail
+overwrite-tables

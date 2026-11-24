@@ -22,6 +22,7 @@
 # byte-for-byte comparison of the received files, which needs the files to
 # survive; the harness fails a case that leaves files behind. --stream=UNPACK
 # keeps them and skips the restore, so the case does not depend on server state.
+# Skip database checksums because UNPACK does not create the restored tables.
 #
 set -u
 
@@ -78,7 +79,7 @@ trigger=$(dd if="$PROBE_STREAM" bs=1 skip=$(( FIRST_BUFFER_LEN - 3 )) count=3 \
 rm -rf "$RECV_DIR"
 "$myloader" --user "${mysql_user:-root}" --directory "$RECV_DIR" \
             --defaults-extra-file="$PROBE_CNF" \
-            --stream=UNPACK --checksum-all --checksum=fail \
+            --stream=UNPACK --checksum=skip \
             --logfile /tmp/test_myloader.log.tmp < "$PROBE_STREAM" > "$MYLOADER_ERR" 2>&1
 rc=$?
 [ "$rc" -eq 0 ] || { cat "$MYLOADER_ERR" >&2; fail "myloader exited $rc"; }

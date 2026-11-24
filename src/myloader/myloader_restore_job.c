@@ -15,7 +15,6 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <glib-unix.h>
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <mysql.h>
@@ -34,6 +33,7 @@
 #include "myloader/myloader_worker_index.h"
 #include "myloader/myloader_worker_loader.h"
 #include "myloader/myloader_worker_loader_main.h"
+#include "signal_prompt.h"
 
 extern int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *, enum restore_job_statement_type restore_job_statement_type);
 
@@ -737,72 +737,30 @@ cleanup:
   return 0;
 }
 
-GMutex **pause_mutex_per_thread = NULL;
+/* Ctrl+c handling, see signal_prompt.h.
 
-gboolean sig_triggered(void *user_data, int signal)
+   shutdown_triggered_mutex is held from the moment the question is asked
+   until it is answered and, on cancel, until the resume file is written, so
+   stop_signal_thread() keeps waiting for both. */
+static gboolean holding_shutdown_mutex = FALSE;
+
+static void hold_shutdown_mutex()
 {
-  struct configuration *conf = (struct configuration *)user_data;
-  guint                 i = 0;
-  GAsyncQueue          *queue = NULL;
-  g_mutex_lock(shutdown_triggered_mutex);
-  if (signal == SIGTERM)
+  if (!holding_shutdown_mutex)
   {
-    shutdown_triggered = TRUE;
+    g_mutex_lock(shutdown_triggered_mutex);
+    holding_shutdown_mutex = TRUE;
   }
-  else
-  {
-    if (pause_mutex_per_thread == NULL)
-    {
-      pause_mutex_per_thread = g_new(GMutex *, num_threads);
-      for (i = 0; i < num_threads; i++)
-      {
-        pause_mutex_per_thread[i] = g_mutex_new();
-      }
-    }
-    if (conf->pause_resume == NULL)
-      conf->pause_resume = g_async_queue_new();
-    queue = conf->pause_resume;
-    for (i = 0; i < num_threads; i++)
-    {
-      g_mutex_lock(pause_mutex_per_thread[i]);
-      g_async_queue_push(queue, pause_mutex_per_thread[i]);
-    }
-    if (machine_log_json)
-    {
-      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-          "MESSAGE", "Ctrl+c detected; waiting for confirmation",
-          "EVENT", "restore_signal_prompt",
-          "PHASE", "signal",
-          "STATUS", "started",
-          NULL);
-    }
-    else
-    {
-      fprintf(stdout, "Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
-    }
-    int c = 0;
-    while (1)
-    {
-      do
-      {
-        c = fgetc(stdin);
-      } while (c == '\n');
-      if (c == 'N' || c == 'n')
-      {
-        for (i = 0; i < num_threads; i++)
-          g_mutex_unlock(pause_mutex_per_thread[i]);
-        g_mutex_unlock(shutdown_triggered_mutex);
-        return TRUE;
-      }
-      if (c == 'Y' || c == 'y')
-      {
-        shutdown_triggered = TRUE;
-        for (i = 0; i < num_threads; i++)
-          g_mutex_unlock(pause_mutex_per_thread[i]);
-        break;
-      }
-    }
-  }
+}
+
+static void release_shutdown_mutex()
+{
+  holding_shutdown_mutex = FALSE;
+  g_mutex_unlock(shutdown_triggered_mutex);
+}
+
+static void write_resume_file()
+{
   inform_restore_job_running();
   create_index_shutdown_job();
   restore_job_finish();
@@ -826,25 +784,26 @@ gboolean sig_triggered(void *user_data, int signal)
   g_free(p);
   g_free(p2);
   message("Shutting down gracefully completed.");
-  g_mutex_unlock(shutdown_triggered_mutex);
-  return FALSE;
+  release_shutdown_mutex();
 }
 
-gboolean sig_triggered_int(void *user_data)
-{
-  return sig_triggered(user_data, SIGINT);
-}
-gboolean sig_triggered_term(void *user_data)
-{
-  return sig_triggered(user_data, SIGTERM);
-}
+static struct signal_prompt restore_signal_prompt = {
+    .name = "restore",
+    .event_prefix = "restore",
+    .timestamp = FALSE,
+    .shutdown_triggered = &shutdown_triggered,
+    .on_prompt = hold_shutdown_mutex,
+    .on_resume = release_shutdown_mutex,
+    .before_cancel = hold_shutdown_mutex,
+    .on_cancel = write_resume_file,
+};
 
 GMainLoop *loop = NULL;
 
 void *signal_thread(void *data)
 {
-  g_unix_signal_add(SIGINT, sig_triggered_int, data);
-  g_unix_signal_add(SIGTERM, sig_triggered_term, data);
+  restore_signal_prompt.pause_resume = &((struct configuration *)data)->pause_resume;
+  signal_prompt_add(&restore_signal_prompt);
   loop = g_main_loop_new(NULL, TRUE);
   g_main_loop_run(loop);
   return NULL;

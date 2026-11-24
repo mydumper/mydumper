@@ -98,11 +98,10 @@ struct configuration
   int                  done;
 };
 
-void     load_start_dump_entries(GOptionContext *context, GOptionGroup *filter_group);
-void     start_dump(struct configuration *conf, GOptionContext *context);
-gboolean sig_triggered_int(void *user_data);
-gboolean sig_triggered_term(void *user_data);
-void     set_disk_limits(guint p_at, guint r_at);
-void     print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data);
+void load_start_dump_entries(GOptionContext *context, GOptionGroup *filter_group);
+void start_dump(struct configuration *conf, GOptionContext *context);
+void add_dump_signal_sources(struct configuration *conf);
+void set_disk_limits(guint p_at, guint r_at);
+void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data);
 
 #endif

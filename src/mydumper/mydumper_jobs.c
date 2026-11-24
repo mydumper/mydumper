@@ -310,7 +310,7 @@ static void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt, 
   GString *alter_table_statement = g_string_sized_new(statement_size);
   GString *alter_table_constraint_statement = g_string_sized_new(statement_size);
   GString *create_table_statement = g_string_sized_new(statement_size);
-  int      flag = global_process_create_table_statement(statement->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->table, TRUE);
+  int      flag = global_process_create_table_statement(statement->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->table, TRUE, NULL);
   if (!dbt->is_view && !(flag & IS_TRX_TABLE) && trx_tables && sync_thread_lock_mode != NO_LOCK)
   {
     m_critical("Non transactional table found: `%s`.`%s` on a consistent backup attempt. Restart backup using --trx-tables=0 to indicate that you have non transactional tables.", dbt->database->source_database, dbt->table);
@@ -567,7 +567,7 @@ static void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, c
   g_string_append(statement, "\n) ENGINE=");
   g_string_append(statement, table_engine_for_view_dependency);
   if (get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_RDS || get_product() == SERVER_TYPE_DOLT)
-    g_string_append(statement, " ENCRYPTION='N'");
+    g_string_append(statement, " /*!50711 ENCRYPTION='N' */");
   g_string_append(statement, ";\n");
 
   if (result)  // should always be true

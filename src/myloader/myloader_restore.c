@@ -21,6 +21,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <mysql.h>
+#include <mysqld_error.h>
 #include <poll.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,10 +42,11 @@ guint           statement_buffer_shrink_threshold = 0;
 extern gboolean dry_run;
 
 struct statement *new_statement();
-guint64           max_transaction_size = DEFAULT_MAX_TRANSACTION_SIZE;
+guint             max_transaction_size = DEFAULT_MAX_TRANSACTION_SIZE;
 gboolean          skip_definer = FALSE;
 gchar            *replace_definer = NULL;
 GAsyncQueue      *connection_pool = NULL;
+static gboolean   release_idle_connections = FALSE;  // Protected by the connection_pool lock.
 GAsyncQueue      *restore_queues = NULL;
 GAsyncQueue      *free_results_queue = NULL;
 int (*restore_data_from_file)(struct thread_data *, const char *, gboolean, struct database *, enum restore_job_statement_type restore_job_statement_type) = NULL;
@@ -167,6 +169,49 @@ void initialize_restore()
     replace_definer_str = g_strdup_printf("DEFINER=%s", replace_definer);
 }
 
+static void close_idle_connection(struct connection_data *cd)
+{
+  if (cd->thrconn != NULL)
+  {
+    trace("Closing idle connection: %ld", cd->connection_id);
+    mysql_close(cd->thrconn);
+    cd->thrconn = NULL;
+    cd->connection_id = 0;
+    cd->current_database = NULL;
+  }
+}
+
+static void return_connection_to_pool(struct connection_data *cd)
+{
+  g_async_queue_lock(connection_pool);
+  if (release_idle_connections)
+    close_idle_connection(cd);
+  g_async_queue_push_unlocked(connection_pool, cd);
+  g_async_queue_unlock(connection_pool);
+}
+
+void set_connection_pool_idle_release(gboolean release)
+{
+  g_async_queue_lock(connection_pool);
+  release_idle_connections = release;
+  if (release)
+  {
+    gint available = g_async_queue_length_unlocked(connection_pool);
+    for (gint i = 0; i < available; i++)
+    {
+      struct connection_data *cd = g_async_queue_try_pop_unlocked(connection_pool);
+      close_idle_connection(cd);
+      g_async_queue_push_unlocked(connection_pool, cd);
+    }
+  }
+  g_async_queue_unlock(connection_pool);
+}
+
+static void free_replay_statement(gpointer data)
+{
+  g_string_free((GString *)data, TRUE);
+}
+
 struct connection_data *new_connection_data(MYSQL *thrconn)
 {
   struct connection_data *cd = g_new(struct connection_data, 1);
@@ -182,12 +227,15 @@ struct connection_data *new_connection_data(MYSQL *thrconn)
   cd->ready = g_async_queue_new();
   cd->queue = NULL;
   cd->in_use = g_mutex_new();
+  cd->transaction = FALSE;
+  cd->replay = g_ptr_array_new_with_free_func(free_replay_statement);
+  cd->replay_size = 0;
   trace("Executing set session");
   execute_gstring(cd->thrconn, set_session);
   execute_aws_session_setup(cd->thrconn);
   if (aws_session_commands != NULL && aws_session_commands->len > 0)
     execute_gstring(cd->thrconn, aws_session_commands);
-  g_async_queue_push(connection_pool, cd);
+  return_connection_to_pool(cd);
   return cd;
 }
 struct io_restore_result *new_io_restore_result()
@@ -267,23 +315,144 @@ gboolean release_idle_connection_if_possible()
   if (cd == NULL)
     return FALSE;
 
-  if (cd->thrconn != NULL)
-  {
-    trace("Closing idle connection: %ld", cd->connection_id);
-    mysql_close(cd->thrconn);
-    cd->thrconn = NULL;
-    cd->connection_id = 0;
-    cd->current_database = NULL;
-  }
-
+  close_idle_connection(cd);
   g_async_queue_push(connection_pool, cd);
   return TRUE;
+}
+
+/* Issue #1925: InnoDB rolls back the whole transaction on a deadlock, and a
+ * failed COMMIT (deadlock, Galera/Group Replication certification failure)
+ * leaves nothing committed. Retrying only the failing statement would silently
+ * lose every earlier statement of the transaction, so the statements executed
+ * since START TRANSACTION are kept and replayed in a new transaction, up to
+ * --retry-count times, waiting --retry-wait milliseconds times the attempt
+ * number between attempts. --max-transaction-size bounds the kept statements. */
+
+static gboolean transaction_rolled_back(guint error_code)
+{
+  return error_code == ER_LOCK_DEADLOCK ||
+         error_code == 1180 ||  // ER_ERROR_DURING_COMMIT
+         error_code == 3101;    // ER_TRANSACTION_ROLLBACK_DURING_COMMIT (Group Replication)
+}
+
+static gboolean is_load_data_statement(GString *data)
+{
+  return g_strstr_len(data->str, data->len < 64 ? data->len : 64, "LOAD DATA ") != NULL;
+}
+
+static void reset_transaction_replay(struct connection_data *cd)
+{
+  g_ptr_array_set_size(cd->replay, 0);
+  cd->replay_size = 0;
+}
+
+/* Re-executes the rolled back transaction: START TRANSACTION, every statement
+ * executed since the previous one, then the pending statement (if any) and the
+ * COMMIT (if requested). Retries while the server keeps rolling it back. */
+static gboolean replay_transaction(struct connection_data *cd, GString *pending, gboolean commit)
+{
+  guint attempt, i;
+  for (attempt = 1; attempt <= retry_count; attempt++)
+  {
+    g_atomic_int_inc(&(detailed_errors.retries));
+    g_warning("Thread %ld using connection %ld: transaction rolled back by the server, replaying its %u statements (attempt %u of %u)",
+        cd->thread_id, cd->connection_id, cd->replay->len + (pending ? 1 : 0), attempt, retry_count);
+    if (mysql_query(cd->thrconn, "START TRANSACTION"))
+      goto failed;
+    for (i = 0; i < cd->replay->len; i++)
+    {
+      GString *statement = g_ptr_array_index(cd->replay, i);
+      if (mysql_real_query(cd->thrconn, statement->str, statement->len))
+        goto failed;
+    }
+    if (pending && mysql_real_query(cd->thrconn, pending->str, pending->len))
+      goto failed;
+    if (commit && mysql_query(cd->thrconn, "COMMIT"))
+      goto failed;
+    return TRUE;
+  failed:
+    g_warning("Thread %ld using connection %ld - ERROR %d: Transaction replay failed: %s",
+        cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+    if (!transaction_rolled_back(mysql_errno(cd->thrconn)))
+    {
+      // The transaction may still be open with part of the statements applied.
+      mysql_query(cd->thrconn, "ROLLBACK");
+      return FALSE;
+    }
+    g_usleep((gulong)attempt * retry_wait * 1000);
+  }
+  return FALSE;
+}
+
+int m_commit(struct connection_data *cd)
+{
+  int r = 0;
+  if (mysql_query(cd->thrconn, "COMMIT"))
+  {
+    guint en = mysql_errno(cd->thrconn);
+    g_warning("Thread %ld using connection %ld - ERROR %d: COMMIT failed: %s", cd->thread_id, cd->connection_id, en, mysql_error(cd->thrconn));
+    if (!transaction_rolled_back(en))
+    {
+      // With the connection lost, the COMMIT may have been applied: replaying could duplicate rows.
+      g_critical("Thread %ld using connection %ld: COMMIT failed and the transaction can not be safely replayed, its %u statements may not have been restored",
+          cd->thread_id, cd->connection_id, cd->replay->len);
+      errors++;
+      r = 2;
+    }
+    else if (!replay_transaction(cd, NULL, TRUE))
+    {
+      g_critical("Thread %ld using connection %ld: COMMIT failed and the transaction could not be replayed, its %u statements were not restored",
+          cd->thread_id, cd->connection_id, cd->replay->len);
+      errors++;
+      r = 2;
+    }
+  }
+  reset_transaction_replay(cd);
+  return r;
+}
+
+int m_commit_and_start_transaction(struct connection_data *cd, guint *query_counter)
+{
+  int e = m_commit(cd);
+  if (e)
+    return e;
+  if (query_counter)
+    *query_counter = 0;
+  m_query_warning(cd->thrconn, "START TRANSACTION", "START TRANSACTION failed");
+  return 0;
+}
+
+static void add_to_transaction_replay(struct connection_data *cd, GString *data, guint *query_counter)
+{
+  if (!cd->transaction)
+    return;
+  if (retry_count > 0 && is_load_data_statement(data))
+  {
+    // A LOAD DATA can not be replayed (its FIFO is consumed), so it closes the transaction.
+    m_commit_and_start_transaction(cd, query_counter);
+    return;
+  }
+  // Without retries there is nothing to replay: only the size is needed.
+  if (retry_count > 0)
+    g_ptr_array_add(cd->replay, g_string_new_len(data->str, data->len));
+  cd->replay_size += data->len;
+}
+
+/* A transaction ends when --queries-per-transaction statements were executed or
+ * when the next statement would make it bigger than --max-transaction-size,
+ * which also bounds the memory kept to replay it. */
+static void commit_if_transaction_too_big(struct connection_data *cd, GString *data, guint *query_counter)
+{
+  if (cd->transaction && cd->replay_size > 0 &&
+      cd->replay_size + data->len > (guint64)max_transaction_size * 1024 * 1024)
+    m_commit_and_start_transaction(cd, query_counter);
 }
 
 static int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter, guint offset_line, guint current_offset_line)
 {
   if (!dry_run)
   {
+    commit_if_transaction_too_big(cd, data, query_counter);
     guint en = mysql_real_query(cd->thrconn, data->str, data->len);
     if (en)
     {
@@ -316,18 +485,35 @@ static int restore_data_in_gstring_by_statement(struct connection_data *cd, GStr
         g_warning("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn));
       }
 
-      if (mysql_errno(cd->thrconn) != 0 && !should_ignore_error_code(mysql_errno(cd->thrconn)))
+      if (cd->transaction && transaction_rolled_back(mysql_errno(cd->thrconn)) && !should_ignore_error_code(mysql_errno(cd->thrconn)))
       {
+        // The server rolled back the whole transaction, not only this statement.
+        if (is_load_data_statement(data) || !replay_transaction(cd, data, FALSE))
+        {
+          g_critical("Thread %ld using connection %ld: Error occurs between lines: %d and %d: the transaction was rolled back and could not be replayed",
+              cd->thread_id, cd->connection_id, offset_line, current_offset_line);
+          errors++;
+          reset_transaction_replay(cd);
+          return 1;
+        }
+      }
+      else if (mysql_errno(cd->thrconn) != 0 && !should_ignore_error_code(mysql_errno(cd->thrconn)))
+      {
+        /* Ping and reconnect overwrite the error that caused the restore to fail. */
+        guint  original_errno = mysql_errno(cd->thrconn);
+        gulong original_connection_id = cd->connection_id;
+        gchar  original_error[MYSQL_ERRMSG_SIZE], original_sqlstate[6];
+        g_strlcpy(original_error, mysql_error(cd->thrconn), sizeof(original_error));
+        g_strlcpy(original_sqlstate, mysql_sqlstate(cd->thrconn), sizeof(original_sqlstate));
         if (mysql_ping(cd->thrconn))
         {
-          reconnect_connection_data(cd);
           if (!is_schema && commit_count > 1)
           {
             if (machine_log_json_enabled())
             {
               gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
-              gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
-              gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(cd->thrconn));
+              gchar *connection_id = g_strdup_printf("%lu", original_connection_id);
+              gchar *mysql_errno_text = g_strdup_printf("%u", original_errno);
               machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,
                   "MESSAGE", "restore connection lost",
                   "EVENT", "restore_sql",
@@ -336,7 +522,7 @@ static int restore_data_in_gstring_by_statement(struct connection_data *cd, GStr
                   "THREAD_ID", thread_id,
                   "CONNECTION_ID", connection_id,
                   "MYSQL_ERRNO", mysql_errno_text,
-                  "SQLSTATE", mysql_sqlstate(cd->thrconn),
+                  "SQLSTATE", original_sqlstate,
                   "RETRYABLE", "false",
                   "FATAL", "true",
                   NULL);
@@ -344,10 +530,13 @@ static int restore_data_in_gstring_by_statement(struct connection_data *cd, GStr
               g_free(connection_id);
               g_free(mysql_errno_text);
             }
-            g_critical("Thread %ld using connection %ld - ERROR %d: Lost connection error. %s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+            /* Stop before reconnecting: replaying only this statement loses the transaction. */
+            g_warning("Thread %ld using connection %ld - ERROR %u (SQLSTATE %s): %s. Stopping restore: connection lost during an active transaction (lines %u-%u)",
+                cd->thread_id, original_connection_id, original_errno, original_sqlstate, original_error, offset_line, current_offset_line);
             errors++;
-            return 2;
+            exit(EXIT_FAILURE);
           }
+          reconnect_connection_data(cd);
         }
 
         g_atomic_int_inc(&(detailed_errors.retries));
@@ -389,6 +578,8 @@ static int restore_data_in_gstring_by_statement(struct connection_data *cd, GStr
   }
   if (query_counter)
     *query_counter = *query_counter + 1;
+  if (!dry_run)
+    add_to_transaction_replay(cd, data, query_counter);
   g_string_set_size(data, 0);
   return 0;
 }
@@ -447,6 +638,7 @@ void setup_connection(struct connection_data *cd, struct thread_data *td, struct
   }
   cd->thread_id = td->thread_id;
   cd->transaction = start_transaction;
+  reset_transaction_replay(cd);
   if (use_database)
     execute_use_if_needs_to(cd, use_database, "request_another_connection");
   if (td)
@@ -486,21 +678,6 @@ gboolean        request_another_connection(struct thread_data *td, struct io_res
   return FALSE;
 }
 
-int m_commit(struct connection_data *cd)
-{
-  return m_query_warning(cd->thrconn, "COMMIT", "COMMIT failed") ? 2 : 0;
-}
-
-int m_commit_and_start_transaction(struct connection_data *cd, guint *query_counter)
-{
-  int e = m_commit(cd);
-  if (e)
-    return e;
-  *query_counter = 0;
-  m_query_warning(cd->thrconn, "START TRANSACTION", "START TRANSACTION failed");
-  return 0;
-}
-
 static int restore_insert(struct connection_data *cd, struct thread_data *td, GString *data, guint *query_counter, guint offset_line, struct db_table *dbt)
 {
   // Perf: Find "VALUES" using strstr (only once, not in hot loop)
@@ -524,7 +701,6 @@ static int restore_insert(struct connection_data *cd, struct thread_data *td, GS
 
   GString *new_insert = g_string_sized_new(prefix_len + 4096);  // Larger initial size
   guint    current_rows = 0;
-  guint64  transaction_size = 0;
   do
   {
     current_rows = 0;
@@ -548,13 +724,8 @@ static int restore_insert(struct connection_data *cd, struct thread_data *td, GS
     } while ((rows == 0 || current_rows < rows) && next_line != NULL);
     if (current_rows > 1 || (current_rows == 1 && line_len > 0))
     {
-      if (cd->transaction && ((max_transaction_size * 1024 * 1024 < new_insert->len + transaction_size)))
-      {  //|| (max_transaction_size * 1024 * 1024 < transaction_size + max_statement_size ))){
-        tr += m_commit_and_start_transaction(cd, query_counter);
-        transaction_size = 0;
-      }
-      transaction_size += new_insert->len;
-      tr = restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter, offset_line, current_offset_line);
+      // --max-transaction-size is checked for every statement in restore_data_in_gstring_by_statement.
+      tr += restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter, offset_line, current_offset_line);
       g_usleep(throttle_time);
       table_lock(dbt);
       dbt->rows_inserted += current_rows;
@@ -562,7 +733,6 @@ static int restore_insert(struct connection_data *cd, struct thread_data *td, GS
       if (cd->transaction && *query_counter >= commit_count)
       {
         tr += m_commit_and_start_transaction(cd, query_counter);
-        transaction_size = 0;
       }
 
       if (tr > 0)
@@ -675,7 +845,7 @@ void *restore_thread(MYSQL *thrconn)
       }
     }
     trace("Returning connection to pool: %ld", cd->connection_id);
-    g_async_queue_push(connection_pool, cd);
+    return_connection_to_pool(cd);
   }
   //  g_mutex_unlock(cd->in_use);
   return NULL;
@@ -830,7 +1000,6 @@ guint process_result_statement(GAsyncQueue *get_insert_result_queue, struct stat
 
 int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database, enum restore_job_statement_type restore_job_statement_type)
 {
-  (void)restore_job_statement_type;
   FILE    *infile = NULL;
   gboolean eof = FALSE;
   GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
@@ -871,6 +1040,8 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
       else if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], delimiter))
       {
         update_definer(data, replace_definer_str, skip_definer);
+        if (restore_job_statement_type == VIEW)
+          rewrite_view_statement(data, use_database, cd->thrconn->server_status & SERVER_STATUS_NO_BACKSLASH_ESCAPES);
         assign_statement(ir, td, td->dbt, data->str, preline, is_schema, OTHER);
         g_async_queue_push(cd->queue->restore, ir);
         ir = NULL;
@@ -931,6 +1102,9 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
   GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
   guint    line = 0, preline = 0;
   gchar   *path = g_build_filename(directory, filename, NULL);
+  // The database encryption option is not portable between MySQL and MariaDB (issue #2367)
+  table_option_modifier_func database_modifier =
+      restore_job_statement_type == CREATE_DATABASE ? get_database_encryption_modifier(encryption_option_mode, get_product() == SERVER_TYPE_MARIADB) : NULL;
   infile = myl_open(path, "r");
 
   g_log_set_always_fatal(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL);
@@ -973,6 +1147,8 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
 
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n") && rep)
       {
+        if (restore_job_statement_type == VIEW)
+          rewrite_view_statement(data, use_database, cd->thrconn->server_status & SERVER_STATUS_NO_BACKSLASH_ESCAPES);
         if (g_str_has_prefix(data->str, "CREATE"))
         {
           if (skip_definer)
@@ -1121,6 +1297,8 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           else
           {
             header = NULL;
+            if (database_modifier)
+              database_modifier(data);
           }
           assign_statement(ir, td, td->dbt, data->str, preline, is_schema, OTHER);
           g_async_queue_push(cd->queue->restore, ir);

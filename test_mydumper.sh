@@ -78,7 +78,9 @@ mysqldump()
 {
   # mysqldump doesn't respect $MYSQL_HOST
   local host_arg=${MYSQL_HOST:+-h $MYSQL_HOST}
-  $mysqldump_exe --no-defaults $host_arg -f --user $mysql_user "$@" || exit
+  # No locks: --skip-lock-tables avoids LOCK TABLES while dumping (enabled by
+  # --opt), --skip-add-locks keeps LOCK/UNLOCK TABLES out of the dump file.
+  $mysqldump_exe --no-defaults $host_arg -f --skip-lock-tables --skip-add-locks --user $mysql_user "$@" || exit
 }
 export -f mysqldump
 
@@ -95,7 +97,7 @@ export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
 
-optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,skip-backup,prepare,directories:,retry:,replica-host:,replica-port:"
+optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,skip-backup,prepare,directories:,retry:,replica-host:,replica-port:,source-db:,target-db:,encrypt-tables"
 optstring_short="c:,e:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
@@ -113,6 +115,9 @@ unset case_min
 unset case_max
 unset replica_host
 unset replica_port
+unset source_db
+unset target_db
+unset encrypt_tables
 log_level="--verbose 4"
 
 while true
@@ -177,6 +182,15 @@ do
   --replica-port)
     replica_port=$2
     shift 2;;
+  --source-db)
+    source_db=$2
+    shift 2;;
+  --target-db)
+    target_db=$2
+    shift 2;;
+  --encrypt-tables)
+    encrypt_tables=1
+    shift;;
   --) shift; break;;
   esac
 done
@@ -197,6 +211,18 @@ then
 else
   echo "Using replica on the same socket as the primary"
 fi
+
+# --source-db/--target-db (vendor:version, e.g. percona:5.7 mariadb:10.6):
+# the backup is adapted with test/adapt_backup_to_target.sh before importing
+if [ -n "$source_db" ] || [ -n "$target_db" ]
+then
+  if [ -z "$source_db" ] || [ -z "$target_db" ]
+  then
+    die "--source-db and --target-db must be used together"
+  fi
+  echo "Migration test from $source_db to $target_db"
+fi
+adapt_backup_script="$(dirname "$0")/test/adapt_backup_to_target.sh"
 
 mysql_replica()
 {
@@ -257,11 +283,39 @@ backtrace ()
    done
 }
 
+# --encrypt-tables: encrypts at rest every InnoDB table of a database. The
+# server needs a keyring (MySQL/Percona) or a key management plugin (MariaDB).
+# It fails when a table is still not encrypted, as mysql() ignores errors.
+encrypt_database(){
+  local db=$1 option encrypted
+  if mysql -N -e "SELECT VERSION()" | grep -qi mariadb
+  then
+    option="ENCRYPTED=YES"
+    encrypted="%ENCRYPTED%=%YES%"
+  else
+    option="ENCRYPTION='Y'"
+    encrypted="%ENCRYPTION%=%Y%"
+  fi
+  local tables="FROM information_schema.TABLES WHERE TABLE_SCHEMA='${db}' AND TABLE_TYPE='BASE TABLE' AND ENGINE='InnoDB'"
+  echo "Encrypting the InnoDB tables of ${db} with ${option}"
+  mysql -N -e "SELECT CONCAT('ALTER TABLE \`', TABLE_SCHEMA, '\`.\`', TABLE_NAME, '\` ', \"${option}\", ';') ${tables}" | mysql
+  local not_encrypted
+  not_encrypted=$(mysql -N -e "SELECT GROUP_CONCAT(TABLE_NAME) ${tables} AND CREATE_OPTIONS NOT LIKE \"${encrypted}\"")
+  if [ -n "${not_encrypted}" ] && [ "${not_encrypted}" != "NULL" ]
+  then
+    die "Tables not encrypted in ${db}: ${not_encrypted}"
+  fi
+}
+
 prepare_database_in_directory(){
   prepare_database="test/${1}.sql"
   if [ -f ${prepare_database} ]
   then
     mysql < ${prepare_database}
+    if [ -n "$encrypt_tables" ] && grep -q "sakila-schema.sql" ${prepare_database}
+    then
+      encrypt_database sakila
+    fi
   fi
 }
 
@@ -349,6 +403,18 @@ test_case_dir (){
       cat $mydumper_default_extra_file
       cat $myloader_default_extra_file
       exit $error
+    fi
+    if [ -n "$source_db" ]
+    then
+      if (( $mydumper_stream >= 1 ))
+      then
+        echo "Streaming backup: not adapted from $source_db to $target_db"
+      elif ! "$adapt_backup_script" "$source_db" "$target_db" "$mydumper_stor_dir"
+      then
+        echo "Error adapting the backup from $source_db to $target_db"
+        backtrace
+        exit 1
+      fi
     fi
   fi
   if [ -f $myloader_clean_database ]

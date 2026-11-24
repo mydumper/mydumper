@@ -18,10 +18,13 @@
 #include <glib.h>
 #include <mysql.h>
 #include <string.h>
+#include <zlib.h>
 
 #include "common.h"
 
 #include "checksum.h"
+#include "checksum_view_normalize.h"
+#include "server_detect.h"
 #include "logging.h"
 
 enum checksum_modes checksum_mode = CHECKSUM_WARN;  // Issue #1975: Warn by default instead of fail
@@ -96,7 +99,7 @@ static char *generic_checksum(MYSQL *conn, const gchar *query_template, ...)
   char *r = NULL;
   if (mr)
   {
-    if (mr->row)
+    if (mr->row && mr->row[column_number])
       r = g_strdup_printf("%s", mr->row[column_number]);
     m_store_result_row_free(mr);
   }
@@ -115,16 +118,231 @@ char *checksum_table(MYSQL *conn, char *database, char *table)
 
 char *checksum_table_structure(MYSQL *conn, char *database, char *table)
 {
+  /* MariaDB exposes JSON as LONGTEXT with a binary collation and JSON_VALID check. */
+  if (get_product() == SERVER_TYPE_MARIADB &&
+      (get_major() > 10 || (get_major() == 10 && get_secondary() >= 2)))
+    return generic_checksum(conn,
+        checksum_select_prefix
+        "SELECT CONCAT_WS(' ', c.column_name, c.ordinal_position, "
+        "CASE WHEN c.data_type='longtext' AND c.collation_name='utf8mb4_bin' AND EXISTS ("
+        "SELECT 1 FROM information_schema.check_constraints AS cc "
+        "WHERE cc.constraint_schema=c.table_schema AND cc.table_name=c.table_name "
+        "AND BINARY cc.check_clause=BINARY CONCAT('json_valid(`', REPLACE(c.column_name, '`', '``'), '`)')) "
+        "THEN 'json' ELSE c.data_type END) AS col, c.ordinal_position "
+        "FROM information_schema.columns AS c WHERE c.table_schema='%s' AND c.table_name='%s' "
+        ") AS a ORDER BY ordinal_position;",
+        0, database, table);
+
   return generic_checksum(conn,
       checksum_select_prefix "SELECT CONCAT_WS(' ', column_name, ordinal_position, data_type) AS col, ordinal_position FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s' ) AS a ORDER BY ordinal_position;",
       0, database, table);
 }
 
+/* Advance over one quoted SQL token, respecting the routine's creation mode. */
+static const gchar *routine_quote_end(const gchar *p, gboolean no_backslash, gboolean ansi_quotes)
+{
+  gchar    quote = *p++;
+  gboolean literal = quote == '\'' || (quote == '"' && !ansi_quotes);
+  while (*p)
+  {
+    if (*p == '\\' && literal && !no_backslash && p[1])
+      p += 2;
+    else if (*p++ == quote)
+    {
+      if (*p != quote)
+        return p;
+      p++;
+    }
+  }
+  return NULL;
+}
+
+/* SHOW CREATE emits the signature and each characteristic on separate lines.
+ * Locate the body without relying on the lossy ROUTINE_DEFINITION field. */
+static const gchar *routine_body(const gchar *sql, gboolean no_backslash, gboolean ansi_quotes)
+{
+  const gchar *p = sql;
+  guint        depth = 0;
+  gboolean     parameters_done = FALSE;
+  while (*p)
+  {
+    if (*p == '\'' || *p == '"' || *p == '`')
+    {
+      p = routine_quote_end(p, no_backslash, ansi_quotes);
+      if (!p)
+        return NULL;
+      continue;
+    }
+    if (*p == '(')
+      depth++;
+    else if (*p == ')' && depth && --depth == 0)
+      parameters_done = TRUE;
+    else if (*p == '\n' && parameters_done && !depth)
+    {
+      p++;
+      break;
+    }
+    p++;
+  }
+  if (!parameters_done)
+    return NULL;
+  while (*p)
+  {
+    while (g_ascii_isspace(*p))
+      p++;
+    const gchar *characteristics[] = {"LANGUAGE SQL", "DETERMINISTIC", "NOT DETERMINISTIC",
+        "CONTAINS SQL", "NO SQL", "READS SQL DATA", "MODIFIES SQL DATA",
+        "SQL SECURITY DEFINER", "SQL SECURITY INVOKER", "COMMENT"};
+    gboolean     characteristic = FALSE;
+    for (guint i = 0; i < G_N_ELEMENTS(characteristics); i++)
+    {
+      gsize len = strlen(characteristics[i]);
+      if (!g_ascii_strncasecmp(p, characteristics[i], len) && g_ascii_isspace(p[len]))
+      {
+        characteristic = TRUE;
+        break;
+      }
+    }
+    if (!characteristic)
+      return *p ? p : NULL;
+    while (*p && *p != '\n')
+    {
+      if (*p == '\'' || *p == '"' || *p == '`')
+      {
+        p = routine_quote_end(p, no_backslash, ansi_quotes);
+        if (!p)
+          return NULL;
+      }
+      else
+        p++;
+    }
+  }
+  return NULL;
+}
+
+static gchar *normalize_routine_definition(const gchar *sql, const gchar *mode)
+{
+  gboolean     no_backslash = strstr(mode, "NO_BACKSLASH_ESCAPES") != NULL;
+  gboolean     ansi_quotes = strstr(mode, "ANSI_QUOTES") != NULL;
+  const gchar *p = routine_body(sql, no_backslash, ansi_quotes);
+  if (!p)
+    return NULL;
+  GString *normalized = g_string_new(NULL);
+  while (*p)
+  {
+    const gchar *start = p;
+    gboolean     ordinary_comment = FALSE;
+    if (*p == '\'' || *p == '"' || *p == '`')
+    {
+      p = routine_quote_end(p, no_backslash, ansi_quotes);
+      if (!p)
+        goto invalid;
+    }
+    else if (*p == '#' || (p[0] == '-' && p[1] == '-' && g_ascii_isspace(p[2])))
+    {
+      ordinary_comment = TRUE;
+      while (*p && *p != '\n')
+        p++;
+      if (*p)
+        p++;
+    }
+    else if (p[0] == '/' && p[1] == '*')
+    {
+      ordinary_comment = p[2] != '!' && p[2] != '+' && !(p[2] == 'M' && p[3] == '!');
+      const gchar *end = strstr(p + 2, "*/");
+      if (!end)
+        goto invalid;
+      p = end + 2;
+    }
+    else if (g_ascii_isspace(*p))
+    {
+      while (g_ascii_isspace(*p))
+        p++;
+      if (*p)
+        g_string_append_c(normalized, ' ');
+      continue;
+    }
+    else
+      p++;
+    if (ordinary_comment)
+    {
+      /* The dump serializer adds a space before each newline, including comments. */
+      while (start < p)
+      {
+        if (g_ascii_isspace(*start))
+        {
+          gboolean newline = FALSE;
+          while (start < p && g_ascii_isspace(*start))
+            newline |= *start++ == '\n';
+          g_string_append_c(normalized, newline ? '\n' : ' ');
+        }
+        else
+          g_string_append_c(normalized, *start++);
+      }
+    }
+    else
+      g_string_append_len(normalized, start, p - start);
+  }
+  return g_string_free(normalized, FALSE);
+invalid:
+  g_string_free(normalized, TRUE);
+  return NULL;
+}
+
+static gchar *quote_routine_identifier(const gchar *name)
+{
+  gchar **parts = g_strsplit(name, "`", -1);
+  gchar  *escaped = g_strjoinv("``", parts);
+  gchar  *quoted = g_strdup_printf("`%s`", escaped);
+  g_strfreev(parts);
+  g_free(escaped);
+  return quoted;
+}
+
 char *checksum_process_structure(MYSQL *conn, char *database, char *table)
 {
-  return generic_checksum(conn,
-      checksum_select_prefix "SELECT replace(ROUTINE_DEFINITION,' ','') AS col, ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.routines WHERE ROUTINE_SCHEMA='%s') AS a ORDER BY ROUTINE_TYPE, ROUTINE_NAME",
-      0, database, table);
+  (void)table;
+  GString *query = g_string_new("SELECT ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.routines WHERE ROUTINE_SCHEMA=X'");
+  for (const guchar *p = (const guchar *)database; *p; p++)
+    g_string_append_printf(query, "%02x", *p);
+  g_string_append(query, "' AND ROUTINE_TYPE IN ('PROCEDURE','FUNCTION') ORDER BY ROUTINE_TYPE, ROUTINE_NAME");
+  MYSQL_RES *result = m_store_result_critical(conn, query->str, "Error listing routines for checksum (%s)", database);
+  g_string_free(query, TRUE);
+  if (!result)
+    return NULL;
+
+  gchar    *quoted_database = quote_routine_identifier(database);
+  guint32   checksum = 0;
+  gboolean  valid = TRUE;
+  MYSQL_ROW row;
+  while ((row = mysql_fetch_row(result)))
+  {
+    if (!row[0] || !row[1] || (strcmp(row[0], "PROCEDURE") && strcmp(row[0], "FUNCTION")))
+    {
+      valid = FALSE;
+      break;
+    }
+    gchar        *quoted_name = quote_routine_identifier(row[1]);
+    gchar        *show = g_strdup_printf("SHOW CREATE %s %s.%s", row[0], quoted_database, quoted_name);
+    struct M_ROW *mr = m_store_result_single_row(conn, show, "Error reading routine for checksum (%s.%s)", database, row[1]);
+    g_free(show);
+    g_free(quoted_name);
+    gchar *definition = NULL;
+    if (mr && mr->row && mr->row[1] && mr->row[2])
+      definition = normalize_routine_definition(mr->row[2], mr->row[1]);
+    if (mr)
+      m_store_result_row_free(mr);
+    if (!definition)
+    {
+      valid = FALSE;
+      break;
+    }
+    checksum ^= (guint32)crc32(0, (const Bytef *)definition, strlen(definition));
+    g_free(definition);
+  }
+  g_free(quoted_database);
+  mysql_free_result(result);
+  return valid ? g_strdup_printf("%x", checksum) : NULL;
 }
 
 char *checksum_trigger_structure(MYSQL *conn, char *database, char *table)
@@ -141,11 +359,115 @@ char *checksum_trigger_structure_from_database(MYSQL *conn, char *database, char
       0, database, table);
 }
 
+static gchar *normalize_view_definition(const gchar *definition, const gchar *database, gboolean no_backslash_escapes, gboolean ansi_quotes)
+{
+  GString     *normalized = g_string_new(NULL);
+  const gchar *p = definition;
+  while (*p)
+  {
+    const gchar *start = p;
+    if (*p == '#' || (p[0] == '-' && p[1] == '-' && g_ascii_isspace(p[2])))
+    {
+      while (*p && *p != '\n')
+        p++;
+      g_string_append_len(normalized, start, p - start);
+    }
+    else if (p[0] == '/' && p[1] == '*')
+    {
+      const gchar *end = strstr(p + 2, "*/");
+      p = end ? end + 2 : p + strlen(p);
+      g_string_append_len(normalized, start, p - start);
+    }
+    else if (*p == '\'' || (*p == '"' && !ansi_quotes))
+    {
+      gchar quote = *p++;
+      while (*p)
+      {
+        if (*p == '\\' && !no_backslash_escapes && p[1])
+          p += 2;
+        else if (*p++ == quote)
+        {
+          if (*p != quote)
+            break;
+          p++;
+        }
+      }
+      g_string_append_len(normalized, start, p - start);
+    }
+    else if (*p == '`' || (*p == '"' && ansi_quotes) || g_ascii_isalnum(*p) || *p == '_' || *p == '$' || (guchar)*p >= 128)
+    {
+      gchar    quote = (*p == '`' || *p == '"') ? *p++ : 0;
+      GString *identifier = g_string_new(NULL);
+      gboolean closed = !quote;
+      if (quote)
+      {
+        while (*p)
+        {
+          if (*p == quote)
+          {
+            p++;
+            if (*p != quote)
+            {
+              closed = TRUE;
+              break;
+            }
+          }
+          g_string_append_c(identifier, *p++);
+        }
+      }
+      else
+        while (g_ascii_isalnum(*p) || *p == '_' || *p == '$' || (guchar)*p >= 128)
+          g_string_append_c(identifier, *p++);
+      const gchar *next = p;
+      while (g_ascii_isspace(*next))
+        next++;
+      const gchar *previous = start;
+      while (previous > definition && g_ascii_isspace(previous[-1]))
+        previous--;
+      /* Match complete qualifier tokens, not literals or identifier substrings. */
+      if (closed && *next == '.' && (previous == definition || previous[-1] != '.') && !strcmp(identifier->str, database))
+        p = next + 1;
+      else
+        g_string_append_len(normalized, start, p - start);
+      g_string_free(identifier, TRUE);
+    }
+    else
+      g_string_append_c(normalized, *p++);
+  }
+  return g_string_free(normalized, FALSE);
+}
+
 char *checksum_view_structure(MYSQL *conn, char *database, char *table)
 {
-  return generic_checksum(conn,
-      checksum_select_prefix "SELECT REPLACE(VIEW_DEFINITION,TABLE_SCHEMA,'') AS col FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s') AS a;",
-      0, database, table);
+  gchar *query = g_strdup_printf(
+      "SELECT BINARY VIEW_DEFINITION, @@SESSION.sql_mode FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s'",
+      database, table);
+  struct M_ROW *mr = m_store_result_single_row(conn, query, "Error dumping checksum (%s.%s)", database, table);
+  g_free(query);
+  gchar *checksum = NULL;
+  if (mr && mr->row && mr->row[0] && mr->row[1])
+  {
+    gchar *definition = normalize_view_definition(mr->row[0], database,
+        strstr(mr->row[1], "NO_BACKSLASH_ESCAPES") != NULL,
+        strstr(mr->row[1], "ANSI_QUOTES") != NULL);
+    gchar *expressions = normalize_view_expressions(definition,
+        strstr(mr->row[1], "NO_BACKSLASH_ESCAPES") != NULL,
+        strstr(mr->row[1], "ANSI_QUOTES") != NULL,
+        strstr(mr->row[1], "HIGH_NOT_PRECEDENCE") != NULL || strstr(mr->row[1], "PIPES_AS_CONCAT") != NULL);
+    g_free(definition);
+    definition = expressions;
+    /* A binary hex literal preserves definition bytes and needs no SQL escaping. */
+    GString *crc_query = g_string_new("SELECT LOWER(CONV(CRC32(X'");
+    for (const guchar *p = (const guchar *)definition; *p; p++)
+      g_string_append_printf(crc_query, "%02x", *p);
+    g_string_append(crc_query, "'), 10, 16))");
+    checksum = generic_checksum(conn, crc_query->str, 0, database, table);
+    g_string_free(crc_query, TRUE);
+    g_free(definition);
+  }
+  if (mr)
+    m_store_result_row_free(mr);
+  return checksum;
 }
 
 char *checksum_database_defaults(MYSQL *conn, char *database, char *table)
@@ -158,7 +480,7 @@ char *checksum_database_defaults(MYSQL *conn, char *database, char *table)
 char *checksum_table_indexes(MYSQL *conn, char *database, char *table)
 {
   return generic_checksum(conn,
-      checksum_select_prefix "SELECT CONCAT_WS(' ', INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) AS col, INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ) A ORDER BY col",
+      checksum_select_prefix "SELECT CONCAT_WS(' ', INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME,NON_UNIQUE,COALESCE(SUB_PART,0)) AS col, INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ) A ORDER BY col",
       0, database, table);
 }
 
@@ -222,6 +544,14 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
   g_assert(checksum_mode != CHECKSUM_SKIP);
   emit_checksum_event(G_LOG_LEVEL_MESSAGE, "started", scope, checksum_type, _db, _table,
       dbt_checksum, checksum);
+  if (dbt_checksum && !checksum)
+  {
+    GLogLevelFlags level = checksum_mode == CHECKSUM_WARN ? G_LOG_LEVEL_WARNING : G_LOG_LEVEL_CRITICAL;
+    emit_checksum_event(level, "failed", scope, checksum_type, _db, _table, dbt_checksum, checksum);
+    g_log(G_LOG_DOMAIN, level, "%s could not be computed for %s%s%s (expected %s)",
+        message, _db, _table ? "." : "", _table ? _table : "", dbt_checksum);
+    return FALSE;
+  }
   if (dbt_checksum && checksum && g_ascii_strcasecmp(dbt_checksum, checksum))
   {
     emit_checksum_event(checksum_mode == CHECKSUM_WARN ? G_LOG_LEVEL_WARNING : G_LOG_LEVEL_CRITICAL,

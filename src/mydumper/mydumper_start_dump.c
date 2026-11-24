@@ -19,7 +19,7 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <glib-unix.h>
+#include <errno.h>
 #include <mysql.h>
 #include <sys/statvfs.h>
 
@@ -40,6 +40,7 @@
 #include "mydumper/mydumper_table.h"
 #include "mydumper/mydumper_working_thread.h"
 #include "mydumper/mydumper_write.h"
+#include "signal_prompt.h"
 #include "logging.h"
 
 /* Program options */
@@ -82,12 +83,13 @@ extern guint    ftwrl_timeout_retries;
 extern char   **ignore_engines;
 
 // static variables
-static GMutex   **pause_mutex_per_thread = NULL;
 static guint      pause_at = 0;
 static guint      resume_at = 0;
 static gchar    **db_items = NULL;
 static GRecMutex *ready_table_dump_mutex = NULL;
-static gboolean   ftwrl_completed = FALSE;
+static gint       ftwrl_completed = FALSE;
+static GMutex     ftwrl_mutex;
+static GCond      ftwrl_cond;
 static void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
 static void (*release_ddl_lock_function)(MYSQL *) = NULL;
 
@@ -278,26 +280,62 @@ static MYSQL *create_connection()
   return conn;
 }
 
+static void wait_for_ftwrl_completion(void)
+{
+  gint64 deadline = g_get_monotonic_time() + G_TIME_SPAN_SECOND;
+  g_mutex_lock(&ftwrl_mutex);
+  /* Recheck after each wakeup, including when completion preceded the wait. */
+  while (!g_atomic_int_get(&ftwrl_completed))
+  {
+    if (!g_cond_wait_until(&ftwrl_cond, &ftwrl_mutex, deadline))
+      break;
+  }
+  g_mutex_unlock(&ftwrl_mutex);
+}
+
 void *monitor_ftwrl_thread(void *thread_id)
 {
-  MYSQL     *conn = create_connection();
+  MYSQL     *conn = NULL;
   MYSQL_RES *res = NULL;
   gboolean   ftwrl_found_in_processlist = FALSE;
   gchar     *query = NULL;
-  while (!ftwrl_completed)
+  while (!g_atomic_int_get(&ftwrl_completed))
   {
     if (ftwrl_found_in_processlist == TRUE)
     {
-      sleep(ftwrl_max_wait_time);
+      for (guint waited = 0; waited < ftwrl_max_wait_time && !shutdown_triggered && !g_atomic_int_get(&ftwrl_completed); waited++)
+        wait_for_ftwrl_completion();
     }
     else
     {
-      sleep(1);
+      wait_for_ftwrl_completion();
     }
-    res = m_store_result(conn, "SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST");
+    if (g_atomic_int_get(&ftwrl_completed))
+      break;
+    if (!conn)
+    {
+      conn = mysql_init(NULL);
+      if (!conn)
+        break;
+      if (!m_connect_with_timeout(conn, 1))
+      {
+        m_warning("Could not connect FTWRL monitor: %s; retrying", mysql_error(conn));
+        mysql_close(conn);
+        conn = NULL;
+        ftwrl_found_in_processlist = FALSE;
+        continue;
+      }
+    }
+    if (g_atomic_int_get(&ftwrl_completed))
+      break;
+    res = mysql_query(conn, "SHOW PROCESSLIST") ? NULL : mysql_store_result(conn);
     if (!res)
     {
-      break;
+      m_warning("Could not check PROCESSLIST: %s; reconnecting FTWRL monitor", mysql_error(conn));
+      mysql_close(conn);
+      conn = NULL;
+      ftwrl_found_in_processlist = FALSE;
+      continue;
     }
     else
     {
@@ -308,11 +346,12 @@ void *monitor_ftwrl_thread(void *thread_id)
       determine_columns_on_show_processlist(mysql_fetch_fields(res), mysql_num_fields(res), &id_col, NULL, NULL, NULL, &info_col);
       while ((row = mysql_fetch_row(res)))
       {
-        if ((atol(row[id_col]) == *((guint *)(thread_id))))
+        if (id_col >= 0 && info_col >= 0 && row[id_col] && row[info_col] &&
+            atol(row[id_col]) == *((guint *)(thread_id)))
         {
           if (!strcasecmp(FLUSH_TABLES_WITH_READ_LOCK, row[info_col]) || !strcasecmp(FLUSH_NO_WRITE_TO_BINLOG_TABLES, row[info_col]))
           {
-            if (ftwrl_found_in_processlist == TRUE)
+            if (!g_atomic_int_get(&ftwrl_completed) && (shutdown_triggered || ftwrl_found_in_processlist == TRUE))
             {
               m_query_warning(conn, query = g_strdup_printf("KILL QUERY %lu", atol(row[id_col])), "Could not KILL slow query", NULL);
               g_free(query);
@@ -329,127 +368,76 @@ void *monitor_ftwrl_thread(void *thread_id)
     }
     mysql_free_result(res);
   }
-  mysql_close(conn);
+  if (conn)
+    mysql_close(conn);
   return NULL;
 }
 
-gboolean sig_triggered(void *user_data, int signal)
+/* Ctrl+c handling, see signal_prompt.h. */
+static gboolean dump_can_ask()
 {
-  if (signal == SIGTERM)
-  {
-    shutdown_triggered = TRUE;
-  }
-  else
-  {
-    guint i = 0;
-    if (pause_mutex_per_thread == NULL)
-    {
-      pause_mutex_per_thread = g_new(GMutex *, num_threads);
-      for (i = 0; i < num_threads; i++)
-      {
-        pause_mutex_per_thread[i] = g_mutex_new();
-      }
-    }
-    if (((struct configuration *)user_data)->pause_resume == NULL)
-      ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
-    GAsyncQueue *queue = ((struct configuration *)user_data)->pause_resume;
-    if (!daemon_mode)
-    {
-      char *datetimestr = m_date_time_new_now_local();
-      if (machine_log_json)
-      {
-        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-            "MESSAGE", "Ctrl+c detected; waiting for confirmation",
-            "EVENT", "dump_signal_prompt",
-            "PHASE", "signal",
-            "STATUS", "started",
-            "TIMESTAMP_TEXT", datetimestr,
-            NULL);
-      }
-      else
-      {
-        fprintf(stdout, "%s: Ctrl+c detected! Are you sure you want to cancel(Y/N)?", datetimestr);
-      }
-      g_free(datetimestr);
-      for (i = 0; i < num_threads; i++)
-      {
-        g_mutex_lock(pause_mutex_per_thread[i]);
-        g_async_queue_push(queue, pause_mutex_per_thread[i]);
-      }
-      int c = 0;
-      while (1)
-      {
-        do
-        {
-          c = fgetc(stdin);
-        } while (c == '\n');
-        if (c == 'N' || c == 'n')
-        {
-          datetimestr = m_date_time_new_now_local();
-          if (machine_log_json)
-          {
-            machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-                "MESSAGE", "backup resumed after confirmation",
-                "EVENT", "dump_signal_resume",
-                "PHASE", "signal",
-                "STATUS", "finished",
-                "TIMESTAMP_TEXT", datetimestr,
-                NULL);
-          }
-          else
-          {
-            fprintf(stdout, "%s: Resuming backup\n", datetimestr);
-          }
-          g_free(datetimestr);
-          for (i = 0; i < num_threads; i++)
-            g_mutex_unlock(pause_mutex_per_thread[i]);
+  return !daemon_mode;
+}
 
-          return TRUE;
-        }
-        if (c == 'Y' || c == 'y')
-        {
-          datetimestr = m_date_time_new_now_local();
-          if (machine_log_json)
-          {
-            machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
-                "MESSAGE", "backup cancelled after confirmation",
-                "EVENT", "dump_signal_cancel",
-                "PHASE", "signal",
-                "STATUS", "cancelled",
-                "TIMESTAMP_TEXT", datetimestr,
-                NULL);
-          }
-          else
-          {
-            fprintf(stdout, "%s: Backup cancelled\n", datetimestr);
-          }
-          g_free(datetimestr);
-          shutdown_triggered = TRUE;
-          for (i = 0; i < num_threads; i++)
-            g_mutex_unlock(pause_mutex_per_thread[i]);
-          goto finish;
-        }
-      }
-    }
-  }
-finish:
+static void dump_cancelled()
+{
   g_message("Shutting down gracefully");
+}
+
+static struct signal_prompt dump_signal_prompt = {
+    .name = "backup",
+    .event_prefix = "dump",
+    .timestamp = TRUE,
+    .shutdown_triggered = &shutdown_triggered,
+    .can_ask = dump_can_ask,
+    .on_cancel = dump_cancelled,
+};
+
+/* conf is NULL in daemon mode, where the question is never asked. */
+void add_dump_signal_sources(struct configuration *conf)
+{
+  dump_signal_prompt.pause_resume = conf ? &conf->pause_resume : NULL;
+  signal_prompt_add(&dump_signal_prompt);
+}
+
+/* Pops from queue but gives up when a shutdown is requested, so the main thread
+   can release the locks instead of waiting for workers that were cancelled. */
+static gboolean pop_or_cancel(GAsyncQueue *queue)
+{
+  while (!shutdown_triggered)
+  {
+    if (g_async_queue_timeout_pop(queue, 500000) != NULL)
+      return TRUE;
+  }
   return FALSE;
 }
 
-gboolean sig_triggered_int(void *user_data)
+/* Called while the locks may be held and the workers can not be trusted to
+   finish: release everything, mark the dump as failed and leave metadata.partial
+   as it is. */
+static void cancel_dump(MYSQL *conn, MYSQL *second_conn)
 {
-  return sig_triggered(user_data, SIGINT);
-}
-gboolean sig_triggered_term(void *user_data)
-{
-  return sig_triggered(user_data, SIGTERM);
+  g_warning("Dump cancelled by signal; releasing locks. The dump is incomplete");
+  if (release_global_write_lock_function)
+    release_global_write_lock_function(conn);
+  if (release_ddl_lock_function != NULL)
+    release_ddl_lock_function(second_conn);
+  if (is_mysql_like() && replica_stopped)
+  {
+    replica_stopped = m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
+    if (source_control_command == AWS)
+      discard_mysql_output(conn);
+  }
+  execute_gstring(conn, set_global_back);
+  if (second_conn != conn)
+    mysql_close(second_conn);
+  mysql_close(conn);
+  exit(EXIT_FAILURE);
 }
 
 static void *signal_thread(void *data)
 {
-  g_unix_signal_add(SIGINT, sig_triggered_int, data);
-  g_unix_signal_add(SIGTERM, sig_triggered_term, data);
+  add_dump_signal_sources((struct configuration *)data);
   ((struct configuration *)data)->loop = g_main_loop_new(NULL, TRUE);
   g_main_loop_run(((struct configuration *)data)->loop);
   g_message("Ending signal thread");
@@ -751,21 +739,33 @@ static void send_backup_stage_end(MYSQL *conn)
 static void send_flush_table_with_read_lock(MYSQL *conn)
 {
   guint id = mysql_thread_id(conn);
-  m_thread_new("mon_ftwrl", monitor_ftwrl_thread, &id, "FTWRL monitor thread could not be created");
+  g_atomic_int_set(&ftwrl_completed, FALSE);
+  GThread *monitor = m_thread_new("mon_ftwrl", monitor_ftwrl_thread, &id, "FTWRL monitor thread could not be created");
 
   guint i = 0;
 try_FLUSH_NO_WRITE_TO_BINLOG_TABLES:
   i++;
+  if (shutdown_triggered)
+    goto ftwrl_done;
   if ((m_query_verbose(conn, FLUSH_NO_WRITE_TO_BINLOG_TABLES, m_warning, "Flush tables failed, we are continuing anyways")) &&
       (ftwrl_timeout_retries == 0 || (i < ftwrl_timeout_retries)))
     goto try_FLUSH_NO_WRITE_TO_BINLOG_TABLES;
 
-try_FLUSH_TABLES_WITH_READ_LOCK:
-  if ((m_query_verbose(conn, FLUSH_TABLES_WITH_READ_LOCK, m_critical, "Couldn't acquire global lock, snapshots will not be consistent")) &&
-      (ftwrl_timeout_retries == 0 || i < ftwrl_timeout_retries))
-    goto try_FLUSH_TABLES_WITH_READ_LOCK;
+  if (shutdown_triggered)
+    goto ftwrl_done;
+  if (m_query_verbose(conn, FLUSH_TABLES_WITH_READ_LOCK, m_warning, "Couldn't acquire global lock"))
+  {
+    if (!shutdown_triggered)
+      m_critical("Couldn't acquire global lock, snapshots will not be consistent");
+  }
 
-  ftwrl_completed = TRUE;
+ftwrl_done:
+  g_mutex_lock(&ftwrl_mutex);
+  g_atomic_int_set(&ftwrl_completed, TRUE);
+  g_cond_signal(&ftwrl_cond);
+  g_mutex_unlock(&ftwrl_mutex);
+  /* Monitor I/O is timed out; join prevents a late KILL from racing with cleanup. */
+  g_thread_join(monitor);
 }
 
 static void initialize_tidb_snapshot(MYSQL *conn)
@@ -1280,8 +1280,9 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   if (throttle_variable)
     m_thread_new("mon_thro", monitor_throttling_thread, NULL, "Monitor throttling thread could not be created");
 
-  // signal_thread is disable if daemon mode
-  if (!daemon_mode)
+  // signal_thread is disable if daemon mode (it has its own) or with
+  // --kill-at-once, where Ctrl+c keeps its default action
+  if (!daemon_mode && !kill_at_once)
     sthread = m_thread_new("signal", signal_thread, conf, "Signal thread could not be created");
 
   // Initilizing METADATA file
@@ -1463,6 +1464,10 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     acquire_global_write_lock_function(conn);
   }
 
+  // The FLUSH may have waited for a long time, a signal could have arrived meanwhile
+  if (shutdown_triggered)
+    cancel_dump(conn, second_conn);
+
   // TODO: this should be deleted on future releases.
   server_version = mysql_get_server_version(conn);
   if (server_version < 40108)
@@ -1603,7 +1608,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     // Starting the workers threads
     initialize_snapshot_cloning_session_id(mysql_thread_id(conn));
     start_working_thread(conf);
-    g_async_queue_pop(conf->source_and_replica_status_queue);
+    if (!pop_or_cancel(conf->source_and_replica_status_queue))
+      cancel_dump(conn, second_conn);
     g_async_queue_unref(conf->source_and_replica_status_queue);
   }
   else
@@ -1616,7 +1622,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
 
     // Starting the workers threads
     start_working_thread(conf);
-    g_async_queue_pop(conf->source_and_replica_status_queue);
+    if (!pop_or_cancel(conf->source_and_replica_status_queue))
+      cancel_dump(conn, second_conn);
     g_async_queue_unref(conf->source_and_replica_status_queue);
 
     // Get initial binlog position again to determine backup consistency
@@ -1727,7 +1734,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   {
     g_message("Waiting database finish");
   }
-  g_async_queue_pop(conf->db_ready);
+  if (!pop_or_cancel(conf->db_ready))
+    cancel_dump(conn, second_conn);
 
   // At this point all schema jobs are completed
 
@@ -1995,12 +2003,18 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     fclose(nufile);
   }
 
-  if (g_rename(metadata_partial_filename, metadata_filename))
+  if (shutdown_triggered)
+  {
+    g_warning("Dump cancelled by signal; the dump is incomplete, leaving %s as it is", metadata_partial_filename);
+    errors++;
+  }
+  else if (g_rename(metadata_partial_filename, metadata_filename))
     m_critical("We were not able to rename metadata file");
 
   if (stream)
   {
-    stream_queue_push(NULL, g_strdup(metadata_filename));
+    if (!shutdown_triggered)
+      stream_queue_push(NULL, g_strdup(metadata_filename));
     if (exec_command != NULL)
     {
       wait_exec_command_to_finish();

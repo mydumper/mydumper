@@ -300,6 +300,8 @@ static GOptionEntry entries[] = {
         NULL},
     {"masquerade-filename", 0, 0, G_OPTION_ARG_NONE, &masquerade_filename,
         "Masquerades the filenames", NULL},
+    {"kill-at-once", 'k', 0, G_OPTION_ARG_NONE, &kill_at_once,
+        "When Ctrl+c is pressed it immediately terminates the process", NULL},
     {"ftwrl-max-wait-time", 0, 0, G_OPTION_ARG_INT, &ftwrl_max_wait_time,
         "Sets the max time that we are going to wait before kill the FLUSH TABLES related commands. Default: 60", NULL},
     {"ftwrl-timeout-retries", 0, 0, G_OPTION_ARG_INT, &ftwrl_timeout_retries,

@@ -597,7 +597,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     c = GPOINTER_TO_INT(m_coalesce_hash(g_hash_table_lookup(conf_per_table, SKIP_INDEX_CHECKSUMS), config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key));
     dbt->checksum.skip_index = c ? c : (schema_checksums ? skip_index_checksums : TRUE);
     c = GPOINTER_TO_INT(m_coalesce_hash(g_hash_table_lookup(conf_per_table, SKIP_TRIGGER_CHECKSUMS), config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key));
-    dbt->checksum.skip_trigger = c ? c : (routine_checksums ? skip_index_checksums : TRUE);
+    dbt->checksum.skip_trigger = c ? c : (schema_checksums ? skip_trigger_checksums : TRUE);
     c = GPOINTER_TO_INT(m_coalesce_hash(g_hash_table_lookup(conf_per_table, SKIP_DATA_CHECKSUMS), config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key));
     dbt->checksum.skip_data = c ? c : (data_checksums ? skip_data_checksums : TRUE);
     dbt->rows = 0;

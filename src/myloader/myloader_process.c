@@ -33,6 +33,7 @@
 #include "myloader/myloader_control_job.h"
 #include "myloader/myloader_database.h"
 #include "myloader/myloader_directory.h"
+#include "myloader/myloader_encryption_utils.h"
 #include "myloader/myloader_global.h"
 #include "myloader/myloader_restore_job.h"
 #include "myloader/myloader_stream.h"
@@ -235,6 +236,8 @@ static gboolean parse_create_table_from_file(struct db_table *dbt, gchar *filena
   g_string_set_size(data, 0);
   g_string_set_size(create_table_statement, 0);
   guint line = 0;
+  // The table encryption options are not portable between MySQL and MariaDB (issue #2367)
+  table_option_modifier_func table_option_modifier = get_table_encryption_modifier(encryption_option_mode, get_product() == SERVER_TYPE_MARIADB);
   infile = myl_open(filename, "r");
   trace("parse_create_table_from_file starting on %s", filename);
   if (!infile)
@@ -335,7 +338,7 @@ static gboolean parse_create_table_from_file(struct db_table *dbt, gchar *filena
           {
             // Processing CREATE TABLE statement
             int flag =  // process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt, (dbt->rows == 0 || dbt->rows >= 1000000 || skip_constraints || skip_indexes));
-                global_process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->source_table_name ? dbt->source_table_name : dbt->create_table_name, TRUE);
+                global_process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->source_table_name ? dbt->source_table_name : dbt->create_table_name, TRUE, table_option_modifier);
             if (flag & IS_TRX_TABLE)
             {
               trace("IS_TRX_TABLE: %s.%s", dbt->database->target_database, dbt->source_table_name);
@@ -379,12 +382,22 @@ static gboolean parse_create_table_from_file(struct db_table *dbt, gchar *filena
               g_string_free(alter_table_constraint_statement, TRUE);
               g_string_set_size(create_table_statement, 0);
               g_string_append(create_table_statement, data->str);
+              // Non transactional tables (e.g. the MEMORY view dependency
+              // table) are restored from the original statement
+              if (table_option_modifier)
+                table_option_modifier(create_table_statement);
             }
           }
         }
         else
         {
-          g_string_append(create_table_statement, data->str);
+          // Honor --ignore-set also when no key optimization is done (e.g. --optimize-keys=SKIP)
+          if (!(g_str_has_prefix(data->str, "/*!") && should_ignore_set_statement(data)))
+          {
+            if (table_option_modifier && g_str_has_prefix(data->str, "CREATE TABLE "))
+              table_option_modifier(data);
+            g_string_append(create_table_statement, data->str);
+          }
         }
         g_string_set_size(data, 0);
       }
@@ -469,7 +482,12 @@ static gchar *get_database_name_from_content(gchar *filename, GString **out_cont
           // Capture the content so the schema worker can execute from memory
           // (avoids re-reading the file, which in stream mode may already be deleted).
           if (out_content)
+          {
             *out_content = g_string_new_len(data->str, data->len);
+            table_option_modifier_func database_modifier = get_database_encryption_modifier(encryption_option_mode, get_product() == SERVER_TYPE_MARIADB);
+            if (database_modifier)
+              database_modifier(*out_content);
+          }
           break;
         }
         else
