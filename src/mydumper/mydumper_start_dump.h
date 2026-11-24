@@ -31,7 +31,7 @@ enum sync_thread_lock_mode
   FTWRL,
   LOCK_ALL,
   GTID,
-  SNAPSHOT_CLONING,
+  SNAP_CLONE,
   NO_LOCK,
   SAFE_NO_LOCK
 };
@@ -48,8 +48,8 @@ static inline const char *syncthreadlockmode2str(enum sync_thread_lock_mode stlm
       return "LOCK_ALL";
     case GTID:
       return "GTID";
-    case SNAPSHOT_CLONING:
-      return "SNAPSHOT_CLONING";
+    case SNAP_CLONE:
+      return "SNAP_CLONE";
     case NO_LOCK:
       return "NO_LOCK";
     case SAFE_NO_LOCK:

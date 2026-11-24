@@ -566,7 +566,7 @@ static void initialize_consistent_snapshot(struct thread_data *td)
       m_critical("We were not able to sync all threads. We unsuccessfully tried %d times. Reducing the amount of threads might help.", MAX_START_TRANSACTION_RETRIES);
     }
   }
-  else if (sync_thread_lock_mode == SNAPSHOT_CLONING)
+  else if (sync_thread_lock_mode == SNAP_CLONE)
   {
     m_query_critical(td->thrconn, start_transaction_with_snapshot_cloning, "Failed to start consistent snapshot for session_id %d", snapshot_cloning_session_id);
     trace("Connection %d: Start consistent snapshot for session_id %d", mysql_thread_id(td->thrconn), snapshot_cloning_session_id);

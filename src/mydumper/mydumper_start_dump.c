@@ -845,7 +845,7 @@ static void determine_AUTO_locking_functions()
         case 8:
           if (sync_thread_lock_mode == AUTO)
           {
-            sync_thread_lock_mode = SNAPSHOT_CLONING;
+            sync_thread_lock_mode = SNAP_CLONE;
           }
           else
             set_default_write_lock_function();
@@ -1417,7 +1417,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
         determine_best_ddl_locking_functions(&second_conn);
       set_default_write_lock_function();
       break;
-    case SNAPSHOT_CLONING:
+    case SNAP_CLONE:
       g_message("Using extended STWCS syntax with the optional FROM SESSION clause which doesn't need to lock the database to sync the threads");
       break;
     case GTID:
@@ -1587,7 +1587,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   gchar *source_pos = NULL;
   gchar *source_gtid = NULL;
 
-  if (sync_thread_lock_mode == SNAPSHOT_CLONING)
+  if (sync_thread_lock_mode == SNAP_CLONE)
   {
     // Get initial binlog position
     get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
@@ -1622,7 +1622,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     // Get initial binlog position again to determine backup consistency
     get_binlog_position(conn, &source_log, &source_pos, &source_gtid);
   }
-
+  trace("Binlog position log: %s %s %d || Pos %s %s %d || gtid %s %s %d", source_log, initial_source_log, g_strcmp0(source_log, initial_source_log), source_pos, initial_source_pos, g_strcmp0(source_pos, initial_source_pos), source_gtid, initial_source_gtid, g_strcmp0(source_gtid, initial_source_gtid));
   if (g_strcmp0(source_log, initial_source_log) ||
       g_strcmp0(source_pos, initial_source_pos) ||
       g_strcmp0(source_gtid, initial_source_gtid))
@@ -1637,8 +1637,15 @@ void start_dump(struct configuration *conf, GOptionContext *context)
       trace("Backup will be inconsistent %s %s %d || %s %s %d || %s %s %d", source_log, initial_source_log, g_strcmp0(source_log, initial_source_log), source_pos, initial_source_pos, g_strcmp0(source_pos, initial_source_pos), source_gtid, initial_source_gtid, g_strcmp0(source_gtid, initial_source_gtid));
       m_error("There are differences in the binlog position at the beginning of the backup and after syncing threads, so we cannot guarantee the backup to be consistent. Stopping backup due to the use of SAFE_NO_LOCK.");
     }
+    else if (sync_thread_lock_mode == GTID)
+    {
+      g_warning("Binlog position and GTID are not consistent. You can only trust in the GTID position, binlog position information has been removed.");
+    }
     else
+    {
+      trace("Backup will be inconsistent %s %s %d || %s %s %d || %s %s %d", source_log, initial_source_log, g_strcmp0(source_log, initial_source_log), source_pos, initial_source_pos, g_strcmp0(source_pos, initial_source_pos), source_gtid, initial_source_gtid, g_strcmp0(source_gtid, initial_source_gtid));
       m_error("There are differences in the binlog position at the beginning of the backup and after syncing threads, so we cannot guarantee binlog position. Use a different --sync-thread-lock-mode");
+    }
   }
   else
   {

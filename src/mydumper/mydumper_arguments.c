@@ -228,9 +228,9 @@ gboolean arguments_callback(const gchar *option_name, const gchar *value, gpoint
       sync_thread_lock_mode = GTID;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value, "SNAPSHOT_CLONING"))
+    if (!g_ascii_strcasecmp(value, "SNAP_CLONE"))
     {
-      sync_thread_lock_mode = SNAPSHOT_CLONING;
+      sync_thread_lock_mode = SNAP_CLONE;
       return TRUE;
     }
 
@@ -339,7 +339,7 @@ static GOptionEntry lock_entries[] = {
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
         "Snapshot to use for TiDB", NULL},
     {"sync-thread-lock-mode", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-        "There are 4 modes that can be use to sync: SAFE_NO_LOCK, FTWRL, LOCK_ALL and GTID. "
+        "There are 5 modes that can be use to sync: SAFE_NO_LOCK, FTWRL, LOCK_ALL, SNAP_CLONE and GTID. "
         "If you don't need a consistent backup, use: NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. "
         "Default: AUTO which uses the best option depending on the database vendor",
         NULL},
