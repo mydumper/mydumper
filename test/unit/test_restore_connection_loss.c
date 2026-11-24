@@ -9,6 +9,7 @@ static void test_exit(int status) G_GNUC_NORETURN G_GNUC_UNUSED;
 
 gboolean              dry_run = FALSE;
 guint                 commit_count = 500, errors;
+guint                 retry_count = 10, retry_wait = 0;
 struct restore_errors detailed_errors;
 GString              *set_session, *aws_session_commands;
 static guint          error_number, connects, queries;
@@ -91,6 +92,22 @@ void     execute_aws_session_setup(MYSQL *conn) { (void)conn; }
 gboolean should_ignore_error_code(guint code)
 {
   (void)code;
+  return FALSE;
+}
+// Linked through m_commit, never reached by these tests.
+int STDCALL mysql_query(MYSQL *conn, const char *query)
+{
+  (void)conn;
+  (void)query;
+  g_assert_not_reached();
+  return 1;
+}
+gboolean m_query_warning(MYSQL *conn, const gchar *query, const char *fmt, ...)
+{
+  (void)conn;
+  (void)query;
+  (void)fmt;
+  g_assert_not_reached();
   return FALSE;
 }
 gboolean machine_log_json_enabled(void) { return json_mode; }

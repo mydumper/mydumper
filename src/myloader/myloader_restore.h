@@ -23,7 +23,7 @@
 #include "myloader/myloader.h"
 
 #define DEFAULT_DELIMITER ";\n"
-#define DEFAULT_MAX_TRANSACTION_SIZE 1000
+#define DEFAULT_MAX_TRANSACTION_SIZE 64
 
 struct db_table;
 

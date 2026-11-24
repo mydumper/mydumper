@@ -89,6 +89,7 @@ guint max_threads_for_schema_creation = 0;
 guint max_threads_for_index_creation = 0;
 guint max_threads_for_post_creation = 1;
 guint retry_count = 10;
+guint retry_wait = 100;
 
 struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
@@ -97,7 +98,7 @@ extern gboolean show_config;
 extern guint    errors;
 extern guint    optimize_keys_batchsize;
 
-extern guint64 max_transaction_size;
+extern guint   max_transaction_size;
 extern guint64 max_statement_size;
 
 extern gboolean dry_run;
@@ -154,14 +155,27 @@ static void normalize_aws_binlog_mode(void)
   }
 }
 
-static void detect_group_replication_transaction_size_limit(MYSQL *conn)
+/* Group Replication and Galera reject a transaction bigger than their limit, so
+ * --max-transaction-size can not be bigger than it. A limit of 0 is unlimited. */
+static void cap_transaction_size_to_server_limit(MYSQL *conn)
 {
-  guint64       _max_transaction_size = 0;
-  struct M_ROW *mr = m_store_result_row(conn, "SHOW GLOBAL VARIABLES LIKE 'group_replication_transaction_size_limit'", m_message, m_message, "Using default transaction limit", NULL);
-  if (mr->row)
-    _max_transaction_size = strtoll(mr->row[0], NULL, 10) / 1024 / 1024;
-  max_transaction_size = _max_transaction_size > max_transaction_size ? _max_transaction_size : max_transaction_size;
-  m_store_result_row_free(mr);
+  const gchar *variables[] = {"group_replication_transaction_size_limit", "wsrep_max_ws_size"};
+  for (guint i = 0; i < G_N_ELEMENTS(variables); i++)
+  {
+    gchar        *query = g_strdup_printf("SHOW GLOBAL VARIABLES LIKE '%s'", variables[i]);
+    struct M_ROW *mr = m_store_result_row(conn, query, m_message, m_message, "Not able to read %s", variables[i]);
+    if (mr->row && mr->row[1])
+    {
+      guint64 limit = g_ascii_strtoull(mr->row[1], NULL, 10) / 1024 / 1024;
+      if (limit > 0 && limit < max_transaction_size)
+      {
+        g_message("Using --max-transaction-size=%" G_GUINT64_FORMAT " (MB) as %s is %s bytes", limit, variables[i], mr->row[1]);
+        max_transaction_size = limit;
+      }
+    }
+    m_store_result_row_free(mr);
+    g_free(query);
+  }
 }
 
 gchar *print_time(GTimeSpan timespan)
@@ -308,7 +322,8 @@ static void print_defaults_arguments()
   print_bool("drop-database", drop_database);
   print_string("drop-table", purgemode2str(purge_mode));
   print_bool("overwrite-unsafe", overwrite_unsafe);
-  print_int("retry-count", retry_count, overwrite_tables);
+  print_int("retry-count", retry_count, FALSE);
+  print_int("retry-wait", retry_wait, FALSE);
   print_bool("stream", stream);
   print_int("refresh-table-list-interval", refresh_table_list_interval, FALSE);
   print_bool("skip-table-sorting", skip_table_sorting);
@@ -626,8 +641,9 @@ int main(int argc, char *argv[])
   //	initialize_conf_per_table(&conf_per_table);
   //  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   load_per_table_info_from_key_file(key_file, conf_per_table, NULL);
-  if (max_transaction_size == DEFAULT_MAX_TRANSACTION_SIZE)
-    detect_group_replication_transaction_size_limit(conn);
+  if (max_transaction_size == 0)
+    m_critical("--max-transaction-size must be at least 1 (MB)");
+  cap_transaction_size_to_server_limit(conn);
 
   initialize_process(&conf, set_session_hash);
 
