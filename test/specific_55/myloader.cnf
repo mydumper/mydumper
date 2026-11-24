@@ -1,0 +1,5 @@
+[myloader]
+directory=/tmp/data
+no-schemas
+queries-per-transaction=1000
+threads=4

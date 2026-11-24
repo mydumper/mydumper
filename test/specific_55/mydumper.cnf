@@ -1,0 +1,4 @@
+[mydumper]
+database=specific_55
+outputdir=/tmp/data
+statement-size=1000

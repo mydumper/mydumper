@@ -156,6 +156,12 @@ set_property(TARGET test_restore_connection_loss APPEND_STRING PROPERTY LINK_FLA
 target_link_libraries(test_restore_connection_loss ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
 add_test(NAME restore_connection_loss COMMAND test_restore_connection_loss)
 
+add_executable(test_transaction_replay test/unit/test_transaction_replay.c)
+target_compile_options(test_transaction_replay PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
+set_property(TARGET test_transaction_replay APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
+target_link_libraries(test_transaction_replay ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES})
+add_test(NAME transaction_replay COMMAND test_transaction_replay)
+
 add_executable(test_index_tail_connections test/unit/test_index_tail_connections.c)
 target_compile_options(test_index_tail_connections PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
 set_property(TARGET test_index_tail_connections APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")

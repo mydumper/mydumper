@@ -36,7 +36,7 @@ GList          *ignore_set_list = NULL;
 gboolean        mysqldump = FALSE;
 gboolean        drop_database = FALSE;
 extern gboolean local_infile;
-extern guint64  max_transaction_size;
+extern guint    max_transaction_size;
 extern guint    optimize_keys_batchsize;
 guint64         max_statement_size = 0;
 guint           statement_buffer_shrink_threshold_mb = 2;
@@ -292,7 +292,9 @@ static GOptionEntry execution_entries[] = {
     {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
         "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
     {"retry-count", 0, 0, G_OPTION_ARG_INT, &retry_count,
-        "Lock wait timeout exceeded retry count, default 10 (currently only for DROP TABLE)", NULL},
+        "Times to retry a DROP TABLE that hit a lock wait timeout, and to replay a transaction rolled back by the server (deadlock or failed COMMIT). 0 disables the replay. Default 10", NULL},
+    {"retry-wait", 0, 0, G_OPTION_ARG_INT, &retry_wait,
+        "Milliseconds to wait before replaying a rolled back transaction, multiplied by the attempt number. Default 100", NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &stream_arguments_callback,
         "It will receive the stream from STDIN and create the file in the disk before start processing. "
         "Accepts NO_STREAM, NO_DELETE, NO_STREAM_AND_NO_DELETE, UNPACK and TRADITIONAL "
@@ -339,11 +341,11 @@ static GOptionEntry statement_entries[] = {
     {"rows", 'r', 0, G_OPTION_ARG_INT, &rows,
         "Split the INSERT statement into this many rows.", NULL},
     {"queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count,
-        "Number of queries per transaction, default 1000", NULL},
+        "Number of queries per transaction, default 1000. 0 or 1 restores in autocommit mode, so --max-transaction-size and the transaction replay of --retry-count do not apply", NULL},
     {"max-statement-size", 0, 0, G_OPTION_ARG_INT, &max_statement_size,
         "Informs what is the max statement size. Currently not being used.", NULL},
     {"max-transaction-size", 0, 0, G_OPTION_ARG_INT, &max_transaction_size,
-        "Set the max size of the transaction in megabytes, default 1000", NULL},
+        "Max size of a transaction in megabytes: it is committed before a statement that would exceed it, or after --queries-per-transaction statements. It is also the memory kept per connection to replay a transaction rolled back by the server. Lowered to group_replication_transaction_size_limit or wsrep_max_ws_size when smaller. Default 64", NULL},
     {"append-if-not-exist", 0, 0, G_OPTION_ARG_NONE, &append_if_not_exist,
         "Appends IF NOT EXISTS to the create table statements. This will be removed when https://bugs.mysql.com/bug.php?id=103791 has been implemented", NULL},
     {"set-names", 0, 0, G_OPTION_ARG_STRING, &set_names_in_conn_by_default,

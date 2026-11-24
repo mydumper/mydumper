@@ -77,6 +77,10 @@ struct connection_data
   GAsyncQueue              *ready;
   gboolean                  transaction;
   GMutex                   *in_use;
+  // Statements executed since START TRANSACTION, replayed when the server
+  // rolls the whole transaction back (deadlock, failed COMMIT). Issue #1925.
+  GPtrArray *replay;
+  guint64    replay_size;
 };
 
 struct replication_statements

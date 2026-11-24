@@ -92,6 +92,7 @@ extern guint max_threads_for_post_creation;
 extern guint max_threads_for_schema_creation;
 extern guint max_threads_per_table;
 extern guint retry_count;
+extern guint retry_wait;
 extern guint num_threads;
 extern guint rows;
 extern guint num_sequences;
