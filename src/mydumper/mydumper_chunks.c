@@ -522,11 +522,11 @@ static void get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer, stru
   }
 }
 
-static void enqueue_shutdown_jobs(GAsyncQueue *queue)
+static void enqueue_shutdown_jobs(GAsyncQueue *queue, guint threads)
 {
   struct job *j = NULL;
   guint       n;
-  for (n = 0; n < num_threads; n++)
+  for (n = 0; n < threads; n++)
   {
     j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
@@ -536,8 +536,8 @@ static void enqueue_shutdown_jobs(GAsyncQueue *queue)
 
 static inline void enqueue_shutdown(struct table_queuing *q)
 {
-  enqueue_shutdown_jobs(q->queue);
-  enqueue_shutdown_jobs(q->defer);
+  enqueue_shutdown_jobs(q->queue, q->num_threads);
+  enqueue_shutdown_jobs(q->defer, q->num_threads);
 }
 
 static void table_job_enqueue(struct table_queuing *q)

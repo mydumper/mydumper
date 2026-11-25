@@ -73,6 +73,8 @@ struct table_queuing
   GAsyncQueue  *request_chunk;
   struct MList *table_list;
   const char   *descr;
+  // Threads consuming the queues, each one stops on its JOB_SHUTDOWN
+  guint         num_threads;
 };
 
 struct configuration

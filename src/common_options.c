@@ -44,6 +44,10 @@ GKeyFile *key_file = NULL;
 gchar *ignore_errors = NULL;
 
 guint    num_threads = 4;
+// mydumper: --threads x:y sets x non-transactional and y transactional threads.
+// With a single number both are the same.
+guint    num_non_transactional_threads = 0;
+gboolean num_non_transactional_threads_set = FALSE;
 guint    verbose = 2;
 gboolean debug = FALSE;
 gboolean program_version = FALSE;
@@ -130,6 +134,38 @@ gboolean common_arguments_callback(const gchar *option_name, const gchar *value,
 {
   *error = NULL;
   (void)data;
+  if (!strcmp(option_name, "--threads") || !strcmp(option_name, "-t"))
+  {
+    gchar  **split = g_strsplit(value, ":", 0);
+    guint    len = g_strv_length(split);
+    gchar   *end = NULL;
+    gboolean ok = len == 1 || len == 2;
+    guint64  values[2] = {0, 0};
+    for (guint i = 0; ok && i < len; i++)
+    {
+      values[i] = g_ascii_strtoull(split[i], &end, 10);
+      ok = strlen(split[i]) > 0 && *end == '\0' && values[i] <= G_MAXUINT;
+    }
+    g_strfreev(split);
+    if (!ok)
+    {
+      g_set_error(error, G_OPTION_ERROR, G_OPTION_ERROR_BAD_VALUE,
+          "Invalid value for --threads: %s. Use a number, or <non-transactional>:<transactional>", value);
+      return FALSE;
+    }
+    if (len == 2)
+    {
+      num_non_transactional_threads = (guint)values[0];
+      num_threads = (guint)values[1];
+      num_non_transactional_threads_set = TRUE;
+    }
+    else
+    {
+      num_threads = (guint)values[0];
+      num_non_transactional_threads_set = FALSE;
+    }
+    return TRUE;
+  }
   if (!strcmp(option_name, "--throttle"))
   {
     if (value)
@@ -233,8 +269,10 @@ GOptionEntry first_common_entries[] = {
 GOptionEntry common_entries[] = {
     {"source-data", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
         "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
-    {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
-        "Number of threads to use, 0 means to use number of CPUs. Default: 4, Minimum: 2", NULL},
+    {"threads", 't', 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
+        "Number of threads to use, 0 means to use number of CPUs. Default: 4, Minimum: 2. "
+        "mydumper also accepts <non-transactional>:<transactional>, the threads that lock and dump the non-transactional tables "
+        "when --trx-tables is not used and the threads that dump the rest. A single number is used for both", NULL},
     {"version", 'V', 0, G_OPTION_ARG_NONE, &program_version,
         "Show the program version and exit", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_INT, &verbose,

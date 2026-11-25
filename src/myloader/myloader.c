@@ -477,6 +477,8 @@ int main(int argc, char *argv[])
   else if (skip_routines && skip_events)
     skip_post = TRUE;
 
+  if (num_non_transactional_threads_set)
+    m_critical("--threads <non-transactional>:<transactional> is only supported by mydumper");
   check_num_threads();
 
   // Auto-scale schema/index threads based on --threads

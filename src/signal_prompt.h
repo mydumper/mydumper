@@ -39,6 +39,9 @@ struct signal_prompt
   gboolean timestamp;
   /* Queue the workers pop their pause mutex from; created when NULL. */
   GAsyncQueue **pause_resume;
+  /* Optional: how many threads can pause, one mutex is pushed for each.
+     Without it, num_threads. */
+  guint (*pause_slots)(void);
   /* The tool's shutdown flag, set when cancelling. */
   gboolean *shutdown_triggered;
   /* Optional: FALSE when the question must not be asked. Without a

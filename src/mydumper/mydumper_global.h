@@ -141,6 +141,7 @@ extern MYSQL        *main_connection;
 extern GHashTable   *conf_per_table;
 extern gboolean      schema_sequence_fix;
 extern gboolean      it_is_a_consistent_backup;
+extern gboolean      non_transactional_tables_unlocked;
 extern gchar        *partition_regex;
 extern gchar       **exec_per_thread_cmd;
 extern const gchar  *compress_method;

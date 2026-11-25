@@ -1119,6 +1119,14 @@ void check_num_threads()
 
   if (!max_threads_per_table)
     max_threads_per_table = num_threads;
+
+  if (!num_non_transactional_threads_set)
+    num_non_transactional_threads = num_threads;
+  else if (!num_non_transactional_threads)
+  {
+    num_non_transactional_threads = g_get_num_processors();
+    g_assert(num_non_transactional_threads > 0);
+  }
 }
 
 static void emit_runtime_log_event(GLogLevelFlags level, const gchar *event, const gchar *status, const gchar *source_api, const gchar *message)
@@ -1621,7 +1629,14 @@ gchar *gpointer_to_gchar(void *p)
 
 void print_common()
 {
-  print_int("threads", num_threads, FALSE);
+  if (num_non_transactional_threads_set)
+  {
+    gchar *threads = g_strdup_printf("%u:%u", num_non_transactional_threads, num_threads);
+    print_string("threads", threads);
+    g_free(threads);
+  }
+  else
+    print_int("threads", num_threads, FALSE);
   print_bool("version", program_version);
   print_bool("verbose", verbose);
   print_bool("debug", debug);

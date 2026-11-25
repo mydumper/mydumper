@@ -342,6 +342,7 @@ static GOptionEntry lock_entries[] = {
         "Snapshot to use for TiDB", NULL},
     {"sync-thread-lock-mode", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "There are 5 modes that can be use to sync: SAFE_NO_LOCK, FTWRL, LOCK_ALL, SNAP_CLONE and GTID. "
+        "SNAP_CLONE (Percona Server 5.7+) clones one consistent snapshot into all the threads without locking. "
         "If you don't need a consistent backup, use: NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. "
         "Default: AUTO which uses the best option depending on the database vendor",
         NULL},
