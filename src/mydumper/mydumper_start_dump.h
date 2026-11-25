@@ -74,7 +74,7 @@ struct table_queuing
   struct MList *table_list;
   const char   *descr;
   // Threads consuming the queues, each one stops on its JOB_SHUTDOWN
-  guint         num_threads;
+  guint num_threads;
 };
 
 struct configuration

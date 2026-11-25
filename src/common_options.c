@@ -43,7 +43,7 @@ GKeyFile *key_file = NULL;
 
 gchar *ignore_errors = NULL;
 
-guint    num_threads = 4;
+guint num_threads = 4;
 // mydumper: --threads x:y sets x non-transactional and y transactional threads.
 // With a single number both are the same.
 guint    num_non_transactional_threads = 0;
@@ -272,7 +272,8 @@ GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
         "Number of threads to use, 0 means to use number of CPUs. Default: 4, Minimum: 2. "
         "mydumper also accepts <non-transactional>:<transactional>, the threads that lock and dump the non-transactional tables "
-        "when --trx-tables is not used and the threads that dump the rest. A single number is used for both", NULL},
+        "when --trx-tables is not used and the threads that dump the rest. A single number is used for both",
+        NULL},
     {"version", 'V', 0, G_OPTION_ARG_NONE, &program_version,
         "Show the program version and exit", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_INT, &verbose,

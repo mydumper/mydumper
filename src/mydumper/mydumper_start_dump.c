@@ -1694,8 +1694,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   // with the current binlog position does not tell anything about consistency
   if (sync_thread_lock_mode != SNAP_CLONE && sync_thread_lock_mode != GTID &&
       (g_strcmp0(source_log, initial_source_log) ||
-       g_strcmp0(source_pos, initial_source_pos) ||
-       g_strcmp0(source_gtid, initial_source_gtid)))
+          g_strcmp0(source_pos, initial_source_pos) ||
+          g_strcmp0(source_gtid, initial_source_gtid)))
   {
     if (sync_thread_lock_mode == NO_LOCK)
     {

@@ -33,12 +33,12 @@
    stdin watch on the same loop instead. */
 static struct signal_prompt *prompt = NULL;
 /* Never freed: a mutex can still be referenced from the queue. */
-static GPtrArray            *pause_mutexes = NULL;
-static guint                 paused_slots = 0;
-static gboolean              prompt_pending = FALSE;
-static gboolean              cancelled = FALSE;
-static guint                 prompt_stdin_watch = 0;
-static guint                 sigint_source = 0;
+static GPtrArray *pause_mutexes = NULL;
+static guint      paused_slots = 0;
+static gboolean   prompt_pending = FALSE;
+static gboolean   cancelled = FALSE;
+static guint      prompt_stdin_watch = 0;
+static guint      sigint_source = 0;
 
 static void log_signal_event(GLogLevelFlags level, const char *event, const char *status, const char *json_message, const char *text)
 {

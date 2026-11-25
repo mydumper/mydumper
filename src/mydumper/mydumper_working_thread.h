@@ -61,10 +61,10 @@ void start_working_thread(struct configuration *conf);
 void wait_working_thread_to_finish();
 void finalize_working_thread();
 
-void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup *filter_group);
-void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_transactional);
-void build_lock_tables_statement(struct configuration *conf);
-void check_pause_resume(struct thread_data *td);
-void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt);
-void initialize_snapshot_cloning_session_id(gulong session_id);
+void     load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup *filter_group);
+void     dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_transactional);
+void     build_lock_tables_statement(struct configuration *conf);
+void     check_pause_resume(struct thread_data *td);
+void     update_estimated_remaining_chunks_on_dbt(struct db_table *dbt);
+void     initialize_snapshot_cloning_session_id(gulong session_id);
 gboolean start_non_transactional_threads(struct configuration *conf);
