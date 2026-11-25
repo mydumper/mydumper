@@ -718,6 +718,11 @@ static void send_percona57_lock_tables_for_backup(MYSQL *conn)
   m_query_verbose(conn, "LOCK TABLES FOR BACKUP", m_critical, "Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will not be consistent", NULL);
 }
 
+static void send_percona57_lock_binlog_for_backup(MYSQL *conn)
+{
+  m_query_verbose(conn, "LOCK BINLOG FOR BACKUP", m_critical, "Couldn't acquire LOCK BINLOG FOR BACKUP, snapshots will not be consistent", NULL);
+}
+
 static void send_ddl_lock_instance_backup(MYSQL *conn)
 {
   m_query_verbose(conn, "LOCK INSTANCE FOR BACKUP", m_critical, "Couldn't acquire LOCK INSTANCE FOR BACKUP", NULL);
@@ -726,6 +731,11 @@ static void send_ddl_lock_instance_backup(MYSQL *conn)
 static void send_unlock_tables(MYSQL *conn)
 {
   m_query_verbose(conn, "UNLOCK TABLES", m_warning, "Failed to UNLOCK TABLES", NULL);
+}
+
+static void send_unlock_binlogs(MYSQL *conn)
+{
+  m_query_verbose(conn, "UNLOCK BINLOG", m_warning, "Failed to UNLOCK BINLOG", NULL);
 }
 
 static void send_ddl_unlock_instance_backup(MYSQL *conn)
@@ -845,10 +855,34 @@ static gboolean server_supports_snap_clone()
          (get_major() > 5 || (get_major() == 5 && get_secondary() >= 7));
 }
 
+static gboolean server_log_bin = FALSE;
+static gboolean server_gtid_mode = FALSE;
+
+static void detect_binlog_settings(MYSQL *conn)
+{
+  struct M_ROW *mr = m_store_result_single_row(conn, "SELECT @@log_bin, @@gtid_mode", "Error getting log_bin and gtid_mode", NULL);
+  if (mr->res && mr->row)
+  {
+    server_log_bin = mr->row[0] && atoi(mr->row[0]) == 1;
+    server_gtid_mode = mr->row[1] && !g_ascii_strcasecmp(mr->row[1], "ON");
+  }
+  m_store_result_row_free(mr);
+}
+
+// The snapshot is always consistent, but the binlog position taken from
+// Binlog_snapshot_file/position is only guaranteed to match it with GTID
+static gboolean snap_clone_binlog_position_is_safe()
+{
+  return !server_log_bin || server_gtid_mode;
+}
+
 static void check_snap_clone_mode()
 {
   if (!server_supports_snap_clone())
     m_critical("--sync-thread-lock-mode=SNAP_CLONE requires Percona Server 5.7 or newer");
+
+  if (!snap_clone_binlog_position_is_safe())
+    g_warning("--sync-thread-lock-mode=SNAP_CLONE with log_bin=ON and gtid_mode=OFF: the binary log position might not match the snapshot");
 
   g_message("Using extended STWCS syntax with the optional FROM SESSION clause which doesn't need to lock the database to sync the threads");
 
@@ -862,8 +896,13 @@ static void determine_AUTO_locking_functions()
   switch (get_product())
   {
     case SERVER_TYPE_PERCONA:
-      if (server_supports_snap_clone())
+      if (server_supports_snap_clone() && snap_clone_binlog_position_is_safe())
         sync_thread_lock_mode = SNAP_CLONE;
+      else if (get_major() == 5 && get_secondary() == 7 && !no_backup_locks && !skip_ddl_locks)
+      {
+        acquire_global_write_lock_function = &send_percona57_lock_binlog_for_backup;
+        release_global_write_lock_function = &send_unlock_binlogs;
+      }
       else
         set_default_write_lock_function();
       break;
@@ -1455,6 +1494,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
       release_global_write_lock_function = &send_unlock_tables;
       break;
     case AUTO:
+      if (get_product() == SERVER_TYPE_PERCONA)
+        detect_binlog_settings(conn);
       if (!skip_ddl_locks)
         determine_best_ddl_locking_functions(&second_conn);
       determine_AUTO_locking_functions();
@@ -1465,6 +1506,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
       set_default_write_lock_function();
       break;
     case SNAP_CLONE:
+      if (server_supports_snap_clone())
+        detect_binlog_settings(conn);
       if (!skip_ddl_locks)
         determine_best_ddl_locking_functions(&second_conn);
       break;
@@ -1648,11 +1691,11 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     // On Percona Server 5.7 Binlog_snapshot_position might include a commit
     // that is not visible yet in the snapshot. Blocking the binlog during the
     // few milliseconds that START TRANSACTION takes avoids it
-    gboolean binlog_locked = get_major() == 5 && !no_backup_locks &&
-                             !m_query_warning(conn, "LOCK BINLOG FOR BACKUP", "Couldn't acquire LOCK BINLOG FOR BACKUP, the binlog position might be one transaction ahead of the snapshot", NULL);
+    gboolean binlog_locked = get_major() == 5 && server_log_bin && !no_backup_locks &&
+                             !m_query_verbose(conn, "LOCK BINLOG FOR BACKUP", m_warning, "Couldn't acquire LOCK BINLOG FOR BACKUP, the binlog position might be one transaction ahead of the snapshot", NULL);
     m_query_critical(conn, "START TRANSACTION WITH CONSISTENT SNAPSHOT", "Failed to start consistent snapshot", NULL);
     if (binlog_locked)
-      m_query_warning(conn, "UNLOCK BINLOG", "Failed to UNLOCK BINLOG", NULL);
+      send_unlock_binlogs(conn);
     get_binlog_snapshot_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
 
     // Starting the chunk builder
