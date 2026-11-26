@@ -197,29 +197,39 @@ void execute_replication_commands(MYSQL *conn, gchar *statement, const gchar *me
   m_query_warning(conn, "START TRANSACTION", "START TRANSACTION failed");
 }
 
+// Prefix of the options of CHANGE MASTER / CHANGE REPLICATION SOURCE: the
+// SOURCE_ names are only accepted since MySQL 8.0.23, so the servers that
+// still use CHANGE MASTER (MySQL before 8.0.22 and MariaDB) need the MASTER_
+// names
+static const gchar *source_option_prefix()
+{
+  return g_strcmp0(change_replication_source, CHANGE_MASTER) == 0 ? "MASTER" : "SOURCE";
+}
+
 void build_change_source_for_traditional(GString *traditional_change_source, struct replication_statements *rs, gboolean _source_ssl, gchar *source_host, guint source_port, gchar *source_user, gchar *source_password, gchar *source_log_file, guint64 source_log_pos, gint _auto_position, gchar *source_gtid, gboolean _exec_reset_replica, gchar *channel_name, GString *other_parameters)
 {
+  const gchar *prefix = source_option_prefix();
   g_string_append(traditional_change_source, change_replication_source);
   g_string_append(traditional_change_source, " TO ");
-  g_string_append_printf(traditional_change_source, "SOURCE_PORT = %d", source_port);
+  g_string_append_printf(traditional_change_source, "%s_PORT = %d", prefix, source_port);
   if (source_host)
-    g_string_append_printf(traditional_change_source, ", SOURCE_HOST = %s", source_host);
+    g_string_append_printf(traditional_change_source, ", %s_HOST = %s", prefix, source_host);
   if (source_user)
-    g_string_append_printf(traditional_change_source, ", SOURCE_USER = %s", source_user);
+    g_string_append_printf(traditional_change_source, ", %s_USER = %s", prefix, source_user);
   if (source_password)
-    g_string_append_printf(traditional_change_source, ", SOURCE_PASSWORD = %s", source_password);
+    g_string_append_printf(traditional_change_source, ", %s_PASSWORD = %s", prefix, source_password);
   if (source_log_file)
-    g_string_append_printf(traditional_change_source, ", SOURCE_LOG_FILE = %s", source_log_file);
+    g_string_append_printf(traditional_change_source, ", %s_LOG_FILE = %s", prefix, source_log_file);
   if (source_log_pos > 0)
-    g_string_append_printf(traditional_change_source, ", SOURCE_LOG_POS = %" G_GINT64_FORMAT, source_log_pos);
+    g_string_append_printf(traditional_change_source, ", %s_LOG_POS = %" G_GINT64_FORMAT, prefix, source_log_pos);
   if (other_parameters)
     g_string_append(traditional_change_source, other_parameters->str);
 
   if (_source_ssl)
-    g_string_append_printf(traditional_change_source, ", SOURCE_SSL = %d", _source_ssl);
+    g_string_append_printf(traditional_change_source, ", %s_SSL = %d", prefix, _source_ssl);
 
   if (_auto_position >= 0)
-    g_string_append_printf(traditional_change_source, ", SOURCE_AUTO_POSITION = %d", _auto_position);
+    g_string_append_printf(traditional_change_source, ", %s_AUTO_POSITION = %d", prefix, _auto_position);
 
   if (!for_channel_incompatibility)
   {
@@ -439,7 +449,7 @@ void change_source(GKeyFile *kf, gchar *group, struct replication_statements *rs
     }
     else
     {
-      g_string_append_printf(rs->start_replica_until, "SOURCE_LOG_FILE = %s, SOURCE_LOG_POS = %" G_GINT64_FORMAT, source_log_file, source_log_pos);
+      g_string_append_printf(rs->start_replica_until, "%s_LOG_FILE = %s, %s_LOG_POS = %" G_GINT64_FORMAT, source_option_prefix(), source_log_file, source_option_prefix(), source_log_pos);
     }
     g_string_append(rs->start_replica_until, " FOR CHANNEL '");
     if (channel_name != NULL)
