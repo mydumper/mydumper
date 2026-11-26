@@ -33,8 +33,10 @@
 #                            [--catchup-timeout SECONDS] [--keep]
 #
 # Defaults: primary on $MYSQL_HOST:$MYSQL_TCP_PORT (127.0.0.1:3306), replica
-# on the same host and port 3307, user $MYSQL_USER (root) and password
-# $MYSQL_PASSWORD (empty), like the CI test executors.
+# on the same host and port 3307, user root without password, like
+# test_mydumper.sh in the CI test executors. The password is only taken from
+# --password: $MYSQL_PASSWORD is not used, as the CI executors define it
+# without a value.
 
 set -u
 
@@ -52,8 +54,8 @@ log()
 primary_host=${MYSQL_HOST:-127.0.0.1}
 primary_port=${MYSQL_TCP_PORT:-3306}
 unset replica_host replica_port source_host source_port
-mysql_user=${MYSQL_USER:-root}
-mysql_password=${MYSQL_PASSWORD:-}
+mysql_user=root
+mysql_password=
 database=mydumper_replication_test
 workdir=/tmp/test_replication
 threads=4
@@ -111,8 +113,12 @@ mysql_exe=$(command -v mariadb) || mysql_exe=$(command -v mysql) ||
   die "mysql client not found"
 
 # The clients take the password from the environment, so it is not shown in
-# the process list nor in the logs
-export MYSQL_PWD=${mysql_password}
+# the process list nor in the logs. Without --password, the environment is
+# not changed, like in test_mydumper.sh.
+if [ -n "$mysql_password" ]
+then
+  export MYSQL_PWD=${mysql_password}
+fi
 
 mysql_primary()
 {
