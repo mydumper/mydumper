@@ -31,6 +31,7 @@ enum sync_thread_lock_mode
   FTWRL,
   LOCK_ALL,
   GTID,
+  SNAP_CLONE,
   NO_LOCK,
   SAFE_NO_LOCK
 };
@@ -47,6 +48,8 @@ static inline const char *syncthreadlockmode2str(enum sync_thread_lock_mode stlm
       return "LOCK_ALL";
     case GTID:
       return "GTID";
+    case SNAP_CLONE:
+      return "SNAP_CLONE";
     case NO_LOCK:
       return "NO_LOCK";
     case SAFE_NO_LOCK:
@@ -70,6 +73,8 @@ struct table_queuing
   GAsyncQueue  *request_chunk;
   struct MList *table_list;
   const char   *descr;
+  // Threads consuming the queues, each one stops on its JOB_SHUTDOWN
+  guint num_threads;
 };
 
 struct configuration

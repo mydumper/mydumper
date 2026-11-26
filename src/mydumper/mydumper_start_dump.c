@@ -64,6 +64,7 @@ GList      *trigger_schemas = NULL;
 GList      *view_schemas = NULL;
 GList      *schema_post = NULL;
 gboolean    it_is_a_consistent_backup = FALSE;
+gboolean    non_transactional_tables_unlocked = FALSE;
 GHashTable *all_dbts = NULL;
 char *(*identifier_quote_character_protect)(char *r);
 // struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
@@ -172,12 +173,19 @@ static gboolean is_disk_space_ok(guint val)
   return TRUE;
 }
 
+/* Workers plus the threads for non-transactional tables, that run in parallel. */
+static guint dump_pause_slots()
+{
+  return num_threads + num_non_transactional_threads;
+}
+
 static void *monitor_disk_space_thread(void *queue)
 {
   (void)queue;
   guint    i = 0;
-  GMutex **_pause_mutex_per_thread = g_new(GMutex *, num_threads);
-  for (i = 0; i < num_threads; i++)
+  guint    slots = dump_pause_slots();
+  GMutex **_pause_mutex_per_thread = g_new(GMutex *, slots);
+  for (i = 0; i < slots; i++)
   {
     _pause_mutex_per_thread[i] = g_mutex_new();
   }
@@ -210,7 +218,7 @@ static void *monitor_disk_space_thread(void *queue)
         {
           g_warning("Pausing backup disk space lower than %dMB. You need to free up to %dMB to resume", pause_at, resume_at);
         }
-        for (i = 0; i < num_threads; i++)
+        for (i = 0; i < slots; i++)
         {
           g_mutex_lock(_pause_mutex_per_thread[i]);
           g_async_queue_push(queue, _pause_mutex_per_thread[i]);
@@ -231,7 +239,10 @@ static void *monitor_disk_space_thread(void *queue)
         {
           g_warning("Resuming backup");
         }
-        for (i = 0; i < num_threads; i++)
+        // Slots of threads that were not running are still queued
+        while (g_async_queue_try_pop(queue) != NULL)
+          ;
+        for (i = 0; i < slots; i++)
         {
           g_mutex_unlock(_pause_mutex_per_thread[i]);
         }
@@ -390,6 +401,7 @@ static struct signal_prompt dump_signal_prompt = {
     .timestamp = TRUE,
     .shutdown_triggered = &shutdown_triggered,
     .can_ask = dump_can_ask,
+    .pause_slots = dump_pause_slots,
     .on_cancel = dump_cancelled,
 };
 
@@ -788,24 +800,24 @@ static void determine_best_ddl_locking_functions(MYSQL **conn)
   switch (get_product())
   {
     case SERVER_TYPE_PERCONA:
-      switch (get_major())
-      {
-        case 8:
-          acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
-          release_ddl_lock_function = &send_ddl_unlock_instance_backup;
-          break;
-        case 5:
-          if (get_secondary() == 7)
-          {
-            if (!no_backup_locks && !skip_ddl_locks)
-            {
-              acquire_ddl_lock_function = &send_percona57_lock_tables_for_backup;
-              release_ddl_lock_function = &send_unlock_tables;
-            }
 
-            *conn = create_connection();
+      if (get_major() >= 8)
+      {
+        acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
+        release_ddl_lock_function = &send_ddl_unlock_instance_backup;
+      }
+      else if (get_major() == 5)
+      {
+        if (get_secondary() == 7)
+        {
+          if (!no_backup_locks && !skip_ddl_locks)
+          {
+            acquire_ddl_lock_function = &send_percona57_lock_tables_for_backup;
+            release_ddl_lock_function = &send_unlock_tables;
           }
-          break;
+
+          *conn = create_connection();
+        }
       }
       break;
     case SERVER_TYPE_RDS:
@@ -835,33 +847,64 @@ static void set_default_write_lock_function()
   release_global_write_lock_function = &send_unlock_tables;
 }
 
+// START TRANSACTION WITH CONSISTENT SNAPSHOT FROM SESSION and the
+// Binlog_snapshot_* status variables are available on Percona Server 5.7+
+static gboolean server_supports_snap_clone()
+{
+  return get_product() == SERVER_TYPE_PERCONA &&
+         (get_major() > 5 || (get_major() == 5 && get_secondary() >= 7));
+}
+
+static gboolean server_log_bin = FALSE;
+static gboolean server_gtid_mode = FALSE;
+
+static void detect_binlog_settings(MYSQL *conn)
+{
+  struct M_ROW *mr = m_store_result_single_row(conn, "SELECT @@log_bin, @@gtid_mode", "Error getting log_bin and gtid_mode", NULL);
+  if (mr->res && mr->row)
+  {
+    server_log_bin = mr->row[0] && atoi(mr->row[0]) == 1;
+    server_gtid_mode = mr->row[1] && !g_ascii_strcasecmp(mr->row[1], "ON");
+  }
+  m_store_result_row_free(mr);
+}
+
+// The snapshot is always consistent, but the binlog position taken from
+// Binlog_snapshot_file/position is only guaranteed to match it with GTID
+static gboolean snap_clone_binlog_position_is_safe()
+{
+  return !server_log_bin || server_gtid_mode;
+}
+
+static void check_snap_clone_mode()
+{
+  if (!server_supports_snap_clone())
+    m_critical("--sync-thread-lock-mode=SNAP_CLONE requires Percona Server 5.7 or newer");
+
+  if (!snap_clone_binlog_position_is_safe())
+    g_warning("--sync-thread-lock-mode=SNAP_CLONE with log_bin=ON and gtid_mode=OFF: the binary log position might not match the snapshot");
+
+  g_message("Using extended STWCS syntax with the optional FROM SESSION clause which doesn't need to lock the database to sync the threads");
+
+  // Only LOCK TABLES FOR BACKUP blocks writes on non transactional tables
+  if (acquire_ddl_lock_function != &send_percona57_lock_tables_for_backup && !trx_tables)
+    non_transactional_tables_unlocked = TRUE;
+}
+
 static void determine_AUTO_locking_functions()
 {
   switch (get_product())
   {
     case SERVER_TYPE_PERCONA:
-      switch (get_major())
+      if (server_supports_snap_clone() && snap_clone_binlog_position_is_safe())
+        sync_thread_lock_mode = SNAP_CLONE;
+      else if (get_major() == 5 && get_secondary() == 7 && !no_backup_locks && !skip_ddl_locks)
       {
-        case 8:
-          set_default_write_lock_function();
-          break;
-        case 5:
-          if (get_secondary() == 7)
-          {
-            if (!no_backup_locks && !skip_ddl_locks)
-            {
-              acquire_global_write_lock_function = &send_percona57_lock_binlog_for_backup;
-              release_global_write_lock_function = &send_unlock_binlogs;
-            }
-            else
-              set_default_write_lock_function();
-          }
-          else
-            set_default_write_lock_function();
-          break;
-        default:
-          set_default_write_lock_function();
+        acquire_global_write_lock_function = &send_percona57_lock_binlog_for_backup;
+        release_global_write_lock_function = &send_unlock_binlogs;
       }
+      else
+        set_default_write_lock_function();
       break;
     case SERVER_TYPE_RDS:
       m_critical("We support LOCK_ALL and SAFE_NO_LOCK modes for RDS/Aurora. Select one of them to configure --sync-thread-lock-mode");
@@ -1198,6 +1241,53 @@ static void get_binlog_position(MYSQL *conn, char **masterlog, char **masterpos,
   m_store_result_row_free(mr);
 }
 
+static void acquire_ddl_lock(MYSQL *second_conn)
+{
+  if (acquire_ddl_lock_function == NULL)
+    return;
+  if (machine_log_json_enabled())
+  {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+        "MESSAGE", "Acquiring DDL lock",
+        "EVENT", "lock",
+        "PHASE", "ddl_lock",
+        "STATUS", "started",
+        NULL);
+  }
+  else
+  {
+    g_message("Acquiring DDL lock");
+  }
+  acquire_ddl_lock_function(second_conn);
+}
+
+// Percona Server: coordinates of the consistent snapshot opened on conn
+static void get_binlog_snapshot_position(MYSQL *conn, char **log, char **pos, char **gtid)
+{
+  trace("Getting binary log position of the snapshot");
+  MYSQL_RES *res = m_store_result_critical(conn, "SHOW STATUS LIKE 'Binlog_snapshot_%'", "Failed to get the binlog position of the snapshot", NULL);
+  MYSQL_ROW  row;
+  while ((row = mysql_fetch_row(res)))
+  {
+    if (!row[1] || !strlen(row[1]))
+      continue;
+    if (!g_ascii_strcasecmp(row[0], "Binlog_snapshot_file"))
+      *log = g_strdup(row[1]);
+    else if (!g_ascii_strcasecmp(row[0], "Binlog_snapshot_position"))
+      *pos = g_strdup(row[1]);
+    else if (!g_ascii_strcasecmp(row[0], "Binlog_snapshot_gtid_executed"))
+      *gtid = remove_new_line(g_strdup(row[1]));
+  }
+  mysql_free_result(res);
+  // Without binary log the file is empty and the position is 0
+  if (!*log)
+  {
+    g_free(*pos);
+    *pos = NULL;
+  }
+  trace("Snapshot binlog position: %s %s %s", *log, *pos, *gtid);
+}
+
 // Here is where the backup process start
 
 void start_dump(struct configuration *conf, GOptionContext *context)
@@ -1404,6 +1494,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
       release_global_write_lock_function = &send_unlock_tables;
       break;
     case AUTO:
+      if (get_product() == SERVER_TYPE_PERCONA)
+        detect_binlog_settings(conn);
       if (!skip_ddl_locks)
         determine_best_ddl_locking_functions(&second_conn);
       determine_AUTO_locking_functions();
@@ -1413,6 +1505,12 @@ void start_dump(struct configuration *conf, GOptionContext *context)
         determine_best_ddl_locking_functions(&second_conn);
       set_default_write_lock_function();
       break;
+    case SNAP_CLONE:
+      if (server_supports_snap_clone())
+        detect_binlog_settings(conn);
+      if (!skip_ddl_locks)
+        determine_best_ddl_locking_functions(&second_conn);
+      break;
     case GTID:
       g_message("Using binlog_snapshot_gtid_executed which doesn't lock the database but uses best effort to sync the threads");
       if (!skip_ddl_locks)
@@ -1420,23 +1518,18 @@ void start_dump(struct configuration *conf, GOptionContext *context)
       break;
   }
 
-  if (acquire_ddl_lock_function != NULL)
-  {
-    if (machine_log_json_enabled())
-    {
-      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-          "MESSAGE", "Acquiring DDL lock",
-          "EVENT", "lock",
-          "PHASE", "ddl_lock",
-          "STATUS", "started",
-          NULL);
-    }
-    else
-    {
-      g_message("Acquiring DDL lock");
-    }
-    acquire_ddl_lock_function(second_conn);
-  }
+  if (sync_thread_lock_mode == SNAP_CLONE)
+    check_snap_clone_mode();
+
+  // LOCK TABLES FOR BACKUP (Percona Server 5.7) also blocks writes on
+  // non-transactional tables. Taken before FTWRL, such a write waits for it
+  // with the table open and the FLUSH TABLES of FTWRL waits for that table
+  // forever. Taken after FTWRL, the writes are already blocked by the global
+  // read lock, which is requested before opening the tables.
+  gboolean ddl_lock_after_global_lock = acquire_ddl_lock_function == &send_percona57_lock_tables_for_backup &&
+                                        acquire_global_write_lock_function == &send_flush_table_with_read_lock;
+  if (!ddl_lock_after_global_lock)
+    acquire_ddl_lock(second_conn);
 
   if (acquire_global_write_lock_function != NULL)
   {
@@ -1455,6 +1548,9 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     }
     acquire_global_write_lock_function(conn);
   }
+
+  if (ddl_lock_after_global_lock)
+    acquire_ddl_lock(second_conn);
 
   // The FLUSH may have waited for a long time, a signal could have arrived meanwhile
   if (shutdown_triggered)
@@ -1517,12 +1613,15 @@ void start_dump(struct configuration *conf, GOptionContext *context)
            transactional_table &&
            non_transactional_table);
   conf->transactional.request_chunk = give_me_another_transactional_chunk_step_queue;
+  conf->transactional.num_threads = num_threads;
   conf->transactional.table_list = transactional_table;
   conf->transactional.descr = "transactional";
   conf->ready = g_async_queue_new();
   conf->non_transactional.queue = g_async_queue_new();
   conf->non_transactional.defer = g_async_queue_new();
   conf->non_transactional.request_chunk = give_me_another_non_transactional_chunk_step_queue;
+  // The workers, unless start_non_transactional_threads() changes it
+  conf->non_transactional.num_threads = num_threads;
   conf->non_transactional.table_list = non_transactional_table;
   conf->non_transactional.descr = "non-transactional";
   conf->ready_non_transactional_queue = g_async_queue_new();
@@ -1580,27 +1679,66 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   trace("End Job Creation");
   // End Job Creation
 
-  // Get initial binlog position
-  get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
-
-  // Starting the chunk builder
-  start_chunk_builder(conf);
-
-  // Starting the workers threads
-  start_working_thread(conf);
-  if (!pop_or_cancel(conf->source_and_replica_status_queue))
-    cancel_dump(conn, second_conn);
-  g_async_queue_unref(conf->source_and_replica_status_queue);
-
-  // Get initial binlog position again to determine backup consistency
   gchar *source_log = NULL;
   gchar *source_pos = NULL;
   gchar *source_gtid = NULL;
-  get_binlog_position(conn, &source_log, &source_pos, &source_gtid);
 
-  if (g_strcmp0(source_log, initial_source_log) ||
-      g_strcmp0(source_pos, initial_source_pos) ||
-      g_strcmp0(source_gtid, initial_source_gtid))
+  if (sync_thread_lock_mode == SNAP_CLONE)
+  {
+    // The donor transaction: every worker clones this snapshot, and the
+    // Binlog_snapshot_* status variables give its exact binlog coordinates
+    set_transaction_isolation_level_repeatable_read(conn);
+    // On Percona Server 5.7 Binlog_snapshot_position might include a commit
+    // that is not visible yet in the snapshot. Blocking the binlog during the
+    // few milliseconds that START TRANSACTION takes avoids it
+    gboolean binlog_locked = get_major() == 5 && server_log_bin && !no_backup_locks &&
+                             !m_query_verbose(conn, "LOCK BINLOG FOR BACKUP", m_warning, "Couldn't acquire LOCK BINLOG FOR BACKUP, the binlog position might be one transaction ahead of the snapshot", NULL);
+    m_query_critical(conn, "START TRANSACTION WITH CONSISTENT SNAPSHOT", "Failed to start consistent snapshot", NULL);
+    if (binlog_locked)
+      send_unlock_binlogs(conn);
+    get_binlog_snapshot_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
+
+    // Starting the chunk builder
+    start_chunk_builder(conf);
+
+    // Workers must not reconnect, they would lose the cloned snapshot
+    it_is_a_consistent_backup = TRUE;
+
+    // Starting the workers threads, which returns once all of them cloned the snapshot
+    initialize_snapshot_cloning_session_id(mysql_thread_id(conn));
+    start_working_thread(conf);
+
+    // The donor transaction is not needed anymore
+    m_query_warning(conn, "COMMIT", "Failed to release the donor snapshot", NULL);
+
+    if (!pop_or_cancel(conf->source_and_replica_status_queue))
+      cancel_dump(conn, second_conn);
+    g_async_queue_unref(conf->source_and_replica_status_queue);
+  }
+  else
+  {
+    // Get initial binlog position
+    get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
+
+    // Starting the chunk builder
+    start_chunk_builder(conf);
+
+    // Starting the workers threads
+    start_working_thread(conf);
+    if (!pop_or_cancel(conf->source_and_replica_status_queue))
+      cancel_dump(conn, second_conn);
+    g_async_queue_unref(conf->source_and_replica_status_queue);
+
+    // Get initial binlog position again to determine backup consistency
+    get_binlog_position(conn, &source_log, &source_pos, &source_gtid);
+  }
+  // SNAP_CLONE takes the coordinates from the snapshot itself and GTID mode
+  // already synced the threads on binlog_snapshot_gtid_executed, so comparing
+  // with the current binlog position does not tell anything about consistency
+  if (sync_thread_lock_mode != SNAP_CLONE && sync_thread_lock_mode != GTID &&
+      (g_strcmp0(source_log, initial_source_log) ||
+          g_strcmp0(source_pos, initial_source_pos) ||
+          g_strcmp0(source_gtid, initial_source_gtid)))
   {
     if (sync_thread_lock_mode == NO_LOCK)
     {
@@ -1611,6 +1749,11 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     {
       trace("Backup will be inconsistent %s %s %d || %s %s %d || %s %s %d", source_log, initial_source_log, g_strcmp0(source_log, initial_source_log), source_pos, initial_source_pos, g_strcmp0(source_pos, initial_source_pos), source_gtid, initial_source_gtid, g_strcmp0(source_gtid, initial_source_gtid));
       m_error("There are differences in the binlog position at the beginning of the backup and after syncing threads, so we cannot guarantee the backup to be consistent. Stopping backup due to the use of SAFE_NO_LOCK.");
+    }
+    else
+    {
+      trace("Backup will be inconsistent %s %s %d || %s %s %d || %s %s %d", source_log, initial_source_log, g_strcmp0(source_log, initial_source_log), source_pos, initial_source_pos, g_strcmp0(source_pos, initial_source_pos), source_gtid, initial_source_gtid, g_strcmp0(source_gtid, initial_source_gtid));
+      m_error("There are differences in the binlog position at the beginning of the backup and after syncing threads, so we cannot guarantee binlog position. Use a different --sync-thread-lock-mode");
     }
   }
   else
@@ -1737,10 +1880,16 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   }
   // In case that we are NOT exporting transactional table, we need to
   // build the lock table statement, at this stage, before
-  // let workers to start dumping data
-  if (!trx_tables)
+  // let workers to start dumping data. The non-transactional threads run it
+  // on their own connections while the global lock is still held.
+  // Each thread that dumps non-transactional tables reports on unlock_tables
+  // once it is safe to release the global lock.
+  guint unlock_tables_reports = num_threads;
+  if (!trx_tables && !no_data)
   {
     build_lock_tables_statement(conf);
+    if (start_non_transactional_threads(conf))
+      unlock_tables_reports = num_non_transactional_threads;
   }
   // Allowing workers to start dumping Non-Transactional tables
   for (n = 0; n < num_threads; n++)
@@ -1751,7 +1900,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   // Releasing locks if possible
   if (sync_thread_lock_mode != NO_LOCK && sync_thread_lock_mode != SAFE_NO_LOCK && !trx_tables)
   {
-    for (n = 0; n < num_threads; n++)
+    for (n = 0; n < unlock_tables_reports; n++)
     {
       g_async_queue_pop(conf->unlock_tables);
     }

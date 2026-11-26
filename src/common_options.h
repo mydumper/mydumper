@@ -53,6 +53,8 @@ extern gchar      *defaults_file;
 extern char       *defaults_extra_file;
 extern GKeyFile   *key_file;
 extern guint       num_threads;
+extern guint       num_non_transactional_threads;
+extern gboolean    num_non_transactional_threads_set;
 extern MYSQL      *main_connection;
 extern GString    *set_global_back;
 extern gboolean    no_sync;

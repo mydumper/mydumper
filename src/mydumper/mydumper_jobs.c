@@ -315,6 +315,10 @@ static void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt, 
   {
     m_critical("Non transactional table found: `%s`.`%s` on a consistent backup attempt. Restart backup using --trx-tables=0 to indicate that you have non transactional tables.", dbt->database->source_database, dbt->table);
   }
+  else if (!dbt->is_view && !(flag & IS_TRX_TABLE) && non_transactional_tables_unlocked)
+  {
+    g_warning("Non transactional table `%s`.`%s` is not locked with --sync-thread-lock-mode=SNAP_CLONE, its data might not be consistent with the snapshot", dbt->database->source_database, dbt->table);
+  }
 
   if (skip_indexes || skip_constraints)
   {

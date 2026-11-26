@@ -32,11 +32,13 @@
    is blocked no other signal can be dispatched. The answer is read by a
    stdin watch on the same loop instead. */
 static struct signal_prompt *prompt = NULL;
-static GMutex              **pause_mutex_per_thread = NULL;
-static gboolean              prompt_pending = FALSE;
-static gboolean              cancelled = FALSE;
-static guint                 prompt_stdin_watch = 0;
-static guint                 sigint_source = 0;
+/* Never freed: a mutex can still be referenced from the queue. */
+static GPtrArray *pause_mutexes = NULL;
+static guint      paused_slots = 0;
+static gboolean   prompt_pending = FALSE;
+static gboolean   cancelled = FALSE;
+static guint      prompt_stdin_watch = 0;
+static guint      sigint_source = 0;
 
 static void log_signal_event(GLogLevelFlags level, const char *event, const char *status, const char *json_message, const char *text)
 {
@@ -71,18 +73,17 @@ static gchar *capitalized_name()
 static void pause_workers()
 {
   guint i;
-  if (pause_mutex_per_thread == NULL)
-  {
-    pause_mutex_per_thread = g_new(GMutex *, num_threads);
-    for (i = 0; i < num_threads; i++)
-      pause_mutex_per_thread[i] = g_mutex_new();
-  }
+  paused_slots = prompt->pause_slots ? prompt->pause_slots() : num_threads;
+  if (pause_mutexes == NULL)
+    pause_mutexes = g_ptr_array_new();
+  while (pause_mutexes->len < paused_slots)
+    g_ptr_array_add(pause_mutexes, g_mutex_new());
   if (*prompt->pause_resume == NULL)
     *prompt->pause_resume = g_async_queue_new();
-  for (i = 0; i < num_threads; i++)
+  for (i = 0; i < paused_slots; i++)
   {
-    g_mutex_lock(pause_mutex_per_thread[i]);
-    g_async_queue_push(*prompt->pause_resume, pause_mutex_per_thread[i]);
+    g_mutex_lock(g_ptr_array_index(pause_mutexes, i));
+    g_async_queue_push(*prompt->pause_resume, g_ptr_array_index(pause_mutexes, i));
   }
 }
 
@@ -99,8 +100,12 @@ static void close_prompt()
     g_source_remove(prompt_stdin_watch);
     prompt_stdin_watch = 0;
   }
-  for (i = 0; i < num_threads; i++)
-    g_mutex_unlock(pause_mutex_per_thread[i]);
+  /* Slots of threads that were not running are still queued: drop them, so
+     that they do not pile up across pauses. */
+  while (g_async_queue_try_pop(*prompt->pause_resume) != NULL)
+    ;
+  for (i = 0; i < paused_slots; i++)
+    g_mutex_unlock(g_ptr_array_index(pause_mutexes, i));
 }
 
 static void cancel(const char *json_message)

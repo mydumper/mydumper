@@ -76,6 +76,12 @@ static GMutex             *view_schemas_mutex = NULL;
 static const guint         tablecol = 0;
 static GThread           **threads = NULL;
 static struct thread_data *thread_data;
+static gulong              snapshot_cloning_session_id = 0;
+// Threads that lock and dump the non-transactional tables, see start_non_transactional_threads()
+static GThread           **non_transactional_threads = NULL;
+static struct thread_data *non_transactional_thread_data = NULL;
+static gboolean            non_transactional_threads_started = FALSE;
+static gchar              *start_transaction_with_snapshot_cloning = NULL;
 
 static void emit_dump_thread_event(GLogLevelFlags level, const gchar *message, const gchar *event, const gchar *phase, const gchar *status, guint thread_id, const gchar *db, const gchar *table)
 {
@@ -149,6 +155,25 @@ void initialize_working_thread()
   initialize_chunk();
 }
 
+static void initialize_thread_data(struct thread_data *td, struct configuration *conf, guint thread_id, gboolean is_non_transactional)
+{
+  td->conf = conf;
+  td->thread_id = thread_id;
+  td->is_non_transactional = is_non_transactional;
+  td->thrconn = NULL;
+  td->binlog_snapshot_gtid_executed = NULL;
+  td->pause_resume_mutex = NULL;
+  td->table_name = NULL;
+  td->local_row_count = 0;
+  td->local_row_count_dbt = NULL;
+  td->thread_data_buffers.statement = g_string_sized_new(2 * statement_size);
+  td->thread_data_buffers.row = g_string_sized_new(statement_size);
+  td->thread_data_buffers.column = g_string_sized_new(statement_size);
+  td->thread_data_buffers.escaped = g_string_sized_new(statement_size);
+  td->thread_data_buffers.target_column = td->thread_data_buffers.column;
+  td->thread_data_buffers.column_mask = g_string_sized_new(statement_size);
+}
+
 void start_working_thread(struct configuration *conf)
 {
   guint n;
@@ -173,19 +198,7 @@ void start_working_thread(struct configuration *conf)
   }
   for (n = 0; n < num_threads; n++)
   {
-    thread_data[n].conf = conf;
-    thread_data[n].thread_id = n + 1;
-    thread_data[n].binlog_snapshot_gtid_executed = NULL;
-    thread_data[n].pause_resume_mutex = NULL;
-    thread_data[n].table_name = NULL;
-    thread_data[n].local_row_count = 0;
-    thread_data[n].local_row_count_dbt = NULL;
-    thread_data[n].thread_data_buffers.statement = g_string_sized_new(2 * statement_size);
-    thread_data[n].thread_data_buffers.row = g_string_sized_new(statement_size);
-    thread_data[n].thread_data_buffers.column = g_string_sized_new(statement_size);
-    thread_data[n].thread_data_buffers.escaped = g_string_sized_new(statement_size);
-    thread_data[n].thread_data_buffers.target_column = thread_data[n].thread_data_buffers.column;
-    thread_data[n].thread_data_buffers.column_mask = g_string_sized_new(statement_size);
+    initialize_thread_data(&thread_data[n], conf, n + 1, FALSE);
     threads[n] =
         m_thread_new("data", (GThreadFunc)working_thread, &thread_data[n], "Data thread could not be created");
   }
@@ -257,6 +270,9 @@ void wait_working_thread_to_finish()
   {
     g_thread_join(threads[n]);
   }
+  if (non_transactional_threads_started)
+    for (n = 0; n < num_non_transactional_threads; n++)
+      g_thread_join(non_transactional_threads[n]);
 }
 
 void finalize_working_thread()
@@ -270,6 +286,8 @@ void finalize_working_thread()
 
   g_free(thread_data);
   g_free(threads);
+  g_free(non_transactional_thread_data);
+  g_free(non_transactional_threads);
   finalize_table();
 }
 
@@ -451,7 +469,8 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job)
 {
   struct table_job *tj = (struct table_job *)job->job_data;
 
-  if (use_savepoints)
+  // Non-transactional threads have no transaction to hold a savepoint
+  if (use_savepoints && !td->is_non_transactional)
   {
     if (td->table_name != NULL)
     {
@@ -504,7 +523,7 @@ void initialize_thread(struct thread_data *td)
   }
 }
 
-void initialize_consistent_snapshot(struct thread_data *td)
+static void initialize_consistent_snapshot(struct thread_data *td)
 {
   gchar *query = NULL;
   if (sync_wait != -1)
@@ -564,8 +583,21 @@ void initialize_consistent_snapshot(struct thread_data *td)
       m_critical("We were not able to sync all threads. We unsuccessfully tried %d times. Reducing the amount of threads might help.", MAX_START_TRANSACTION_RETRIES);
     }
   }
+  else if (sync_thread_lock_mode == SNAP_CLONE)
+  {
+    m_query_critical(td->thrconn, start_transaction_with_snapshot_cloning, "Failed to clone the consistent snapshot of session %lu", snapshot_cloning_session_id);
+    trace("Thread %d: Connection %lu cloned the consistent snapshot of session %lu", td->thread_id, mysql_thread_id(td->thrconn), snapshot_cloning_session_id);
+  }
   else if (sync_thread_lock_mode != NO_LOCK)
     m_query_critical(td->thrconn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
+}
+
+void initialize_snapshot_cloning_session_id(gulong session_id)
+{
+  snapshot_cloning_session_id = session_id;
+  g_free(start_transaction_with_snapshot_cloning);
+  start_transaction_with_snapshot_cloning = g_strdup_printf("START TRANSACTION WITH CONSISTENT SNAPSHOT FROM SESSION %lu", snapshot_cloning_session_id);
+  trace("Connection %lu: donor of the consistent snapshot", snapshot_cloning_session_id);
 }
 
 static void check_connection_status(struct thread_data *td)
@@ -988,7 +1020,7 @@ void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt)
   dbt->estimated_remaining_steps = total;
 }
 
-static void *working_thread(struct thread_data *td)
+static void connect_thread(struct thread_data *td)
 {
   // mysql_init is not thread safe, especially in Connector/C
   g_mutex_lock(init_mutex);
@@ -1001,6 +1033,76 @@ static void *working_thread(struct thread_data *td)
   // Initialize connection
   if (!skip_tz)
     m_query_critical(td->thrconn, "/*!40103 SET TIME_ZONE='+00:00' */", "Failed to set time zone", NULL);
+}
+
+// Locks and dumps the non-transactional tables. It must run on its own
+// connection: LOCK TABLES implicitly commits the transaction of the session,
+// so a worker that runs it loses its consistent snapshot.
+static void *non_transactional_thread(struct thread_data *td)
+{
+  connect_thread(td);
+
+  if (machine_log_json)
+  {
+    gchar *thread_id = g_strdup_printf("%u", td->thread_id);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+        "MESSAGE", "locking non-transactional tables",
+        "EVENT", "dump_phase",
+        "PHASE", "lock_non_transactional",
+        "STATUS", "started",
+        "THREAD_ID", thread_id,
+        NULL);
+    g_free(thread_id);
+  }
+  else
+  {
+    g_message("Thread %d: Locking non-transactional tables", td->thread_id);
+  }
+  trace("Thread %d: sending: %s", td->thread_id, td->conf->lock_tables_statement->str);
+  m_query_critical(td->thrconn, td->conf->lock_tables_statement->str, "Error locking non-transactional tables", NULL);
+
+  // This push will unlock the FTWRL on the Main Connection
+  g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
+
+  process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
+  process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
+
+  m_query_critical(td->thrconn, UNLOCK_TABLES, "Error unlocking non-transactional tables", NULL);
+
+  g_message("Thread %d: Non-transactional tables are done, shutting down", td->thread_id);
+  mysql_close(td->thrconn);
+  mysql_thread_end();
+  return NULL;
+}
+
+// Called by the main thread while the global lock is held, once the list of
+// non-transactional tables is known and before letting the workers start
+// dumping data. Without non-transactional tables, the workers drain the
+// (empty) non-transactional queues themselves. Returns TRUE when started.
+gboolean start_non_transactional_threads(struct configuration *conf)
+{
+  guint n;
+  if (conf->lock_tables_statement == NULL)
+    return FALSE;
+  g_message("Creating %u threads for non-transactional tables", num_non_transactional_threads);
+  // The chunk builder has not finished the non-transactional queues yet: it
+  // waits for the first chunk request, which comes from these threads
+  conf->non_transactional.num_threads = num_non_transactional_threads;
+  non_transactional_threads = g_new(GThread *, num_non_transactional_threads);
+  non_transactional_thread_data = g_new(struct thread_data, num_non_transactional_threads);
+  for (n = 0; n < num_non_transactional_threads; n++)
+  {
+    initialize_thread_data(&non_transactional_thread_data[n], conf, num_threads + n + 1, TRUE);
+    non_transactional_threads[n] =
+        m_thread_new("non_trx", (GThreadFunc)non_transactional_thread, &non_transactional_thread_data[n], "Non-transactional thread could not be created");
+  }
+  non_transactional_threads_started = TRUE;
+  return TRUE;
+}
+
+static void *working_thread(struct thread_data *td)
+{
+  connect_thread(td);
   if (use_savepoints)
     m_query_critical(td->thrconn, "SET SQL_LOG_BIN = 0", "Failed to disable binlog for the thread", NULL);
 
@@ -1072,50 +1174,20 @@ static void *working_thread(struct thread_data *td)
     g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
     g_async_queue_pop(td->conf->ready_non_transactional_queue);
 
-    if (trx_tables)
+    if (non_transactional_threads_started)
     {
-      // Processing non-transactional tables
-      // This queue should be empty, but we are processing just in case.
-      process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
-      process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
-
-      // This push will unlock the FTWRL on the Main Connection
-      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
+      // The non-transactional threads lock and dump them, so this thread keeps its snapshot
+      trace("Thread %d: Non-transactional tables are dumped by the non-transactional threads", td->thread_id);
     }
     else
     {
-      // Sending LOCK TABLE over all non-transactional tables
-      if (td->conf->lock_tables_statement != NULL)
-      {
-        if (machine_log_json)
-        {
-          gchar *thread_id = g_strdup_printf("%u", td->thread_id);
-          machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-              "MESSAGE", "locking non-transactional tables",
-              "EVENT", "dump_phase",
-              "PHASE", "lock_non_transactional",
-              "STATUS", "started",
-              "THREAD_ID", thread_id,
-              NULL);
-          g_free(thread_id);
-        }
-        else
-        {
-          g_message("Thread %d: Locking non-transactional tables", td->thread_id);
-        }
-        trace("Thread %d: sending: %s", td->thread_id, td->conf->lock_tables_statement->str);
-        m_query_critical(td->thrconn, td->conf->lock_tables_statement->str, "Error locking non-transactional tables", NULL);
-      }
-
-      // This push will unlock the FTWRL on the Main Connection
-      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
-
-      // Processing non-transactional tables
+      // There are no non-transactional tables to lock: with --trx-tables they
+      // are dumped as transactional and without it the queues will be empty
       process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
       process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
 
-      // At this point, this thread is able to unlock the non-transactional tables
-      m_query_critical(td->thrconn, UNLOCK_TABLES, "Error locking non-transactional tables", NULL);
+      // This push will unlock the FTWRL on the Main Connection
+      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
     // Processing Transactional tables
