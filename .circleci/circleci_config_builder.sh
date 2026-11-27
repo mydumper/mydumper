@@ -711,13 +711,14 @@ cat <<EOF
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-innovation" | sudo debconf-set-selections
     - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
-    - run: sudo apt-get update
+    # mysql-apt-config shows mysql-innovation as selected but writes mysql-5.7
+    # in mysql.list, so the repository line is written here
     - run:
-        name: Show MySQL apt sources and libmysqlclient candidates
+        name: Use the mysql-innovation repository
         command: |
-          cat /etc/apt/sources.list.d/mysql.list || true
-          dpkg -l mysql-apt-config || true
-          apt-cache policy libmysqlclient24 libmysqlclient-dev || true
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/keyrings/mysql-apt-config.gpg] http://repo.mysql.com/apt/\${ID}/ \${VERSION_CODENAME} mysql-innovation" | sudo tee /etc/apt/sources.list.d/mysql.list
+    - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
     - when:
         condition: << parameters.test >>
@@ -730,10 +731,11 @@ cat <<EOF
         type: boolean
         default: false
     steps:
-    - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
-    # The percona-release shipped in the builder images does not know ps-97-lts
-    - run: (curl -fsSLo /tmp/percona-release.deb https://repo.percona.com/apt/percona-release_latest.generic_all.deb || wget -qO /tmp/percona-release.deb https://repo.percona.com/apt/percona-release_latest.generic_all.deb) && sudo apt-get install -y /tmp/percona-release.deb
-    - run: sudo percona-release setup -y ${all_vendors[percona97_2]}
+    # "percona-release setup" only knows hardcoded products and has none for
+    # 9.7 yet: the repository is listed in REPOSITORIES and enabled directly
+    - run: echo 'REPOSITORIES="tools ${all_vendors[percona97_2]}"' | sudo tee /etc/default/percona-release
+    - run: sudo percona-release enable-only ${all_vendors[percona97_2]} release
+    - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time libperconaserverclient24 libperconaserverclient24-dev
     - when:
         condition: << parameters.test >>
@@ -951,10 +953,10 @@ cat <<EOF
 
   prepare_el_percona97:
     steps:
-    - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
-    # The percona-release shipped in the builder images does not know ps-97-lts
-    - run: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
-    - run: percona-release setup -y ${all_vendors[percona97_2]}
+    # "percona-release setup" only knows hardcoded products and has none for
+    # 9.7 yet: the repository is listed in REPOSITORIES and enabled directly
+    - run: echo 'REPOSITORIES="tools ${all_vendors[percona97_2]}"' > /etc/default/percona-release
+    - run: percona-release enable-only ${all_vendors[percona97_2]} release
     - run: yum -y install libasan gdb screen time percona-server-devel
 
   compile:
