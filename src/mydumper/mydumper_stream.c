@@ -141,7 +141,7 @@ void *process_stream(void *data)
           len = write(fileno(stdout), buf, buflen);
           total_len = total_len + buflen;
           if (len != buflen)
-            m_error("Stream failed during transmition of file: %s", sf->filename);
+            m_error("Stream failed during transmission of file: %s", sf->filename);
           buflen = read(f, buf, STREAM_BUFFER_SIZE);
         }
         //        g_message("Bytes readed of %s is %d", filename, total_len);

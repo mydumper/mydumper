@@ -1370,7 +1370,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   if (!daemon_mode && !kill_at_once)
     sthread = m_thread_new("signal", signal_thread, conf, "Signal thread could not be created");
 
-  // Initilizing METADATA file
+  // Initializing METADATA file
   if (stream)
     metadata_partial_filename = g_strdup_printf("%s/metadata.header", dump_directory);
   else
@@ -1391,7 +1391,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     dump_summary_note_file_created();
   }
 
-  // Initilizing NOT UPDATED TABLES feature
+  // Initializing NOT UPDATED TABLES feature
   if (updated_since > 0)
   {
     u = g_strdup_printf("%s/not_updated_tables", dump_directory);
@@ -1447,7 +1447,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
   fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n", sql_mode);
   fflush(mdfile);
 
-  // Initilizing stream backup
+  // Initializing stream backup
   if (stream)
   {
     if (exec_command)
@@ -1468,7 +1468,7 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     }
   }
 
-  // Initilizing exec_command
+  // Initializing exec_command
   if (exec_command != NULL)
     initialize_exec_command();
 
@@ -1597,8 +1597,8 @@ void start_dump(struct configuration *conf, GOptionContext *context)
     if (rest)
       mysql_free_result(rest);
   }
-  trace("Initilizing the configuration");
-  // Initilizing the configuration
+  trace("Initializing the configuration");
+  // Initializing the configuration
 
   conf->initial_queue = g_async_queue_new();
   conf->initial_completed_queue = g_async_queue_new();

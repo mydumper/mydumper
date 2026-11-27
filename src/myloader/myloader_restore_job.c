@@ -156,7 +156,7 @@ static int overwrite_table(struct thread_data *td, struct db_table *dbt)
     case TRUNCATE:
       if (dbt->constraints || dbt->indexes)
       {
-        g_warning("Indexes and/or contraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->target_database, dbt->source_table_name);
+        g_warning("Indexes and/or constraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->target_database, dbt->source_table_name);
       }
       message("Truncating table %s.%s", dbt->database->target_database, dbt->source_table_name);
       g_string_printf(data, "TRUNCATE TABLE %c%s%c.%c%s%c",
@@ -168,7 +168,7 @@ static int overwrite_table(struct thread_data *td, struct db_table *dbt)
     case DELETE:
       if (dbt->constraints || dbt->indexes)
       {
-        g_warning("Indexes and/or contraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->target_database, dbt->source_table_name);
+        g_warning("Indexes and/or constraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->target_database, dbt->source_table_name);
       }
       message("Deleting content of table %s.%s", dbt->database->target_database, dbt->source_table_name);
       g_string_printf(data, "DELETE FROM %c%s%c.%c%s%c ;\nCOMMIT",
