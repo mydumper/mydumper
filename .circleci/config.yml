@@ -76,12 +76,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -97,12 +97,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -118,12 +118,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -139,12 +139,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -160,12 +160,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -181,12 +181,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -409,12 +409,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -430,12 +430,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -451,12 +451,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -472,12 +472,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -493,12 +493,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -514,12 +514,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -742,12 +742,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -763,12 +763,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -784,12 +784,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -805,12 +805,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -826,12 +826,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -847,12 +847,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1075,12 +1075,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1096,12 +1096,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1117,12 +1117,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1138,12 +1138,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1159,12 +1159,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1180,12 +1180,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1408,12 +1408,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1429,12 +1429,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1450,12 +1450,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1471,12 +1471,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1492,12 +1492,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1513,12 +1513,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1741,12 +1741,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1762,12 +1762,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1783,12 +1783,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1804,12 +1804,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1825,12 +1825,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1846,12 +1846,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2074,12 +2074,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2095,12 +2095,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2116,12 +2116,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2137,12 +2137,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2158,12 +2158,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2179,12 +2179,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2407,12 +2407,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2428,12 +2428,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2449,12 +2449,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2470,12 +2470,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2491,12 +2491,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2512,12 +2512,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2740,12 +2740,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2761,12 +2761,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2782,12 +2782,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2803,12 +2803,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2824,12 +2824,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -2845,12 +2845,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3073,12 +3073,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3094,12 +3094,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3115,12 +3115,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3136,12 +3136,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3157,12 +3157,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3178,12 +3178,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3406,12 +3406,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3427,12 +3427,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3448,12 +3448,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3469,12 +3469,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3490,12 +3490,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3511,12 +3511,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3739,12 +3739,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.11
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3760,12 +3760,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3781,12 +3781,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.4
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3802,12 +3802,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:11.8
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3823,12 +3823,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:12.3
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -3844,12 +3844,12 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=1]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=1]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:13
-      command: [mysqld, --log-bin=mysql-bin, --server-id=2, --port=3307]
+      command: [mariadbd, --log-bin=mysql-bin, --server-id=2, --port=3307]
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -4184,7 +4184,7 @@ executors:
         chmod 0400 /var/lib/mysql-keyring/keys.txt
         exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
       - bash
-      - mysqld
+      - mariadbd
       - --log-bin=mysql-bin
       - --server-id=6
       - --port=3315
@@ -4205,7 +4205,7 @@ executors:
         chmod 0400 /var/lib/mysql-keyring/keys.txt
         exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
       - bash
-      - mysqld
+      - mariadbd
       - --log-bin=mysql-bin
       - --server-id=7
       - --port=3316
@@ -4226,7 +4226,7 @@ executors:
         chmod 0400 /var/lib/mysql-keyring/keys.txt
         exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
       - bash
-      - mysqld
+      - mariadbd
       - --log-bin=mysql-bin
       - --server-id=8
       - --port=3317
@@ -4247,7 +4247,7 @@ executors:
         chmod 0400 /var/lib/mysql-keyring/keys.txt
         exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
       - bash
-      - mysqld
+      - mariadbd
       - --log-bin=mysql-bin
       - --server-id=9
       - --port=3318
@@ -4268,7 +4268,7 @@ executors:
         chmod 0400 /var/lib/mysql-keyring/keys.txt
         exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
       - bash
-      - mysqld
+      - mariadbd
       - --log-bin=mysql-bin
       - --server-id=10
       - --port=3319
@@ -4289,7 +4289,7 @@ executors:
         chmod 0400 /var/lib/mysql-keyring/keys.txt
         exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
       - bash
-      - mysqld
+      - mariadbd
       - --log-bin=mysql-bin
       - --server-id=11
       - --port=3320

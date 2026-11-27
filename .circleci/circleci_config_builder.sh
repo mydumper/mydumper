@@ -157,6 +157,14 @@ all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 all_vendors[${vendor}_8]="MySQL [0-9]"
 
+# MariaDB images from 11.x on no longer ship the mysqld alias, only mariadbd,
+# which every supported MariaDB image (>= 10.5) has
+for vendor in mariadb1006 mariadb1011 mariadb1104 mariadb1108 mariadb1203 mariadb_rolling
+do
+    all_vendors[${vendor}_5]="${db_server_command/mysqld/mariadbd}"
+    all_vendors[${vendor}_6]="${replica_db_server_command/mysqld/mariadbd}"
+done
+
 #_0: name
 #_1: docker image
 #_2: repository given to mariadb_repo_setup (MariaDB) or percona-release (Percona)
