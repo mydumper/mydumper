@@ -139,6 +139,13 @@ target_compile_options(test_global_variables_rollback PRIVATE -ffunction-section
 set_property(TARGET test_global_variables_rollback APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
 target_link_libraries(test_global_variables_rollback ${GLIB2_LIBRARIES} ${PCRE2_LIBRARY})
 add_test(NAME global_variables_rollback COMMAND test_global_variables_rollback)
+
+add_executable(test_alter_table_termination test/unit/test_alter_table_termination.c src/common.c)
+target_compile_options(test_alter_table_termination PRIVATE -ffunction-sections -fdata-sections -fvisibility=hidden)
+set_property(TARGET test_alter_table_termination APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--gc-sections")
+target_link_libraries(test_alter_table_termination ${GLIB2_LIBRARIES} ${PCRE2_LIBRARY})
+add_test(NAME alter_table_termination COMMAND test_alter_table_termination)
+
 add_executable(test_checksum_routine test/unit/test_checksum_routine.c)
 target_link_libraries(test_checksum_routine ${GLIB2_LIBRARIES} ${ZLIB_LIBRARIES})
 add_test(NAME checksum_routine COMMAND test_checksum_routine)
