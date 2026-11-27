@@ -160,6 +160,7 @@ void free_db_table(struct db_table *dbt)
   g_free(dbt->checksum.data);
   dbt->checksum.data = NULL;
   g_free(dbt->chunks_completed);
+  g_clear_pointer(&dbt->column_data_types, g_hash_table_destroy);
 
   g_free(dbt->table);
   g_mutex_unlock(dbt->chunks_mutex);
@@ -431,6 +432,30 @@ static gboolean has_json_fields(MYSQL *conn, char *database, char *table)
   return FALSE;
 }
 
+/* Client field flags cannot distinguish some MariaDB native types from binary strings. */
+static GHashTable *get_column_data_types(MYSQL *conn, gchar *database, gchar *table)
+{
+  gchar *escaped_database = escape_string(conn, database);
+  gchar *escaped_table = escape_string(conn, table);
+  gchar *query = g_strdup_printf(
+      "SELECT COLUMN_NAME, DATA_TYPE FROM information_schema.COLUMNS "
+      "WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s'",
+      escaped_database, escaped_table);
+  MYSQL_RES *result = m_store_result_critical(conn, query, "Failed to read column types for %s.%s", database, table);
+  g_free(query);
+  g_free(escaped_table);
+  g_free(escaped_database);
+  if (!result)
+    return NULL;
+
+  GHashTable *types = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  MYSQL_ROW   row;
+  while ((row = mysql_fetch_row(result)))
+    g_hash_table_insert(types, g_strdup(row[0]), g_strdup(row[1]));
+  mysql_free_result(result);
+  return types;
+}
+
 static void replace_select_fields(GString *select_fields, GHashTable *column_replace_hash)
 {
   if (column_replace_hash)
@@ -494,6 +519,12 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->where = m_coalesce_hash(g_hash_table_lookup(conf_per_table, WHERE), config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
     dbt->limit = m_coalesce_hash(g_hash_table_lookup(conf_per_table, LIMIT), config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
     parse_object_scope(&(dbt->object_to_export), m_coalesce_hash(g_hash_table_lookup(conf_per_table, OBJECT_TO_EXPORT), config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key));
+
+    dbt->column_data_types = NULL;
+    if (get_product() == SERVER_TYPE_MARIADB && !is_sequence &&
+        (is_view ? views_as_tables : (!no_data && !dbt->object_to_export.no_data)) &&
+        (get_major() > 10 || (get_major() == 10 && get_secondary() >= 5)))
+      dbt->column_data_types = get_column_data_types(conn, database->source_database_name, table);
 
     dbt->partition_regex = m_coalesce_hash(g_hash_table_lookup(conf_per_table, PARTITION_REGEX), config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
     dbt->max_threads_per_table = max_threads_per_table;

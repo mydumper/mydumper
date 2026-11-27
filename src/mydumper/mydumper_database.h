@@ -27,6 +27,7 @@
 struct database
 {
   gchar                         *source_database;
+  gchar                         *source_database_name;
   gchar                         *source_database_escaped;
   gchar                         *database_name_in_filename;
   struct database_level_checksum checksum;
