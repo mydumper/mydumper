@@ -127,11 +127,12 @@ all_vendors[${vendor}_8]="MariaDB 12[.]3[.]"
 
 # Rolling track: bump _2, _8 and _9 on each new rolling release. The docker
 # image tag follows the newest 13.x published on Docker Hub.
+# mariadb_repo_setup only takes the full version for a rolling release.
 vendor=mariadb_rolling
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_9]="mariadb:13.1"
 all_vendors[${vendor}_1]="mariadb:13"
-all_vendors[${vendor}_2]="mariadb-13.1"
+all_vendors[${vendor}_2]="mariadb-13.1.2"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
 all_vendors[${vendor}_8]="MariaDB 13[.]1[.]"
@@ -772,6 +773,8 @@ do
 
   prepare_${all_vendors[${vendor}_0]}:
     steps:
+    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
+    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "${all_vendors[${vendor}_2]}"
 
   prepare_apt_${all_vendors[${vendor}_0]}:

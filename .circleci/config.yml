@@ -4425,6 +4425,8 @@ commands:
 
   prepare_mariadb1011:
     steps:
+    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
+    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.11"
 
   prepare_apt_mariadb1011:
@@ -4448,6 +4450,8 @@ commands:
 
   prepare_mariadb1006:
     steps:
+    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
+    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.6"
 
   prepare_apt_mariadb1006:
@@ -4471,6 +4475,8 @@ commands:
 
   prepare_mariadb1104:
     steps:
+    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
+    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-11.4"
 
   prepare_apt_mariadb1104:
@@ -4494,6 +4500,8 @@ commands:
 
   prepare_mariadb1108:
     steps:
+    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
+    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-11.8"
 
   prepare_apt_mariadb1108:
@@ -4517,6 +4525,8 @@ commands:
 
   prepare_mariadb1203:
     steps:
+    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
+    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
     - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-12.3"
 
   prepare_apt_mariadb1203:
@@ -4540,7 +4550,9 @@ commands:
 
   prepare_mariadb_rolling:
     steps:
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-13.1"
+    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
+    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
+    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-13.1.2"
 
   prepare_apt_mariadb_rolling:
     parameters:
