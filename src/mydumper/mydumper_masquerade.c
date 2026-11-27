@@ -433,7 +433,7 @@ void parse_basic(struct function_pointer *fp, gchar *val)
       val = read_word(buffer, val);
       fp->null_max_length = atoi(buffer);
       if (!fp->null_max_length)
-        m_error("REPLACE_NULL receives an integer value as paramter that limits the max length of the integer value");
+        m_error("REPLACE_NULL receives an integer value as parameter that limits the max length of the integer value");
     }
     else if (g_str_has_prefix(buffer, "UNIQUE"))
     {

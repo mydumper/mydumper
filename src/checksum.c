@@ -69,7 +69,7 @@ GOptionEntry common_checksum_entries[] = {
     {"skip-trigger-checksums", 0, 0, G_OPTION_ARG_NONE, &skip_trigger_checksums,
         "Disables checksums over the triggers of the table or the database.", NULL},
     {"skip-routine-checksums", 0, 0, G_OPTION_ARG_NONE, &skip_routine_checksums,
-        "Disables checksums over the funtions and store procedures.", NULL},
+        "Disables checksums over the functions and store procedures.", NULL},
     {"skip-event-checksums", 0, 0, G_OPTION_ARG_NONE, &skip_event_checksums,
         "Disables checksums over the events.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

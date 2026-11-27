@@ -406,7 +406,7 @@ static GOptionEntry chunks_entries[] = {
     {"rows-hard", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
         "This set the MIN and MAX limit when even if --rows is 0", NULL},
     {"max-split-of-step-in-integer-chunk", 0, 0, G_OPTION_ARG_INT, &max_split_of_step_in_integer_chunk,
-        "Limits the amount of times a step in the integer chunk will be split. Default: 0 which means no limit, it will cut based on the information of the rows in the EXPLAIN", NULL},
+        "Limits the number of times a step in the integer chunk will be split. Default: 0 which means no limit, it will cut based on the information of the rows in the EXPLAIN", NULL},
     {"max-char-size", 0, 0, G_OPTION_ARG_INT, &max_char_size,
         "When the primary key is an string, it will split up to this amount of character. Default: 2", NULL},
     {"max-items-per-string-chunk", 0, 0, G_OPTION_ARG_INT, &max_items_per_string_chunk,
