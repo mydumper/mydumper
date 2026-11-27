@@ -4075,8 +4075,13 @@ executors:
         MYSQL_PORT_percona80: 3311
         MYSQL_PORT_percona84: 3312
         MYSQL_PORT_mysql97: 3313
-        MYSQL_PORT_mariadb1006: 3314
-        MYSQL_PORT_mariadb1011: 3315
+        MYSQL_PORT_mysql_innovation: 3314
+        MYSQL_PORT_mariadb1006: 3315
+        MYSQL_PORT_mariadb1011: 3316
+        MYSQL_PORT_mariadb1104: 3317
+        MYSQL_PORT_mariadb1108: 3318
+        MYSQL_PORT_mariadb1203: 3319
+        MYSQL_PORT_mariadb_rolling: 3320
     - image: percona:5.7
       command: [mysqld, --log-bin=mysql-bin, --server-id=1, --port=3310, --early-plugin-load=keyring_file.so, --keyring-file-data=/tmp/keyring_file]
       environment:
@@ -4141,6 +4146,32 @@ executors:
       - --innodb-flush-method=fsync
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:innovation
+      command:
+      - bash
+      - -c
+      - |
+        set -e
+        mkdir -p /var/lib/mysql-keyring
+        chown mysql:mysql /var/lib/mysql-keyring
+        mysqld_bin=$(readlink -f "$(command -v mysqld)")
+        component=$(find /usr -name component_keyring_file.so -not -path '*/debug/*' -print -quit)
+        [ -n "${component}" ] || { echo component_keyring_file.so not found >&2; exit 1; }
+        echo '{"components": "file://component_keyring_file"}' > "${mysqld_bin}.my"
+        echo '{"path": "/var/lib/mysql-keyring/component_keyring_file", "read_only": false}' > "$(dirname "${component}")/component_keyring_file.cnf"
+        touch /var/lib/mysql-keyring/component_keyring_file
+        chown mysql:mysql /var/lib/mysql-keyring/component_keyring_file
+        exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
+      - bash
+      - mysqld
+      - --log-bin=mysql-bin
+      - --server-id=5
+      - --port=3314
+      - --mysqlx=OFF
+      - --innodb-use-native-aio=0
+      - --innodb-flush-method=fsync
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
     - image: mariadb:10.6
       command:
       - bash
@@ -4155,8 +4186,8 @@ executors:
       - bash
       - mysqld
       - --log-bin=mysql-bin
-      - --server-id=5
-      - --port=3314
+      - --server-id=6
+      - --port=3315
       - --plugin-load-add=file_key_management
       - --file-key-management-filename=/var/lib/mysql-keyring/keys.txt
       environment:
@@ -4176,8 +4207,92 @@ executors:
       - bash
       - mysqld
       - --log-bin=mysql-bin
-      - --server-id=6
-      - --port=3315
+      - --server-id=7
+      - --port=3316
+      - --plugin-load-add=file_key_management
+      - --file-key-management-filename=/var/lib/mysql-keyring/keys.txt
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:11.4
+      command:
+      - bash
+      - -c
+      - |
+        set -e
+        mkdir -p /var/lib/mysql-keyring
+        echo '1;5b2a3e3c7c1b4e8f9a0d6c2e4f8a1b3c5d7e9f0a2b4c6d8e0f1a3b5c7d9e1f20' > /var/lib/mysql-keyring/keys.txt
+        chown -R mysql:mysql /var/lib/mysql-keyring
+        chmod 0400 /var/lib/mysql-keyring/keys.txt
+        exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
+      - bash
+      - mysqld
+      - --log-bin=mysql-bin
+      - --server-id=8
+      - --port=3317
+      - --plugin-load-add=file_key_management
+      - --file-key-management-filename=/var/lib/mysql-keyring/keys.txt
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:11.8
+      command:
+      - bash
+      - -c
+      - |
+        set -e
+        mkdir -p /var/lib/mysql-keyring
+        echo '1;5b2a3e3c7c1b4e8f9a0d6c2e4f8a1b3c5d7e9f0a2b4c6d8e0f1a3b5c7d9e1f20' > /var/lib/mysql-keyring/keys.txt
+        chown -R mysql:mysql /var/lib/mysql-keyring
+        chmod 0400 /var/lib/mysql-keyring/keys.txt
+        exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
+      - bash
+      - mysqld
+      - --log-bin=mysql-bin
+      - --server-id=9
+      - --port=3318
+      - --plugin-load-add=file_key_management
+      - --file-key-management-filename=/var/lib/mysql-keyring/keys.txt
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:12.3
+      command:
+      - bash
+      - -c
+      - |
+        set -e
+        mkdir -p /var/lib/mysql-keyring
+        echo '1;5b2a3e3c7c1b4e8f9a0d6c2e4f8a1b3c5d7e9f0a2b4c6d8e0f1a3b5c7d9e1f20' > /var/lib/mysql-keyring/keys.txt
+        chown -R mysql:mysql /var/lib/mysql-keyring
+        chmod 0400 /var/lib/mysql-keyring/keys.txt
+        exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
+      - bash
+      - mysqld
+      - --log-bin=mysql-bin
+      - --server-id=10
+      - --port=3319
+      - --plugin-load-add=file_key_management
+      - --file-key-management-filename=/var/lib/mysql-keyring/keys.txt
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mariadb:13
+      command:
+      - bash
+      - -c
+      - |
+        set -e
+        mkdir -p /var/lib/mysql-keyring
+        echo '1;5b2a3e3c7c1b4e8f9a0d6c2e4f8a1b3c5d7e9f0a2b4c6d8e0f1a3b5c7d9e1f20' > /var/lib/mysql-keyring/keys.txt
+        chown -R mysql:mysql /var/lib/mysql-keyring
+        chmod 0400 /var/lib/mysql-keyring/keys.txt
+        exec "$(command -v docker-entrypoint.sh || echo /docker-entrypoint.sh)" "$@"
+      - bash
+      - mysqld
+      - --log-bin=mysql-bin
+      - --server-id=11
+      - --port=3320
       - --plugin-load-add=file_key_management
       - --file-key-management-filename=/var/lib/mysql-keyring/keys.txt
       environment:
@@ -12092,6 +12207,19 @@ jobs:
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mysql:9.7'
           bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mysql:9.7'
     - run:
+        name: Backup from percona57 and restore into mysql_innovation
+        when: always
+        command: |
+          SOURCE_DB=percona57
+          SOURCE_PORT=${MYSQL_PORT_percona57}
+          TARGET_DB=mysql_innovation
+          TARGET_PORT=${MYSQL_PORT_mysql_innovation}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mysql:26.10'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mysql:26.10'
+    - run:
         name: Backup from percona57 and restore into mariadb1006
         when: always
         command: |
@@ -12117,6 +12245,58 @@ jobs:
           export MYSQL_TCP_PORT=${SOURCE_PORT}
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mariadb:10.11'
           bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mariadb:10.11'
+    - run:
+        name: Backup from percona57 and restore into mariadb1104
+        when: always
+        command: |
+          SOURCE_DB=percona57
+          SOURCE_PORT=${MYSQL_PORT_percona57}
+          TARGET_DB=mariadb1104
+          TARGET_PORT=${MYSQL_PORT_mariadb1104}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mariadb:11.4'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mariadb:11.4'
+    - run:
+        name: Backup from percona57 and restore into mariadb1108
+        when: always
+        command: |
+          SOURCE_DB=percona57
+          SOURCE_PORT=${MYSQL_PORT_percona57}
+          TARGET_DB=mariadb1108
+          TARGET_PORT=${MYSQL_PORT_mariadb1108}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mariadb:11.8'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mariadb:11.8'
+    - run:
+        name: Backup from percona57 and restore into mariadb1203
+        when: always
+        command: |
+          SOURCE_DB=percona57
+          SOURCE_PORT=${MYSQL_PORT_percona57}
+          TARGET_DB=mariadb1203
+          TARGET_PORT=${MYSQL_PORT_mariadb1203}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mariadb:12.3'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mariadb:12.3'
+    - run:
+        name: Backup from percona57 and restore into mariadb_rolling
+        when: always
+        command: |
+          SOURCE_DB=percona57
+          SOURCE_PORT=${MYSQL_PORT_percona57}
+          TARGET_DB=mariadb_rolling
+          TARGET_PORT=${MYSQL_PORT_mariadb_rolling}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mariadb:13.1'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:5.7' --target-db 'mariadb:13.1'
     - run:
         name: Backup from percona80 and restore into percona84
         when: always
@@ -12144,6 +12324,19 @@ jobs:
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mysql:9.7'
           bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mysql:9.7'
     - run:
+        name: Backup from percona80 and restore into mysql_innovation
+        when: always
+        command: |
+          SOURCE_DB=percona80
+          SOURCE_PORT=${MYSQL_PORT_percona80}
+          TARGET_DB=mysql_innovation
+          TARGET_PORT=${MYSQL_PORT_mysql_innovation}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mysql:26.10'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mysql:26.10'
+    - run:
         name: Backup from percona80 and restore into mariadb1006
         when: always
         command: |
@@ -12170,6 +12363,58 @@ jobs:
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mariadb:10.11'
           bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mariadb:10.11'
     - run:
+        name: Backup from percona80 and restore into mariadb1104
+        when: always
+        command: |
+          SOURCE_DB=percona80
+          SOURCE_PORT=${MYSQL_PORT_percona80}
+          TARGET_DB=mariadb1104
+          TARGET_PORT=${MYSQL_PORT_mariadb1104}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mariadb:11.4'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mariadb:11.4'
+    - run:
+        name: Backup from percona80 and restore into mariadb1108
+        when: always
+        command: |
+          SOURCE_DB=percona80
+          SOURCE_PORT=${MYSQL_PORT_percona80}
+          TARGET_DB=mariadb1108
+          TARGET_PORT=${MYSQL_PORT_mariadb1108}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mariadb:11.8'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mariadb:11.8'
+    - run:
+        name: Backup from percona80 and restore into mariadb1203
+        when: always
+        command: |
+          SOURCE_DB=percona80
+          SOURCE_PORT=${MYSQL_PORT_percona80}
+          TARGET_DB=mariadb1203
+          TARGET_PORT=${MYSQL_PORT_mariadb1203}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mariadb:12.3'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mariadb:12.3'
+    - run:
+        name: Backup from percona80 and restore into mariadb_rolling
+        when: always
+        command: |
+          SOURCE_DB=percona80
+          SOURCE_PORT=${MYSQL_PORT_percona80}
+          TARGET_DB=mariadb_rolling
+          TARGET_PORT=${MYSQL_PORT_mariadb_rolling}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mariadb:13.1'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.0' --target-db 'mariadb:13.1'
+    - run:
         name: Backup from percona84 and restore into mysql97
         when: always
         command: |
@@ -12182,6 +12427,19 @@ jobs:
           export MYSQL_TCP_PORT=${SOURCE_PORT}
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mysql:9.7'
           bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mysql:9.7'
+    - run:
+        name: Backup from percona84 and restore into mysql_innovation
+        when: always
+        command: |
+          SOURCE_DB=percona84
+          SOURCE_PORT=${MYSQL_PORT_percona84}
+          TARGET_DB=mysql_innovation
+          TARGET_PORT=${MYSQL_PORT_mysql_innovation}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mysql:26.10'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mysql:26.10'
     - run:
         name: Backup from percona84 and restore into mariadb1006
         when: always
@@ -12209,6 +12467,71 @@ jobs:
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mariadb:10.11'
           bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mariadb:10.11'
     - run:
+        name: Backup from percona84 and restore into mariadb1104
+        when: always
+        command: |
+          SOURCE_DB=percona84
+          SOURCE_PORT=${MYSQL_PORT_percona84}
+          TARGET_DB=mariadb1104
+          TARGET_PORT=${MYSQL_PORT_mariadb1104}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mariadb:11.4'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mariadb:11.4'
+    - run:
+        name: Backup from percona84 and restore into mariadb1108
+        when: always
+        command: |
+          SOURCE_DB=percona84
+          SOURCE_PORT=${MYSQL_PORT_percona84}
+          TARGET_DB=mariadb1108
+          TARGET_PORT=${MYSQL_PORT_mariadb1108}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mariadb:11.8'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mariadb:11.8'
+    - run:
+        name: Backup from percona84 and restore into mariadb1203
+        when: always
+        command: |
+          SOURCE_DB=percona84
+          SOURCE_PORT=${MYSQL_PORT_percona84}
+          TARGET_DB=mariadb1203
+          TARGET_PORT=${MYSQL_PORT_mariadb1203}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mariadb:12.3'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mariadb:12.3'
+    - run:
+        name: Backup from percona84 and restore into mariadb_rolling
+        when: always
+        command: |
+          SOURCE_DB=percona84
+          SOURCE_PORT=${MYSQL_PORT_percona84}
+          TARGET_DB=mariadb_rolling
+          TARGET_PORT=${MYSQL_PORT_mariadb_rolling}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mariadb:13.1'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'percona:8.4' --target-db 'mariadb:13.1'
+    - run:
+        name: Backup from mysql97 and restore into mysql_innovation
+        when: always
+        command: |
+          SOURCE_DB=mysql97
+          SOURCE_PORT=${MYSQL_PORT_mysql97}
+          TARGET_DB=mysql_innovation
+          TARGET_PORT=${MYSQL_PORT_mysql_innovation}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mysql:26.10'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mysql:26.10'
+    - run:
         name: Backup from mysql97 and restore into mariadb1006
         when: always
         command: |
@@ -12234,6 +12557,58 @@ jobs:
           export MYSQL_TCP_PORT=${SOURCE_PORT}
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mariadb:10.11'
           bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mariadb:10.11'
+    - run:
+        name: Backup from mysql97 and restore into mariadb1104
+        when: always
+        command: |
+          SOURCE_DB=mysql97
+          SOURCE_PORT=${MYSQL_PORT_mysql97}
+          TARGET_DB=mariadb1104
+          TARGET_PORT=${MYSQL_PORT_mariadb1104}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mariadb:11.4'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mariadb:11.4'
+    - run:
+        name: Backup from mysql97 and restore into mariadb1108
+        when: always
+        command: |
+          SOURCE_DB=mysql97
+          SOURCE_PORT=${MYSQL_PORT_mysql97}
+          TARGET_DB=mariadb1108
+          TARGET_PORT=${MYSQL_PORT_mariadb1108}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mariadb:11.8'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mariadb:11.8'
+    - run:
+        name: Backup from mysql97 and restore into mariadb1203
+        when: always
+        command: |
+          SOURCE_DB=mysql97
+          SOURCE_PORT=${MYSQL_PORT_mysql97}
+          TARGET_DB=mariadb1203
+          TARGET_PORT=${MYSQL_PORT_mariadb1203}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mariadb:12.3'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mariadb:12.3'
+    - run:
+        name: Backup from mysql97 and restore into mariadb_rolling
+        when: always
+        command: |
+          SOURCE_DB=mysql97
+          SOURCE_PORT=${MYSQL_PORT_mysql97}
+          TARGET_DB=mariadb_rolling
+          TARGET_PORT=${MYSQL_PORT_mariadb_rolling}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mariadb:13.1'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mysql:9.7' --target-db 'mariadb:13.1'
     - run:
         name: Backup from mariadb1006 and restore into percona57
         when: always
@@ -12287,6 +12662,19 @@ jobs:
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mysql:9.7'
           bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mysql:9.7'
     - run:
+        name: Backup from mariadb1006 and restore into mysql_innovation
+        when: always
+        command: |
+          SOURCE_DB=mariadb1006
+          SOURCE_PORT=${MYSQL_PORT_mariadb1006}
+          TARGET_DB=mysql_innovation
+          TARGET_PORT=${MYSQL_PORT_mysql_innovation}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mysql:26.10'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mysql:26.10'
+    - run:
         name: Backup from mariadb1006 and restore into mariadb1011
         when: always
         command: |
@@ -12299,6 +12687,58 @@ jobs:
           export MYSQL_TCP_PORT=${SOURCE_PORT}
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mariadb:10.11'
           bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mariadb:10.11'
+    - run:
+        name: Backup from mariadb1006 and restore into mariadb1104
+        when: always
+        command: |
+          SOURCE_DB=mariadb1006
+          SOURCE_PORT=${MYSQL_PORT_mariadb1006}
+          TARGET_DB=mariadb1104
+          TARGET_PORT=${MYSQL_PORT_mariadb1104}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mariadb:11.4'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mariadb:11.4'
+    - run:
+        name: Backup from mariadb1006 and restore into mariadb1108
+        when: always
+        command: |
+          SOURCE_DB=mariadb1006
+          SOURCE_PORT=${MYSQL_PORT_mariadb1006}
+          TARGET_DB=mariadb1108
+          TARGET_PORT=${MYSQL_PORT_mariadb1108}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mariadb:11.8'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mariadb:11.8'
+    - run:
+        name: Backup from mariadb1006 and restore into mariadb1203
+        when: always
+        command: |
+          SOURCE_DB=mariadb1006
+          SOURCE_PORT=${MYSQL_PORT_mariadb1006}
+          TARGET_DB=mariadb1203
+          TARGET_PORT=${MYSQL_PORT_mariadb1203}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mariadb:12.3'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mariadb:12.3'
+    - run:
+        name: Backup from mariadb1006 and restore into mariadb_rolling
+        when: always
+        command: |
+          SOURCE_DB=mariadb1006
+          SOURCE_PORT=${MYSQL_PORT_mariadb1006}
+          TARGET_DB=mariadb_rolling
+          TARGET_PORT=${MYSQL_PORT_mariadb_rolling}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mariadb:13.1'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.6' --target-db 'mariadb:13.1'
     - run:
         name: Backup from mariadb1011 and restore into percona57
         when: always
@@ -12351,6 +12791,344 @@ jobs:
           export MYSQL_TCP_PORT=${SOURCE_PORT}
           bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mysql:9.7'
           bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mysql:9.7'
+    - run:
+        name: Backup from mariadb1011 and restore into mysql_innovation
+        when: always
+        command: |
+          SOURCE_DB=mariadb1011
+          SOURCE_PORT=${MYSQL_PORT_mariadb1011}
+          TARGET_DB=mysql_innovation
+          TARGET_PORT=${MYSQL_PORT_mysql_innovation}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mysql:26.10'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mysql:26.10'
+    - run:
+        name: Backup from mariadb1011 and restore into mariadb1104
+        when: always
+        command: |
+          SOURCE_DB=mariadb1011
+          SOURCE_PORT=${MYSQL_PORT_mariadb1011}
+          TARGET_DB=mariadb1104
+          TARGET_PORT=${MYSQL_PORT_mariadb1104}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mariadb:11.4'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mariadb:11.4'
+    - run:
+        name: Backup from mariadb1011 and restore into mariadb1108
+        when: always
+        command: |
+          SOURCE_DB=mariadb1011
+          SOURCE_PORT=${MYSQL_PORT_mariadb1011}
+          TARGET_DB=mariadb1108
+          TARGET_PORT=${MYSQL_PORT_mariadb1108}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mariadb:11.8'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mariadb:11.8'
+    - run:
+        name: Backup from mariadb1011 and restore into mariadb1203
+        when: always
+        command: |
+          SOURCE_DB=mariadb1011
+          SOURCE_PORT=${MYSQL_PORT_mariadb1011}
+          TARGET_DB=mariadb1203
+          TARGET_PORT=${MYSQL_PORT_mariadb1203}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mariadb:12.3'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mariadb:12.3'
+    - run:
+        name: Backup from mariadb1011 and restore into mariadb_rolling
+        when: always
+        command: |
+          SOURCE_DB=mariadb1011
+          SOURCE_PORT=${MYSQL_PORT_mariadb1011}
+          TARGET_DB=mariadb_rolling
+          TARGET_PORT=${MYSQL_PORT_mariadb_rolling}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mariadb:13.1'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:10.11' --target-db 'mariadb:13.1'
+    - run:
+        name: Backup from mariadb1104 and restore into percona57
+        when: always
+        command: |
+          SOURCE_DB=mariadb1104
+          SOURCE_PORT=${MYSQL_PORT_mariadb1104}
+          TARGET_DB=percona57
+          TARGET_PORT=${MYSQL_PORT_percona57}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'percona:5.7'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'percona:5.7'
+    - run:
+        name: Backup from mariadb1104 and restore into percona80
+        when: always
+        command: |
+          SOURCE_DB=mariadb1104
+          SOURCE_PORT=${MYSQL_PORT_mariadb1104}
+          TARGET_DB=percona80
+          TARGET_PORT=${MYSQL_PORT_percona80}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'percona:8.0'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'percona:8.0'
+    - run:
+        name: Backup from mariadb1104 and restore into percona84
+        when: always
+        command: |
+          SOURCE_DB=mariadb1104
+          SOURCE_PORT=${MYSQL_PORT_mariadb1104}
+          TARGET_DB=percona84
+          TARGET_PORT=${MYSQL_PORT_percona84}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'percona:8.4'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'percona:8.4'
+    - run:
+        name: Backup from mariadb1104 and restore into mysql97
+        when: always
+        command: |
+          SOURCE_DB=mariadb1104
+          SOURCE_PORT=${MYSQL_PORT_mariadb1104}
+          TARGET_DB=mysql97
+          TARGET_PORT=${MYSQL_PORT_mysql97}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'mysql:9.7'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'mysql:9.7'
+    - run:
+        name: Backup from mariadb1104 and restore into mysql_innovation
+        when: always
+        command: |
+          SOURCE_DB=mariadb1104
+          SOURCE_PORT=${MYSQL_PORT_mariadb1104}
+          TARGET_DB=mysql_innovation
+          TARGET_PORT=${MYSQL_PORT_mysql_innovation}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'mysql:26.10'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'mysql:26.10'
+    - run:
+        name: Backup from mariadb1104 and restore into mariadb1108
+        when: always
+        command: |
+          SOURCE_DB=mariadb1104
+          SOURCE_PORT=${MYSQL_PORT_mariadb1104}
+          TARGET_DB=mariadb1108
+          TARGET_PORT=${MYSQL_PORT_mariadb1108}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'mariadb:11.8'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'mariadb:11.8'
+    - run:
+        name: Backup from mariadb1104 and restore into mariadb1203
+        when: always
+        command: |
+          SOURCE_DB=mariadb1104
+          SOURCE_PORT=${MYSQL_PORT_mariadb1104}
+          TARGET_DB=mariadb1203
+          TARGET_PORT=${MYSQL_PORT_mariadb1203}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'mariadb:12.3'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'mariadb:12.3'
+    - run:
+        name: Backup from mariadb1104 and restore into mariadb_rolling
+        when: always
+        command: |
+          SOURCE_DB=mariadb1104
+          SOURCE_PORT=${MYSQL_PORT_mariadb1104}
+          TARGET_DB=mariadb_rolling
+          TARGET_PORT=${MYSQL_PORT_mariadb_rolling}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'mariadb:13.1'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.4' --target-db 'mariadb:13.1'
+    - run:
+        name: Backup from mariadb1108 and restore into percona57
+        when: always
+        command: |
+          SOURCE_DB=mariadb1108
+          SOURCE_PORT=${MYSQL_PORT_mariadb1108}
+          TARGET_DB=percona57
+          TARGET_PORT=${MYSQL_PORT_percona57}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'percona:5.7'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'percona:5.7'
+    - run:
+        name: Backup from mariadb1108 and restore into percona80
+        when: always
+        command: |
+          SOURCE_DB=mariadb1108
+          SOURCE_PORT=${MYSQL_PORT_mariadb1108}
+          TARGET_DB=percona80
+          TARGET_PORT=${MYSQL_PORT_percona80}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'percona:8.0'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'percona:8.0'
+    - run:
+        name: Backup from mariadb1108 and restore into percona84
+        when: always
+        command: |
+          SOURCE_DB=mariadb1108
+          SOURCE_PORT=${MYSQL_PORT_mariadb1108}
+          TARGET_DB=percona84
+          TARGET_PORT=${MYSQL_PORT_percona84}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'percona:8.4'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'percona:8.4'
+    - run:
+        name: Backup from mariadb1108 and restore into mysql97
+        when: always
+        command: |
+          SOURCE_DB=mariadb1108
+          SOURCE_PORT=${MYSQL_PORT_mariadb1108}
+          TARGET_DB=mysql97
+          TARGET_PORT=${MYSQL_PORT_mysql97}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'mysql:9.7'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'mysql:9.7'
+    - run:
+        name: Backup from mariadb1108 and restore into mysql_innovation
+        when: always
+        command: |
+          SOURCE_DB=mariadb1108
+          SOURCE_PORT=${MYSQL_PORT_mariadb1108}
+          TARGET_DB=mysql_innovation
+          TARGET_PORT=${MYSQL_PORT_mysql_innovation}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'mysql:26.10'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'mysql:26.10'
+    - run:
+        name: Backup from mariadb1108 and restore into mariadb1203
+        when: always
+        command: |
+          SOURCE_DB=mariadb1108
+          SOURCE_PORT=${MYSQL_PORT_mariadb1108}
+          TARGET_DB=mariadb1203
+          TARGET_PORT=${MYSQL_PORT_mariadb1203}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'mariadb:12.3'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'mariadb:12.3'
+    - run:
+        name: Backup from mariadb1108 and restore into mariadb_rolling
+        when: always
+        command: |
+          SOURCE_DB=mariadb1108
+          SOURCE_PORT=${MYSQL_PORT_mariadb1108}
+          TARGET_DB=mariadb_rolling
+          TARGET_PORT=${MYSQL_PORT_mariadb_rolling}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'mariadb:13.1'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:11.8' --target-db 'mariadb:13.1'
+    - run:
+        name: Backup from mariadb1203 and restore into percona57
+        when: always
+        command: |
+          SOURCE_DB=mariadb1203
+          SOURCE_PORT=${MYSQL_PORT_mariadb1203}
+          TARGET_DB=percona57
+          TARGET_PORT=${MYSQL_PORT_percona57}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'percona:5.7'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'percona:5.7'
+    - run:
+        name: Backup from mariadb1203 and restore into percona80
+        when: always
+        command: |
+          SOURCE_DB=mariadb1203
+          SOURCE_PORT=${MYSQL_PORT_mariadb1203}
+          TARGET_DB=percona80
+          TARGET_PORT=${MYSQL_PORT_percona80}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'percona:8.0'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'percona:8.0'
+    - run:
+        name: Backup from mariadb1203 and restore into percona84
+        when: always
+        command: |
+          SOURCE_DB=mariadb1203
+          SOURCE_PORT=${MYSQL_PORT_mariadb1203}
+          TARGET_DB=percona84
+          TARGET_PORT=${MYSQL_PORT_percona84}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'percona:8.4'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'percona:8.4'
+    - run:
+        name: Backup from mariadb1203 and restore into mysql97
+        when: always
+        command: |
+          SOURCE_DB=mariadb1203
+          SOURCE_PORT=${MYSQL_PORT_mariadb1203}
+          TARGET_DB=mysql97
+          TARGET_PORT=${MYSQL_PORT_mysql97}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'mysql:9.7'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'mysql:9.7'
+    - run:
+        name: Backup from mariadb1203 and restore into mysql_innovation
+        when: always
+        command: |
+          SOURCE_DB=mariadb1203
+          SOURCE_PORT=${MYSQL_PORT_mariadb1203}
+          TARGET_DB=mysql_innovation
+          TARGET_PORT=${MYSQL_PORT_mysql_innovation}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'mysql:26.10'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'mysql:26.10'
+    - run:
+        name: Backup from mariadb1203 and restore into mariadb_rolling
+        when: always
+        command: |
+          SOURCE_DB=mariadb1203
+          SOURCE_PORT=${MYSQL_PORT_mariadb1203}
+          TARGET_DB=mariadb_rolling
+          TARGET_PORT=${MYSQL_PORT_mariadb_rolling}
+          echo "Source (mydumper): ${SOURCE_DB} on ${MYSQL_HOST}:${SOURCE_PORT}"
+          echo "Target (myloader): ${TARGET_DB} on ${MYSQL_HOST}:${TARGET_PORT}"
+          export MYSQL_TCP_PORT=${SOURCE_PORT}
+          bash ./test_mydumper.sh -c 1:1 -d SSL --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'mariadb:13.1'
+          bash ./test_mydumper.sh -c 1:1 -d SSL --encrypt-tables --replica-port ${TARGET_PORT} --source-db 'mariadb:12.3' --target-db 'mariadb:13.1'
 
   build_el7_mysql80_aarch64:
     executor: el7

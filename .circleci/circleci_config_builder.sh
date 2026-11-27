@@ -392,10 +392,14 @@ done
 ## ALL DATABASES EXECUTOR: resolute builder + one server per database image,
 ## each one listening on its own port (MYSQL_PORT_<vendor> in the builder)
 all_databases_os=resolute
-# Percona is preferred over MySQL when both ship the same version (8.0, 8.4).
+# One server per version: Percona is a drop-in of MySQL, so Percona is used
+# for 5.7, 8.0 and 8.4 and MySQL for 9.7 and the Innovation track.
 # Each family is listed from the oldest to the newest version, as the
 # migration steps below rely on this order.
-all_databases_vendors=( percona57 percona80 percona84 mysql97 mariadb1006 mariadb1011 )
+all_databases_vendors=( percona57 percona80 percona84 mysql97 mysql_innovation mariadb1006 mariadb1011 mariadb1104 mariadb1108 mariadb1203 mariadb_rolling )
+# Innovation and rolling releases are only restore targets, to catch issues
+# with the next LTS early; nobody is expected to migrate away from them.
+all_databases_target_only=( mysql_innovation mariadb_rolling )
 all_databases_first_port=3310
 all_databases_client=mysql84
 
@@ -419,7 +423,7 @@ done
 # Every server of the all_databases executor has a keyring, so tables can be
 # encrypted at rest (test_mydumper.sh --encrypt-tables):
 #   - percona57, percona80: keyring_file plugin, only server options
-#   - mysql97, percona84: component_keyring_file, which needs a manifest next
+#   - mysql97, mysql_innovation, percona84: component_keyring_file, which needs a manifest next
 #     to mysqld and a config file in the plugin directory, written as root
 #     before the image entrypoint starts
 #   - mariadb*: file_key_management plugin, which needs a key file
@@ -465,7 +469,7 @@ do
           percona57|percona80)
             # /tmp: the mysql user can not create a directory in /var/lib
             command="${command}, --early-plugin-load=keyring_file.so, --keyring-file-data=/tmp/keyring_file" ;;
-          mysql97)
+          mysql97|mysql_innovation)
             command="${command}, --innodb-use-native-aio=0, --innodb-flush-method=fsync"
             prepare="${all_databases_component_keyring_prepare}" ;;
           percona84)
@@ -1126,7 +1130,8 @@ cat <<EOF
         expected_version: '${all_vendors[${all_databases_client}_8]}'
 EOF
 # Migration steps: never the same server; inside a family (MySQL/Percona or
-# MariaDB) only from an older to a newer version; between families both ways.
+# MariaDB) only from an older to a newer version; between families both ways;
+# the all_databases_target_only servers are never a source.
 vendor_family() {
     case $1 in
       mariadb*) echo mariadb ;;
@@ -1135,6 +1140,7 @@ vendor_family() {
 }
 for (( s=0; s<${#all_databases_vendors[@]}; s++ ))
 do
+  [[ " ${all_databases_target_only[*]} " == *" ${all_databases_vendors[$s]} "* ]] && continue
   for (( t=0; t<${#all_databases_vendors[@]}; t++ ))
   do
     source_vendor=${all_databases_vendors[$s]}
