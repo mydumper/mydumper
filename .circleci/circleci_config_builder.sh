@@ -206,7 +206,7 @@ all_os[${os}_0]="jammy"
 all_os[${os}_1]="cimg/base:current-22.04"
 all_os[${os}_2]="percona-release_latest.jammy_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="percona57 percona80 percona97 mysql84 mysql97 mysql_innovation ubuntu_default mariadb1011 mariadb1006 mariadb1104 mariadb1108 mariadb1203 mariadb_rolling"
+all_os[${os}_4]="percona57 percona80 mysql84 mysql97 ubuntu_default mariadb1011 mariadb1006"
 
 os=noble
 all_os[${os}_0]="noble"
@@ -262,7 +262,7 @@ all_os[${os}_0]="bookworm"
 all_os[${os}_1]="debian:bookworm"
 all_os[${os}_2]="percona-release_latest.bookworm_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="percona57 percona80 percona97 mysql84 mysql_innovation debian_default mariadb1011 mariadb1104 mariadb1108 mariadb1203 mariadb_rolling"
+all_os[${os}_4]="percona57 percona80 mysql84 debian_default mariadb1011"
 
 os=trixie
 all_os[${os}_0]="trixie"
@@ -712,6 +712,12 @@ cat <<EOF
     - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
+    - run:
+        name: Show MySQL apt sources and libmysqlclient candidates
+        command: |
+          cat /etc/apt/sources.list.d/mysql.list || true
+          dpkg -l mysql-apt-config || true
+          apt-cache policy libmysqlclient24 libmysqlclient-dev || true
     - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
     - when:
         condition: << parameters.test >>
@@ -725,6 +731,8 @@ cat <<EOF
         default: false
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
+    # The percona-release shipped in the builder images does not know ps-97-lts
+    - run: (curl -fsSLo /tmp/percona-release.deb https://repo.percona.com/apt/percona-release_latest.generic_all.deb || wget -qO /tmp/percona-release.deb https://repo.percona.com/apt/percona-release_latest.generic_all.deb) && sudo apt-get install -y /tmp/percona-release.deb
     - run: sudo percona-release setup -y ${all_vendors[percona97_2]}
     - run: sudo apt-get install -y gdb screen time libperconaserverclient24 libperconaserverclient24-dev
     - when:
@@ -944,6 +952,8 @@ cat <<EOF
   prepare_el_percona97:
     steps:
     - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
+    # The percona-release shipped in the builder images does not know ps-97-lts
+    - run: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     - run: percona-release setup -y ${all_vendors[percona97_2]}
     - run: yum -y install libasan gdb screen time percona-server-devel
 

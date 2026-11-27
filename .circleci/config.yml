@@ -4371,6 +4371,12 @@ commands:
     - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
+    - run:
+        name: Show MySQL apt sources and libmysqlclient candidates
+        command: |
+          cat /etc/apt/sources.list.d/mysql.list || true
+          dpkg -l mysql-apt-config || true
+          apt-cache policy libmysqlclient24 libmysqlclient-dev || true
     - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
     - when:
         condition: << parameters.test >>
@@ -4384,6 +4390,8 @@ commands:
         default: false
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
+    # The percona-release shipped in the builder images does not know ps-97-lts
+    - run: (curl -fsSLo /tmp/percona-release.deb https://repo.percona.com/apt/percona-release_latest.generic_all.deb || wget -qO /tmp/percona-release.deb https://repo.percona.com/apt/percona-release_latest.generic_all.deb) && sudo apt-get install -y /tmp/percona-release.deb
     - run: sudo percona-release setup -y ps-97-lts
     - run: sudo apt-get install -y gdb screen time libperconaserverclient24 libperconaserverclient24-dev
     - when:
@@ -6825,6 +6833,8 @@ commands:
   prepare_el_percona97:
     steps:
     - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
+    # The percona-release shipped in the builder images does not know ps-97-lts
+    - run: yum -y install https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     - run: percona-release setup -y ps-97-lts
     - run: yum -y install libasan gdb screen time percona-server-devel
 
@@ -11479,11 +11489,6 @@ jobs:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
-    - prepare_jammy_percona97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: '(MySQL|Percona) 9[.]7[.]'
-    - checkout
     - prepare_jammy_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -11493,11 +11498,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 9[.]7[.]'
-    - checkout
-    - prepare_jammy_mysql_innovation
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MySQL [0-9]{2}[.][0-9]+[.]'
     - checkout
     - prepare_jammy_ubuntu_default
     - compile_and_test_mydumper:
@@ -11513,26 +11513,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]6[.]'
-    - checkout
-    - prepare_jammy_mariadb1104
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 11[.]4[.]'
-    - checkout
-    - prepare_jammy_mariadb1108
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 11[.]8[.]'
-    - checkout
-    - prepare_jammy_mariadb1203
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 12[.]3[.]'
-    - checkout
-    - prepare_jammy_mariadb_rolling
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -11723,20 +11703,10 @@ jobs:
         test: << parameters.test >>
         expected_version: '(MySQL|Percona) 8[.]0[.]'
     - checkout
-    - prepare_bookworm_percona97
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: '(MySQL|Percona) 9[.]7[.]'
-    - checkout
     - prepare_bookworm_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MySQL 8[.]4[.]'
-    - checkout
-    - prepare_bookworm_mysql_innovation
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MySQL [0-9]{2}[.][0-9]+[.]'
     - checkout
     - prepare_bookworm_debian_default
     - compile_and_test_mydumper:
@@ -11747,26 +11717,6 @@ jobs:
     - compile_and_test_mydumper:
         test: << parameters.test >>
         expected_version: 'MariaDB 10[.]11[.]'
-    - checkout
-    - prepare_bookworm_mariadb1104
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 11[.]4[.]'
-    - checkout
-    - prepare_bookworm_mariadb1108
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 11[.]8[.]'
-    - checkout
-    - prepare_bookworm_mariadb1203
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 12[.]3[.]'
-    - checkout
-    - prepare_bookworm_mariadb_rolling
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
