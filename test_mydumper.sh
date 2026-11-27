@@ -35,6 +35,14 @@ fi
 mysqldump_exe=`which mariadb-dump` ||
 mysqldump_exe=`which mysqldump` ||
   die "mysqldump client not found!"
+# MySQL's mysqldump queries information_schema.COLUMN_STATISTICS on servers
+# reporting version >= 8.0, which includes MariaDB >= 11.0 that has no such
+# table: the dump then fails. mariadb-dump does not know the option.
+mysqldump_extra_args=""
+if $mysqldump_exe --help 2>/dev/null | grep -q -- '--column-statistics'
+then
+  mysqldump_extra_args="--column-statistics=0"
+fi
 
 mysql_exe=`which mariadb` ||
 mysql_exe=`which mysql` ||
@@ -80,7 +88,7 @@ mysqldump()
   local host_arg=${MYSQL_HOST:+-h $MYSQL_HOST}
   # No locks: --skip-lock-tables avoids LOCK TABLES while dumping (enabled by
   # --opt), --skip-add-locks keeps LOCK/UNLOCK TABLES out of the dump file.
-  $mysqldump_exe --no-defaults $host_arg -f --skip-lock-tables --skip-add-locks --user $mysql_user "$@" || exit
+  $mysqldump_exe --no-defaults $host_arg -f --skip-lock-tables --skip-add-locks $mysqldump_extra_args --user $mysql_user "$@" || exit
 }
 export -f mysqldump
 
