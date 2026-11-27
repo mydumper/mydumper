@@ -905,6 +905,9 @@ cat <<EOF
     - when:
         condition: << parameters.test >>
         steps:
+        - run:
+            name: Replication test
+            command: bash ./test/test_replication.sh --replica-port 3307
         - run: bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL --replica-port 3307
         - run: bash ./test_mydumper.sh -d SSL --replica-port 3307
     - store_artifacts:
