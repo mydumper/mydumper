@@ -1662,14 +1662,12 @@ void append_alter_table(GString *alter_table_statement, char *table)
 
 void finish_alter_table(GString *alter_table_statement)
 {
-  gchar *str = g_strrstr_len(alter_table_statement->str, alter_table_statement->len, ",");
-  if ((str - alter_table_statement->str) > (long int)(alter_table_statement->len - 5))
-  {
-    *str = ';';
-    g_string_append_c(alter_table_statement, '\n');
-  }
-  else
-    g_string_append(alter_table_statement, ";\n");
+  gsize end = alter_table_statement->len;
+  while (end > 0 && g_ascii_isspace(alter_table_statement->str[end - 1]))
+    end--;
+  if (end > 0 && alter_table_statement->str[end - 1] == ',')
+    g_string_truncate(alter_table_statement, end - 1);
+  g_string_append(alter_table_statement, ";\n");
 }
 
 int global_process_create_table_statement(gchar *statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes, gboolean table_option_modifier(GString *))
