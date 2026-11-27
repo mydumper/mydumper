@@ -4425,9 +4425,10 @@ commands:
 
   prepare_mariadb1011:
     steps:
-    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
-    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.11"
+    # The mariadb_repo_setup in the builder images is missing (trixie) or too
+    # old to accept 13.x, so the current one is always downloaded
+    - run: curl -fsSLo /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup
+    - run: sudo bash /tmp/mariadb_repo_setup_latest --skip-maxscale --mariadb-server-version "mariadb-10.11"
 
   prepare_apt_mariadb1011:
     parameters:
@@ -4450,9 +4451,10 @@ commands:
 
   prepare_mariadb1006:
     steps:
-    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
-    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.6"
+    # The mariadb_repo_setup in the builder images is missing (trixie) or too
+    # old to accept 13.x, so the current one is always downloaded
+    - run: curl -fsSLo /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup
+    - run: sudo bash /tmp/mariadb_repo_setup_latest --skip-maxscale --mariadb-server-version "mariadb-10.6"
 
   prepare_apt_mariadb1006:
     parameters:
@@ -4475,9 +4477,10 @@ commands:
 
   prepare_mariadb1104:
     steps:
-    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
-    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-11.4"
+    # The mariadb_repo_setup in the builder images is missing (trixie) or too
+    # old to accept 13.x, so the current one is always downloaded
+    - run: curl -fsSLo /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup
+    - run: sudo bash /tmp/mariadb_repo_setup_latest --skip-maxscale --mariadb-server-version "mariadb-11.4"
 
   prepare_apt_mariadb1104:
     parameters:
@@ -4500,9 +4503,10 @@ commands:
 
   prepare_mariadb1108:
     steps:
-    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
-    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-11.8"
+    # The mariadb_repo_setup in the builder images is missing (trixie) or too
+    # old to accept 13.x, so the current one is always downloaded
+    - run: curl -fsSLo /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup
+    - run: sudo bash /tmp/mariadb_repo_setup_latest --skip-maxscale --mariadb-server-version "mariadb-11.8"
 
   prepare_apt_mariadb1108:
     parameters:
@@ -4525,9 +4529,10 @@ commands:
 
   prepare_mariadb1203:
     steps:
-    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
-    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-12.3"
+    # The mariadb_repo_setup in the builder images is missing (trixie) or too
+    # old to accept 13.x, so the current one is always downloaded
+    - run: curl -fsSLo /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup
+    - run: sudo bash /tmp/mariadb_repo_setup_latest --skip-maxscale --mariadb-server-version "mariadb-12.3"
 
   prepare_apt_mariadb1203:
     parameters:
@@ -4550,9 +4555,10 @@ commands:
 
   prepare_mariadb_rolling:
     steps:
-    # Not every builder image ships mariadb_repo_setup (e.g. trixie)
-    - run: '[ -f /tmp/mariadb_repo_setup ] || curl -fsSLo /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup https://r.mariadb.com/downloads/mariadb_repo_setup'
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-13.1.2"
+    # The mariadb_repo_setup in the builder images is missing (trixie) or too
+    # old to accept 13.x, so the current one is always downloaded
+    - run: curl -fsSLo /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup
+    - run: sudo bash /tmp/mariadb_repo_setup_latest --skip-maxscale --mariadb-server-version "mariadb-13.rolling"
 
   prepare_apt_mariadb_rolling:
     parameters:
@@ -7277,7 +7283,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -7651,7 +7657,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -8025,7 +8031,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -8399,7 +8405,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -8773,7 +8779,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -9147,7 +9153,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -9521,7 +9527,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -9895,7 +9901,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -10269,7 +10275,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -10643,7 +10649,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -11017,7 +11023,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -11391,7 +11397,7 @@ jobs:
         test: << parameters.test >>
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -11602,7 +11608,7 @@ jobs:
     - prepare_noble_mariadb_rolling
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -11658,7 +11664,7 @@ jobs:
     - prepare_resolute_mariadb_rolling
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -11781,7 +11787,7 @@ jobs:
     - prepare_trixie_mariadb_rolling
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -11888,7 +11894,7 @@ jobs:
     - prepare_el8_mariadb_rolling
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -11964,7 +11970,7 @@ jobs:
     - prepare_el9_mariadb_rolling
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -12030,7 +12036,7 @@ jobs:
     - prepare_el10_mariadb_rolling
     - compile_and_test_mydumper:
         test: << parameters.test >>
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -12689,7 +12695,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb_rolling_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb_rolling_aarch64/
@@ -13041,7 +13047,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb_rolling_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb_rolling_aarch64/
@@ -13393,7 +13399,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb_rolling_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb_rolling_aarch64/
@@ -13745,7 +13751,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mariadb_rolling_aarch64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mariadb_rolling_aarch64/
@@ -14097,7 +14103,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb_rolling_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb_rolling_x86_64/
@@ -14449,7 +14455,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb_rolling_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb_rolling_x86_64/
@@ -14801,7 +14807,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb_rolling_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb_rolling_x86_64/
@@ -15153,7 +15159,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el10_mariadb_rolling_x86_64
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_mariadb_rolling_x86_64/
@@ -15780,7 +15786,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -16420,7 +16426,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -17060,7 +17066,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -17700,7 +17706,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -18340,7 +18346,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -18980,7 +18986,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -19620,7 +19626,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -20260,7 +20266,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -20900,7 +20906,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -21540,7 +21546,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -22182,7 +22188,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -22822,7 +22828,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -23462,7 +23468,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -24102,7 +24108,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -24742,7 +24748,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -25382,7 +25388,7 @@ jobs:
     - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-        expected_version: 'MariaDB 13[.]1[.]'
+        expected_version: 'MariaDB 13[.][0-9]+[.]'
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 40 )); then false; fi
     - when:
         condition: << parameters.build_man >>
