@@ -77,6 +77,23 @@ fi
 if [ "$source_family" = mariadb ] && [ "$target_family" = mysql ]
 then
   sql_mode_remove+=(SIMULTANEOUS_ASSIGNMENT EMPTY_STRING_IS_NULL TIME_ROUND_FRACTIONAL)
+  # MariaDB >= 11.4 defaults to the UCA 14.0 collations, unknown in MySQL:
+  # use the closest MySQL collation (accent/case sensitivity kept on 8.0+)
+  if (( source_version >= 11004 ))
+  then
+    if (( target_version >= 8000 ))
+    then
+      schema_sed+=(
+        -e "s#utf8mb4_uca1400_\([a-z_]*\)\?as_cs#utf8mb4_0900_as_cs#g"
+        -e "s#utf8mb4_uca1400_\([a-z_]*\)\?as_ci#utf8mb4_0900_as_ci#g"
+        -e "s#utf8mb4_uca1400_[a-z_]*#utf8mb4_0900_ai_ci#g"
+      )
+    else
+      schema_sed+=(-e "s#utf8mb4_uca1400_[a-z_]*#utf8mb4_unicode_520_ci#g")
+    fi
+    # The database default collation changes
+    drop_database_schema_checksums=1
+  fi
 fi
 
 if [ "$source_family" = mysql ] && [ "$target_family" = mariadb ]

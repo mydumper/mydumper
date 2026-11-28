@@ -35,6 +35,18 @@ all_vendors[${vendor}_4]="mysqlclient"
 all_vendors[${vendor}_7]="mysql*9*7*"
 all_vendors[${vendor}_8]="MySQL 9[.]7[.]"
 
+# Innovation track: the repository, the client library and the docker image
+# always follow the newest Innovation release, only _9 names a version.
+vendor=mysql_innovation
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="mysql:26.10"
+all_vendors[${vendor}_1]="mysql:innovation"
+all_vendors[${vendor}_3]="mysqlclient"
+all_vendors[${vendor}_4]="mysqlclient"
+all_vendors[${vendor}_7]="mysql-innovation-community"
+all_vendors[${vendor}_8]="MySQL [0-9]{2}[.][0-9]+[.]"
+all_vendors[${vendor}_10]="mysql97"
+
 vendor=percona57
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_9]="percona:5.7"
@@ -59,6 +71,15 @@ all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
 all_vendors[${vendor}_8]="(MySQL|Percona) 8[.]4[.]"
 
+vendor=percona97
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="percona:9.7"
+all_vendors[${vendor}_1]="percona/percona-server:9.7"
+all_vendors[${vendor}_2]="ps-97-lts"
+all_vendors[${vendor}_3]="perconaserverclient"
+all_vendors[${vendor}_4]="perconaserverclient"
+all_vendors[${vendor}_8]="(MySQL|Percona) 9[.]7[.]"
+
 vendor=mariadb1006
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_9]="mariadb:10.6"
@@ -76,6 +97,44 @@ all_vendors[${vendor}_2]="mariadb-10.11"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
 all_vendors[${vendor}_8]="MariaDB 10[.]11[.]"
+
+vendor=mariadb1104
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="mariadb:11.4"
+all_vendors[${vendor}_1]="mariadb:11.4"
+all_vendors[${vendor}_2]="mariadb-11.4"
+all_vendors[${vendor}_3]="mariadb"
+all_vendors[${vendor}_4]="mariadbclient"
+all_vendors[${vendor}_8]="MariaDB 11[.]4[.]"
+
+vendor=mariadb1108
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="mariadb:11.8"
+all_vendors[${vendor}_1]="mariadb:11.8"
+all_vendors[${vendor}_2]="mariadb-11.8"
+all_vendors[${vendor}_3]="mariadb"
+all_vendors[${vendor}_4]="mariadbclient"
+all_vendors[${vendor}_8]="MariaDB 11[.]8[.]"
+
+vendor=mariadb1203
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="mariadb:12.3"
+all_vendors[${vendor}_1]="mariadb:12.3"
+all_vendors[${vendor}_2]="mariadb-12.3"
+all_vendors[${vendor}_3]="mariadb"
+all_vendors[${vendor}_4]="mariadbclient"
+all_vendors[${vendor}_8]="MariaDB 12[.]3[.]"
+
+# Rolling track: the repository (13.rolling) and the docker image tag follow
+# the newest 13.x release; only _9 names a version.
+vendor=mariadb_rolling
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_9]="mariadb:13.1"
+all_vendors[${vendor}_1]="mariadb:13"
+all_vendors[${vendor}_2]="mariadb-13.rolling"
+all_vendors[${vendor}_3]="mariadb"
+all_vendors[${vendor}_4]="mariadbclient"
+all_vendors[${vendor}_8]="MariaDB 13[.][0-9]+[.]"
 
 vendor=tidb
 all_vendors[${vendor}_0]="$vendor"
@@ -98,9 +157,17 @@ all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 all_vendors[${vendor}_8]="MySQL [0-9]"
 
+# MariaDB images from 11.x on no longer ship the mysqld alias, only mariadbd,
+# which every supported MariaDB image (>= 10.5) has
+for vendor in mariadb1006 mariadb1011 mariadb1104 mariadb1108 mariadb1203 mariadb_rolling
+do
+    all_vendors[${vendor}_5]="${db_server_command/mysqld/mariadbd}"
+    all_vendors[${vendor}_6]="${replica_db_server_command/mysqld/mariadbd}"
+done
+
 #_0: name
 #_1: docker image
-#_2
+#_2: repository given to mariadb_repo_setup (MariaDB) or percona-release (Percona)
 #_3: variable found in CMAKE, like: -DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}
 #_4: static library name, like: lib${all_vendors[${vendor}_4]}.a
 #_5: server command, when it differs from db_server_command
@@ -108,10 +175,11 @@ all_vendors[${vendor}_8]="MySQL [0-9]"
 #_7: repository regex for yum-config-manager used on EL
 #_8: regex expected after "built against " in mydumper/myloader --version
 #_9: vendor:version for test_mydumper.sh --source-db/--target-db
+#_10: MySQL release rpm used on EL (<_10>-community-release-<os>.rpm), when it differs from _0
 
-list_mysql_version=( "mysql80" "mysql84" "mysql97" "debian_default" "ubuntu_default")
-list_percona_version=( "percona57" "percona80" "percona84")
-list_mariadb_version=( "mariadb1011" "mariadb1006")
+list_mysql_version=( "mysql80" "mysql84" "mysql97" "mysql_innovation" "debian_default" "ubuntu_default")
+list_percona_version=( "percona57" "percona80" "percona84" "percona97")
+list_mariadb_version=( "mariadb1011" "mariadb1006" "mariadb1104" "mariadb1108" "mariadb1203" "mariadb_rolling")
 list_all_vendors=( "${list_mysql_version[@]}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" )
 list_arch=( "arm" "amd" )
 # list_arch=( "amd" )
@@ -153,14 +221,14 @@ all_os[${os}_0]="noble"
 all_os[${os}_1]="cimg/base:current-24.04"
 all_os[${os}_2]="percona-release_latest.noble_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql80 mysql84 ubuntu_default percona80 percona84 mariadb1011"
+all_os[${os}_4]="mysql80 mysql84 mysql_innovation ubuntu_default percona80 percona84 percona97 mariadb1011 mariadb1104 mariadb1108 mariadb1203 mariadb_rolling"
 
 os=resolute
 all_os[${os}_0]="resolute"
 all_os[${os}_1]="cimg/base:current-26.04"
 all_os[${os}_2]="percona-release_latest.resolute_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="percona84 mysql97 ubuntu_default"
+all_os[${os}_4]="percona84 percona97 mysql97 mysql_innovation ubuntu_default mariadb1108 mariadb1203 mariadb_rolling"
 
 os=el7
 all_os[${os}_0]="el7"
@@ -174,21 +242,21 @@ all_os[${os}_0]="el8"
 all_os[${os}_1]="almalinux:8"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="mysql84 percona57 percona80 percona84 mariadb1011 mariadb1006"
+all_os[${os}_4]="mysql84 mysql_innovation percona57 percona80 percona84 percona97 mariadb1011 mariadb1006 mariadb1104 mariadb1108 mariadb1203 mariadb_rolling"
 
 os=el9
 all_os[${os}_0]="el9"
 all_os[${os}_1]="almalinux:9"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="percona57 percona80 mysql84 mysql97 mariadb1011 mariadb1006"
+all_os[${os}_4]="percona57 percona80 percona97 mysql84 mysql97 mysql_innovation mariadb1011 mariadb1006 mariadb1104 mariadb1108 mariadb1203 mariadb_rolling"
 
 os=el10
 all_os[${os}_0]="el10"
 all_os[${os}_1]="almalinux:10"
 
 all_os[${os}_3]="true"
-all_os[${os}_4]="percona80 mysql84 mysql97 mariadb1011"
+all_os[${os}_4]="percona80 percona97 mysql84 mysql97 mysql_innovation mariadb1011 mariadb1104 mariadb1108 mariadb1203 mariadb_rolling"
 
 os=bullseye
 all_os[${os}_0]="bullseye"
@@ -209,7 +277,7 @@ all_os[${os}_0]="trixie"
 all_os[${os}_1]="debian:trixie"
 all_os[${os}_2]="percona-release_latest.trixie_all.deb"
 all_os[${os}_3]="true"
-all_os[${os}_4]="debian_default percona84"
+all_os[${os}_4]="debian_default percona84 percona97 mysql_innovation mariadb1108 mariadb1203 mariadb_rolling"
 
 # os=
 # all_os[${os}_0]=""
@@ -332,10 +400,14 @@ done
 ## ALL DATABASES EXECUTOR: resolute builder + one server per database image,
 ## each one listening on its own port (MYSQL_PORT_<vendor> in the builder)
 all_databases_os=resolute
-# Percona is preferred over MySQL when both ship the same version (8.0, 8.4).
+# One server per version: Percona is a drop-in of MySQL, so Percona is used
+# for 5.7, 8.0 and 8.4 and MySQL for 9.7 and the Innovation track.
 # Each family is listed from the oldest to the newest version, as the
 # migration steps below rely on this order.
-all_databases_vendors=( percona57 percona80 percona84 mysql97 mariadb1006 mariadb1011 )
+all_databases_vendors=( percona57 percona80 percona84 mysql97 mysql_innovation mariadb1006 mariadb1011 mariadb1104 mariadb1108 mariadb1203 mariadb_rolling )
+# Innovation and rolling releases are only restore targets, to catch issues
+# with the next LTS early; nobody is expected to migrate away from them.
+all_databases_target_only=( mysql_innovation mariadb_rolling )
 all_databases_first_port=3310
 all_databases_client=mysql84
 
@@ -359,7 +431,7 @@ done
 # Every server of the all_databases executor has a keyring, so tables can be
 # encrypted at rest (test_mydumper.sh --encrypt-tables):
 #   - percona57, percona80: keyring_file plugin, only server options
-#   - mysql97, percona84: component_keyring_file, which needs a manifest next
+#   - mysql97, mysql_innovation, percona84: component_keyring_file, which needs a manifest next
 #     to mysqld and a config file in the plugin directory, written as root
 #     before the image entrypoint starts
 #   - mariadb*: file_key_management plugin, which needs a key file
@@ -405,7 +477,7 @@ do
           percona57|percona80)
             # /tmp: the mysql user can not create a directory in /var/lib
             command="${command}, --early-plugin-load=keyring_file.so, --keyring-file-data=/tmp/keyring_file" ;;
-          mysql97)
+          mysql97|mysql_innovation)
             command="${command}, --innodb-use-native-aio=0, --innodb-flush-method=fsync"
             prepare="${all_databases_component_keyring_prepare}" ;;
           percona84)
@@ -464,16 +536,6 @@ commands:
   prepare_apt:
     steps:
     - run: echo 'Acquire::Check-Valid-Until "false";' | sudo tee /etc/apt/apt.conf.d/99ignore-valid-until
-
-  prepare_mariadb1006:
-    steps:
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.6"
-#    - run: yum-config-manager --disable mariadb-maxscale || true
-
-  prepare_mariadb1011:
-    steps:
-    - run: sudo bash /tmp/mariadb_repo_setup --skip-maxscale --mariadb-server-version "mariadb-10.11"
-#    - run: yum-config-manager --disable mariadb-maxscale || true
 
   prepare_el_mysql80:
     parameters:
@@ -639,37 +701,58 @@ cat <<EOF
         steps:
         - run: sudo apt-get install -y mysql-client
 
-  prepare_apt_mariadb1006:
+  prepare_el_mysql_innovation:
     parameters:
       test:
         type: boolean
         default: false
     steps:
-    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel
     - when:
         condition: << parameters.test >>
         steps:
-        - run: sudo apt-get install -y mariadb-client
+        - run: sudo yum install -y mysql-community-client
 
-  prepare_el_mariadb1006:
-    steps:
-    - prepare_mariadb1006
-    - run: sudo yum install -y libasan gdb screen time MariaDB-devel
-    - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
-
-  prepare_apt_mariadb1011:
+  prepare_apt_mysql_innovation:
     parameters:
       test:
         type: boolean
         default: false
     steps:
-    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
+    - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-innovation" | sudo debconf-set-selections
+    - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
+    - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
+    # mysql-apt-config shows mysql-innovation as selected but writes mysql-5.7
+    # in mysql.list, so the repository line is written here
+    - run:
+        name: Use the mysql-innovation repository
+        command: |
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/keyrings/mysql-apt-config.gpg] http://repo.mysql.com/apt/\${ID}/ \${VERSION_CODENAME} mysql-innovation" | sudo tee /etc/apt/sources.list.d/mysql.list
+    - run: sudo apt-get update
+    - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev
     - when:
         condition: << parameters.test >>
         steps:
-        - run: sudo apt-get install -y mariadb-client
+        - run: sudo apt-get install -y mysql-client
+
+  prepare_apt_percona97:
+    parameters:
+      test:
+        type: boolean
+        default: false
+    steps:
+    # "percona-release setup" only knows hardcoded products and has none for
+    # 9.7 yet: the repository is listed in REPOSITORIES and enabled directly
+    - run: echo 'REPOSITORIES="tools ${all_vendors[percona97_2]}"' | sudo tee /etc/default/percona-release
+    - run: sudo percona-release enable-only ${all_vendors[percona97_2]} release
+    - run: sudo apt-get update
+    - run: sudo apt-get install -y gdb screen time libperconaserverclient24 libperconaserverclient24-dev
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y percona-server-client
 
   erase_packages_apt:
     steps:
@@ -689,16 +772,43 @@ cat <<EOF
     - run: sudo yum install -y libasan gdb screen time MariaDB-devel
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 
-  prepare_el_mariadb1011:
-    steps:
-    - prepare_mariadb1011
-    - run: sudo yum install -y libasan gdb screen time MariaDB-devel
-    - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
-
   erase_packages_el:
     steps:
     - run: sudo yum -y erase \$(rpm -qa | egrep -i "percona|mysql|mariadb" | grep -v "percona-release") || true
 EOF
+
+# MariaDB: every version only differs on the repository (_2) given to mariadb_repo_setup
+for vendor in ${list_mariadb_version[@]}
+do
+    cat <<EOF
+
+  prepare_${all_vendors[${vendor}_0]}:
+    steps:
+    # The mariadb_repo_setup in the builder images is missing (trixie) or too
+    # old to accept 13.x, so the current one is always downloaded
+    - run: curl -fsSLo /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup || wget -qO /tmp/mariadb_repo_setup_latest https://r.mariadb.com/downloads/mariadb_repo_setup
+    - run: sudo bash /tmp/mariadb_repo_setup_latest --skip-maxscale --mariadb-server-version "${all_vendors[${vendor}_2]}"
+
+  prepare_apt_${all_vendors[${vendor}_0]}:
+    parameters:
+      test:
+        type: boolean
+        default: false
+    steps:
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb screen time libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - when:
+        condition: << parameters.test >>
+        steps:
+        - run: sudo apt-get install -y mariadb-client
+
+  prepare_el_${all_vendors[${vendor}_0]}:
+    steps:
+    - prepare_${all_vendors[${vendor}_0]}
+    - run: sudo yum install -y libasan gdb screen time MariaDB-devel
+    - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
+EOF
+done
 
 
 
@@ -711,7 +821,7 @@ do
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - erase_packages_el
-    - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
+    - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_10]:-${all_vendors[${vendor}_0]}}-community-release-${os}.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable '${all_vendors[${vendor}_7]}'
     - prepare_el_${all_vendors[${vendor}_0]}
@@ -726,7 +836,7 @@ do
   prepare_el8_${all_vendors[${vendor}_0]}:
     steps:
     - erase_packages_el
-    - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_0]}-community-release-${os}.rpm
+    - run: sudo rpm -U https://repo.mysql.com//${all_vendors[${vendor}_10]:-${all_vendors[${vendor}_0]}}-community-release-${os}.rpm
     - run: yum-config-manager --disable 'mysql*'
     - run: yum-config-manager --enable '${all_vendors[${vendor}_7]}'
     - run: sudo dnf module disable mysql -y
@@ -854,6 +964,14 @@ cat <<EOF
     steps:
     - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
     - run: percona-release setup -y ps84-lts
+    - run: yum -y install libasan gdb screen time percona-server-devel
+
+  prepare_el_percona97:
+    steps:
+    # "percona-release setup" only knows hardcoded products and has none for
+    # 9.7 yet: the repository is listed in REPOSITORIES and enabled directly
+    - run: echo 'REPOSITORIES="tools ${all_vendors[percona97_2]}"' > /etc/default/percona-release
+    - run: percona-release enable-only ${all_vendors[percona97_2]} release
     - run: yum -y install libasan gdb screen time percona-server-devel
 
   compile:
@@ -1020,7 +1138,8 @@ cat <<EOF
         expected_version: '${all_vendors[${all_databases_client}_8]}'
 EOF
 # Migration steps: never the same server; inside a family (MySQL/Percona or
-# MariaDB) only from an older to a newer version; between families both ways.
+# MariaDB) only from an older to a newer version; between families both ways;
+# the all_databases_target_only servers are never a source.
 vendor_family() {
     case $1 in
       mariadb*) echo mariadb ;;
@@ -1029,6 +1148,7 @@ vendor_family() {
 }
 for (( s=0; s<${#all_databases_vendors[@]}; s++ ))
 do
+  [[ " ${all_databases_target_only[*]} " == *" ${all_databases_vendors[$s]} "* ]] && continue
   for (( t=0; t<${#all_databases_vendors[@]}; t++ ))
   do
     source_vendor=${all_databases_vendors[$s]}
